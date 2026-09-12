@@ -1,7 +1,7 @@
 import { XlsxError } from '../errors';
-import { notImplemented } from '../internal/not-implemented';
 import type { BorderLineStyle, CellStyle, StyleId } from '../types';
 import { escapeAttr } from '../xml/escape';
+import { XmlTokenizer } from '../xml/tokenizer';
 import { builtinIdForCode, DEFAULT_DATE_FORMAT, FIRST_CUSTOM_NUMFMT_ID, isBuiltinDateId, isDateFormatCode } from './numfmt';
 
 const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -319,8 +319,53 @@ export interface ParsedStyles {
   readonly numFmts: ReadonlyMap<number, string>;
 }
 
-/** Read what the reader needs from `xl/styles.xml`. Tolerates POI/LibreOffice/Numbers quirks (see catalog). */
+/**
+ * Read what the reader needs from `xl/styles.xml`: the number formats and, for every `cellXfs` entry, whether it
+ * renders as a date (EC-DATE-DETECTION-VIA-NUMFMT). Only `<cellXfs>` counts - `<cellStyleXfs>` and `<dxfs>` hold
+ * `<xf>` and `<numFmt>` elements of their own that `c/@s` never indexes (primer 7.2). `applyNumberFormat` is
+ * deliberately ignored: it declares that the xf overrides its parent cell style, while Excel renders the xf's own
+ * `numFmtId` either way, so honouring it would hide dates from producers that leave the flag off.
+ *
+ * Everything else in the part is skipped, which is what makes it tolerant of the producer quirks in the catalog:
+ * POI's `<u val="none"/>` (EC-POI-UNDERLINE-NONE-REJECTED) and 6-hex colours (EC-POI-RGB-6-HEX), LibreOffice and
+ * Numbers extras, `x:`-prefixed or Strict-namespace documents (EC-STRICT-NAMESPACES), `mc:Ignorable`/`x14ac` noise.
+ */
 export function parseStyles(xml: string): ParsedStyles {
-  void xml;
-  throw notImplemented('sml/styles');
+  const numFmts = new Map<number, string>();
+  const numFmtIdByXf: number[] = [];
+  const openElements: string[] = [];
+  const tokenizer = new XmlTokenizer({
+    start(name: string): void {
+      const parent = openElements.at(-1);
+      openElements.push(name);
+      if (name === 'numFmt' && parent === 'numFmts') {
+        const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
+        const formatCode = tokenizer.attr('formatCode');
+        if (Number.isFinite(numFmtId) && formatCode !== undefined) {
+          numFmts.set(numFmtId, formatCode);
+        }
+        return;
+      }
+      if (name === 'xf' && parent === 'cellXfs') {
+        const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
+        numFmtIdByXf.push(Number.isFinite(numFmtId) ? numFmtId : 0);
+      }
+    },
+    text(): void {},
+    end(): void {
+      openElements.pop();
+    },
+  });
+  tokenizer.push(xml);
+  tokenizer.end();
+
+  const isDateByXf = new Uint8Array(numFmtIdByXf.length);
+  for (const [index, numFmtId] of numFmtIdByXf.entries()) {
+    // An explicit `<numFmt>` wins over the built-in table: producers redefine ids inside the reserved range
+    // (write-excel-file uses 100, SheetJS overrides 56) and the code they wrote is what Excel renders.
+    const formatCode = numFmts.get(numFmtId);
+    const isDate = formatCode === undefined ? isBuiltinDateId(numFmtId) : isDateFormatCode(formatCode);
+    isDateByXf[index] = isDate ? 1 : 0;
+  }
+  return { isDateByXf, numFmts };
 }

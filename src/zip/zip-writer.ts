@@ -14,6 +14,13 @@ export interface ZipWriterOptions {
 export interface ZipEntryOptions {
   /** Override the writer-level compression for this entry. */
   readonly method?: 'deflate' | 'store';
+  /**
+   * Override the writer-level zip64 decision for this entry. Zip64 has to be declared in the local file header
+   * before any data is written (ADR-002), so the facade decides per worksheet: a sheet whose size is unknown gets
+   * it, small fixed parts do not. Defaults to the writer-level flag for `beginEntry` and to false for `writeEntry`,
+   * whose one-chunk payloads never approach 4 GiB.
+   */
+  readonly zip64?: boolean;
 }
 
 export interface ZipEntrySummary {
@@ -164,6 +171,8 @@ interface CentralDirectoryRecord {
  * The central directory is buffered in memory and written by `close()`. Only one entry may be open at a time.
  */
 export class ZipWriter {
+  /** Set once any entry was opened as zip64: the archive then finishes with the zip64 end records. */
+  private anyEntryZip64 = false;
   private readonly sink: ByteSink;
   private readonly options: ZipWriterOptions;
   private readonly builder = new ByteBuilder(512);
@@ -186,12 +195,12 @@ export class ZipWriter {
   }
 
   async beginEntry(name: string, options?: ZipEntryOptions): Promise<ZipEntryWriter> {
-    return this.openEntry(name, options, this.options.zip64);
+    return this.openEntry(name, options, options?.zip64 ?? this.options.zip64);
   }
 
-  /** Convenience for small parts: one entry, one chunk. Always 32-bit, even in a zip64 archive. */
+  /** Convenience for small parts: one entry, one chunk. 32-bit unless the caller asks otherwise. */
   async writeEntry(name: string, bytes: Uint8Array, options?: ZipEntryOptions): Promise<ZipEntrySummary> {
-    const entry = await this.openEntry(name, options, false);
+    const entry = await this.openEntry(name, options, options?.zip64 ?? false);
     await entry.write(bytes);
     return entry.close();
   }
@@ -226,6 +235,9 @@ export class ZipWriter {
   }
 
   private async openEntry(name: string, options: ZipEntryOptions | undefined, zip64: boolean): Promise<ZipEntryWriter> {
+    if (zip64) {
+      this.anyEntryZip64 = true;
+    }
     this.assertUsable();
     if (this.openEntryName !== undefined) {
       throw new XlsxError('WRITER_STATE', `Cannot start the zip entry "${name}" while "${this.openEntryName}" is open.`);
@@ -308,10 +320,13 @@ export class ZipWriter {
     builder.uint16(method);
     builder.uint16(timestamp.time);
     builder.uint16(timestamp.date);
-    // CRC and both sizes live in the data descriptor; zip64 entries mark the 32-bit fields as "see the extra field".
+    // CRC and both sizes live in the data descriptor, so APPNOTE 4.4.9 puts literal zeros here - for a zip64 entry
+    // too, whose zip64 extra field below carries the matching 8-byte zero placeholders. Writing the 0xFFFFFFFF
+    // "see the extra field" sentinel instead makes Excel silently repair the archive (oracle 2026-09-12
+    // phase-b-writer: sentinel REPAIRED, zeros PASS).
     builder.uint32(0);
-    builder.uint32(zip64 ? MAX_UINT32 : 0);
-    builder.uint32(zip64 ? MAX_UINT32 : 0);
+    builder.uint32(0);
+    builder.uint32(0);
     builder.uint16(nameBytes.length);
     builder.uint16(zip64 ? ZIP64_LOCAL_EXTRA_LENGTH : 0);
     builder.raw(nameBytes);
@@ -378,7 +393,11 @@ export class ZipWriter {
     const builder = this.builder;
     const entryCount = this.records.length;
     const needsZip64 =
-      this.options.zip64 || entryCount > MAX_UINT16 || centralDirectoryOffset > MAX_UINT32 || centralDirectorySize > MAX_UINT32;
+      this.options.zip64 ||
+      this.anyEntryZip64 ||
+      entryCount > MAX_UINT16 ||
+      centralDirectoryOffset > MAX_UINT32 ||
+      centralDirectorySize > MAX_UINT32;
 
     if (needsZip64) {
       const zip64EndOffset = this.offset;
@@ -399,20 +418,22 @@ export class ZipWriter {
       builder.uint32(1); // total disks
     }
 
-    // The 32-bit end record keeps real values wherever they still fit; the sentinels point readers at the zip64 pair.
+    // Once the zip64 pair is written the 32-bit end record must point at it with sentinels in every field, even where
+    // the real value would still fit: Excel decides the archive is zip64 from these and repairs it when they read as
+    // a complete 32-bit record (oracle 2026-09-12 phase-b-writer: real values REPAIRED, sentinels PASS).
     builder.uint32(END_OF_CENTRAL_DIRECTORY_SIGNATURE);
     builder.uint16(0); // this disk
     builder.uint16(0); // disk holding the central directory
-    builder.uint16(Math.min(entryCount, MAX_UINT16));
-    builder.uint16(Math.min(entryCount, MAX_UINT16));
-    builder.uint32(Math.min(centralDirectorySize, MAX_UINT32));
-    builder.uint32(Math.min(centralDirectoryOffset, MAX_UINT32));
+    builder.uint16(needsZip64 ? MAX_UINT16 : entryCount);
+    builder.uint16(needsZip64 ? MAX_UINT16 : entryCount);
+    builder.uint32(needsZip64 ? MAX_UINT32 : centralDirectorySize);
+    builder.uint32(needsZip64 ? MAX_UINT32 : centralDirectoryOffset);
     builder.uint16(0); // comment length
     return builder.take();
   }
 
   private async writeToSink(chunk: Uint8Array): Promise<void> {
-    if (!this.options.zip64) {
+    if (!this.options.zip64 && !this.anyEntryZip64) {
       await this.guardFits(this.offset + chunk.length, 'the size of the file');
     }
     try {

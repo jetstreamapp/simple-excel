@@ -1,0 +1,41 @@
+{
+  "generator": "@jetstreamapp/simple-excel (every string inline, no sharedStrings part)",
+  "applied": [
+    "freeze",
+    "autoFilter",
+    "merges",
+    "columnWidths",
+    "hiddenSheet",
+    "numFmts"
+  ],
+  "skipped": [
+    {
+      "feature": "hyperlink",
+      "reason": "the writer has no hyperlink API yet (worksheet <hyperlinks> + rel)"
+    },
+    {
+      "feature": "note",
+      "reason": "legacy comments need comments1.xml + vmlDrawing, not implemented"
+    },
+    {
+      "feature": "richText",
+      "reason": "cells are written as plain text; <r> runs are read-only for now"
+    },
+    {
+      "feature": "validation",
+      "reason": "no dataValidations API yet"
+    },
+    {
+      "feature": "conditionalFormat",
+      "reason": "no conditionalFormatting API yet"
+    },
+    {
+      "feature": "hiddenRows",
+      "reason": "row options are not exposed by writeRow"
+    },
+    {
+      "feature": "hiddenColumns",
+      "reason": "ColumnOptions.hidden exists but the canonical hidden column D has no width entry"
+    }
+  ]
+}

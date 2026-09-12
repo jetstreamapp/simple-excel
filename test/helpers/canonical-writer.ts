@@ -38,12 +38,17 @@ export async function writeCanonicalWorkbook(options: WorkbookWriterOptions = {}
       typeof name === 'string' && sheetSpec.numFmts?.[name] ? workbook.registerStyle({ numFmt: sheetSpec.numFmts[name] }) : undefined,
     );
     const isFeatures = sheetSpec.features !== undefined;
+    // `<dimension>` comes from the declared width and readers clip to it, so declare the widest row rather than the
+    // header: the Hidden sheet's data row ('secret', 42) is one column wider than its header.
+    const widestRow = Math.max(...rows.map(row => row.length));
     const sheet = workbook.addSheet(sheetSpec.name, {
       hidden: sheetSpec.hidden,
       header: isFeatures ? undefined : header,
       freeze: isFeatures ? FEATURES.freeze : undefined,
       autoFilter: isFeatures,
-      columns: isFeatures ? Object.entries(FEATURES.columnWidths).map(([, width]) => ({ width })) : undefined,
+      columns: isFeatures
+        ? Object.entries(FEATURES.columnWidths).map(([, width]) => ({ width }))
+        : Array.from({ length: widestRow }, () => ({})),
       rowCount: rows.length - (isFeatures ? 0 : 1),
     });
     if (isFeatures) {

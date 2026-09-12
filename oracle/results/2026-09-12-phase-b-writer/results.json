@@ -1,0 +1,668 @@
+{
+  "meta": {
+    "date": "2026-09-12T17:27:25.181Z",
+    "host": "MacBook-Air.local",
+    "label": "phase-b-writer",
+    "node": "v24.18.0",
+    "readers": [
+      "validator",
+      "sheetjs",
+      "openpyxl",
+      "calamine",
+      "libreoffice",
+      "excel"
+    ],
+    "fixtures": [
+      "golden-canonical-simple-excel",
+      "golden-canonical-simple-excel-inline",
+      "golden-canonical-simple-excel-zip64"
+    ]
+  },
+  "results": [
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "validator",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "PASS",
+      "ms": 508,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "sheetjs",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 85,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 658,
+      "matches": 613,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6,
+        "crlf-normalized": 3,
+        "string-mismatch": 4
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "openpyxl",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 180,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "escape-sequence-mangled": 30,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "calamine",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 80,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 662,
+      "matches": 632,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "error-mismatch": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "libreoffice",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1750,
+      "exit": 0,
+      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel.libreoffice/canonical.xlsx using filter : Calc Office Open",
+      "resaveDiff": {
+        "matches": 588,
+        "cells": 658,
+        "byCategory": {
+          "date-as-text": 3,
+          "time-only-has-date-part": 24,
+          "historical-tz-offset-shift": 10,
+          "escape-sequence-mangled": 5,
+          "temporal-mismatch": 6,
+          "empty-string-vs-blank": 15,
+          "number-precision": 4,
+          "crlf-normalized": 3
+        }
+      }
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "excel",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1317,
+      "workbookName": "canonical.xlsx",
+      "sheets": [
+        "Data",
+        "Features",
+        "It's a very long sheet name 001",
+        "Hidden"
+      ],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F3",
+          "value": "_x005F_x0041_",
+          "text": "_x005F_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.8E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "1899-12-31T00:00:00",
+          "text": "1899-12-31T00:00:00"
+        },
+        {
+          "ref": "M3",
+          "value": "Wednesday, February 28, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.524268391204",
+          "text": "12:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Monday, January 1, 1900 at 12:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "validator",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "PASS",
+      "ms": 394,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.inline.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "sheetjs",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 124,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 658,
+      "matches": 613,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6,
+        "crlf-normalized": 3,
+        "string-mismatch": 4
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "openpyxl",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 175,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "escape-sequence-mangled": 30,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "calamine",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 96,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 662,
+      "matches": 632,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "error-mismatch": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "libreoffice",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "PASS",
+      "ms": 2394,
+      "exit": 0,
+      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.inline.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel-inline.libreoffice/canonical.inline.xlsx using filt",
+      "resaveDiff": {
+        "matches": 588,
+        "cells": 658,
+        "byCategory": {
+          "date-as-text": 3,
+          "time-only-has-date-part": 24,
+          "historical-tz-offset-shift": 10,
+          "escape-sequence-mangled": 5,
+          "temporal-mismatch": 6,
+          "empty-string-vs-blank": 15,
+          "number-precision": 4,
+          "crlf-normalized": 3
+        }
+      }
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "excel",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "PASS",
+      "ms": 1572,
+      "workbookName": "canonical.inline.xlsx",
+      "sheets": [
+        "Data",
+        "Features",
+        "It's a very long sheet name 001",
+        "Hidden"
+      ],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F3",
+          "value": "_x005F_x0041_",
+          "text": "_x005F_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.8E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "1899-12-31T00:00:00",
+          "text": "1899-12-31T00:00:00"
+        },
+        {
+          "ref": "M3",
+          "value": "Wednesday, February 28, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.524268391204",
+          "text": "12:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Monday, January 1, 1900 at 12:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "validator",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "PASS",
+      "ms": 1192,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.zip64.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "sheetjs",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "ERROR",
+      "ms": 4027,
+      "error": "\u001b[90m    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)\u001b[39m | \u001b[90m    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\u001b[39m | Node.js v24.18.0"
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "openpyxl",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 162,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "escape-sequence-mangled": 30,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "calamine",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 77,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 662,
+      "matches": 632,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "error-mismatch": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "libreoffice",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "PASS",
+      "ms": 1348,
+      "exit": 0,
+      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.zip64.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel-zip64.libreoffice/canonical.zip64.xlsx using filter ",
+      "resaveDiff": {
+        "matches": 588,
+        "cells": 658,
+        "byCategory": {
+          "date-as-text": 3,
+          "time-only-has-date-part": 24,
+          "historical-tz-offset-shift": 10,
+          "escape-sequence-mangled": 5,
+          "temporal-mismatch": 6,
+          "empty-string-vs-blank": 15,
+          "number-precision": 4,
+          "crlf-normalized": 3
+        }
+      }
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "excel",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "PASS",
+      "ms": 1114,
+      "workbookName": "canonical.zip64.xlsx",
+      "sheets": [
+        "Data",
+        "Features",
+        "It's a very long sheet name 001",
+        "Hidden"
+      ],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F3",
+          "value": "_x005F_x0041_",
+          "text": "_x005F_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.8E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "1899-12-31T00:00:00",
+          "text": "1899-12-31T00:00:00"
+        },
+        {
+          "ref": "M3",
+          "value": "Wednesday, February 28, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.524268391204",
+          "text": "12:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Monday, January 1, 1900 at 12:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    }
+  ]
+}

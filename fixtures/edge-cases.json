@@ -456,6 +456,30 @@
     "status": "observed"
   },
   {
+    "id": "EC-ZIP64-LOCAL-SIZES-BIT3",
+    "family": "Container",
+    "symptom": "A zip64 entry written with bit 3 (data descriptor) whose local header carries 0xFFFFFFFF in the size fields (as several writers do) makes Excel silently repair the workbook.",
+    "seenIn": "simple-excel writer, isolated by byte-patch experiments through the Excel oracle (oracle/results/2026-09-12-phase-b-writer).",
+    "expected": "With bit 3 set the local header sizes must be literal zeros (APPNOTE 4.4.9) and the zip64 extra field carries 8-byte zeros; the real sizes go in the 8-byte data descriptor and the central directory.",
+    "status": "verified (Excel 365 oracle)"
+  },
+  {
+    "id": "EC-ZIP64-EOCD-SENTINELS",
+    "family": "Container",
+    "symptom": "When a zip64 end-of-central-directory record and locator are written, Excel repairs the archive unless EVERY count/size/offset field of the 32-bit end record is a 0xFFFF / 0xFFFFFFFF sentinel, even when the real value would fit.",
+    "seenIn": "simple-excel writer (same experiment series).",
+    "expected": "Write the zip64 pair only when needed, and when written, fill the 32-bit EOCD with sentinels throughout. Python zipfile, calamine and LibreOffice accept either form.",
+    "status": "verified (Excel 365 oracle)"
+  },
+  {
+    "id": "EC-ZIP64-SMALL",
+    "family": "Container",
+    "symptom": "A small archive written with zip64 headers throughout (version-needed 45, zip64 extra fields, zip64 EOCD): SheetJS 0.20.3 refuses it ('Unsupported ZIP file'); Excel, LibreOffice, openpyxl and calamine read it.",
+    "seenIn": "golden-canonical-simple-excel-zip64.",
+    "expected": "Readers should accept zip64 regardless of size. Writers should not emit zip64 unless a part can plausibly pass 4 GiB (simple-excel's zip64: 'auto' only does so for sheets whose announced size exceeds ~40M cells).",
+    "status": "verified (oracle)"
+  },
+  {
     "id": "EC-INPUT-ODS-RENAMED",
     "family": "Jetstream",
     "symptom": ".ods bytes with an .xlsx name.",

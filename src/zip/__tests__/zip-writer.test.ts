@@ -491,8 +491,10 @@ describe('ZipWriter', () => {
 
     const big = parsed.entries[1]!;
     expect(big.local.versionNeeded, 'Excel needs version 45 in the local header, not just the directory').toBe(45);
-    expect(big.local.compressedSizeField).toBe(MAX_UINT32);
-    expect(big.local.uncompressedSizeField).toBe(MAX_UINT32);
+    // Bit 3 is set, so APPNOTE 4.4.9's zeros go in the size fields; Excel repairs the archive when it finds the
+    // 0xFFFFFFFF sentinel there instead (oracle 2026-09-12 phase-b-writer).
+    expect(big.local.compressedSizeField).toBe(0);
+    expect(big.local.uncompressedSizeField).toBe(0);
     expect(big.local.extraFieldIds).toEqual([0x0001]);
     expect(big.local.zip64Extra, 'the local sizes are placeholders until the descriptor').toEqual({
       uncompressedSize: 0,
@@ -525,17 +527,54 @@ describe('ZipWriter', () => {
     expect(small.descriptor.byteLength).toBe(16);
 
     expect(parsed.zip64Locator).toEqual({ zip64EndOffset: parsed.zip64End!.offset, totalDisks: 1 });
-    expect(parsed.zip64End).toEqual({
-      recordSize: 44,
-      versionMadeBy: 45,
-      versionNeeded: 45,
-      entryCount: 2,
-      centralDirectorySize: parsed.eocd.centralDirectorySize,
-      centralDirectoryOffset: parsed.eocd.centralDirectoryOffset,
-      offset: parsed.eocd.offset - 20 - 56,
-    });
-    // Values that still fit stay readable in the 32-bit end record; the sentinels only appear when they must.
-    expect(parsed.eocd.entryCount).toBe(2);
+    // The real counts and offsets live in the zip64 record now that every field of the 32-bit one is a sentinel.
+    const zip64End = parsed.zip64End!;
+    expect(zip64End.recordSize).toBe(44);
+    expect(zip64End.versionMadeBy).toBe(45);
+    expect(zip64End.versionNeeded).toBe(45);
+    expect(zip64End.entryCount).toBe(2);
+    expect(zip64End.offset).toBe(parsed.eocd.offset - 20 - 56);
+    expect(zip64End.centralDirectoryOffset).toBeLessThan(MAX_UINT32);
+    expect(zip64End.centralDirectoryOffset + zip64End.centralDirectorySize, 'the directory ends where the record starts').toBe(
+      zip64End.offset,
+    );
+    // Excel decides the archive is zip64 from the 32-bit end record, so every field there has to be a sentinel
+    // pointing at the zip64 pair, even the entry count that would still fit (oracle 2026-09-12 phase-b-writer).
+    expect(parsed.eocd.entryCount).toBe(0xffff);
+    expect(parsed.eocd.centralDirectorySize).toBe(MAX_UINT32);
+    expect(parsed.eocd.centralDirectoryOffset).toBe(MAX_UINT32);
+  });
+
+  it('lets an entry override the writer-level zip64 decision in either direction', async () => {
+    const { writer, sink } = createWriter();
+    // The facade decides per worksheet: a sheet whose row count is unknown gets zip64, small fixed parts do not.
+    const streaming = await writer.beginEntry('xl/worksheets/sheet1.xml', { zip64: true });
+    await streaming.write(encode('<worksheet/>'));
+    await streaming.close();
+    await writer.writeEntry('xl/styles.xml', encode('<styleSheet/>'));
+    await writer.writeEntry('xl/sharedStrings.xml', encode('<sst/>'), { zip64: true });
+    await writer.close();
+
+    const bytes = sink.bytes();
+    const parsed = parseZip(bytes);
+    expectConsistentArchive(bytes, parsed);
+    const [sheet, styles, sharedStrings] = parsed.entries;
+    expect(sheet!.local.versionNeeded).toBe(45);
+    expect(sheet!.local.extraFieldIds).toEqual([0x0001]);
+    expect(sheet!.descriptor.byteLength).toBe(24);
+    expect(styles!.local.versionNeeded, 'the writer-level flag is off, so a plain entry stays 32-bit').toBe(20);
+    expect(styles!.local.extraFieldIds).toEqual([]);
+    expect(sharedStrings!.local.versionNeeded, 'writeEntry honours the override too').toBe(45);
+    expect(text(sheet!)).toBe('<worksheet/>');
+    expect(text(sharedStrings!)).toBe('<sst/>');
+
+    const forced = createWriter({ zip64: true });
+    const small = await forced.writer.beginEntry('[Content_Types].xml', { zip64: false });
+    await small.write(encode('<Types/>'));
+    await small.close();
+    await forced.writer.close();
+    const forcedEntries = parseZip(forced.sink.bytes()).entries;
+    expect(forcedEntries[0]!.local.versionNeeded, 'an entry may opt out of a zip64 archive').toBe(20);
   });
 
   it('writes the deterministic timestamp into every entry', async () => {

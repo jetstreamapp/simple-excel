@@ -148,8 +148,10 @@ export interface WorkbookWriterOptions {
   readonly strings?: 'auto' | 'inline' | 'shared';
   readonly sstBudget?: SharedStringBudget;
   /**
-   * `'auto'` (default): zip64 headers are emitted when `rowCount` hints or an unknown-large workload make a >4 GiB
-   * entry plausible. `true` forces zip64 on every large part; `false` throws `ENTRY_TOO_LARGE` instead of overflowing.
+   * `'auto'` (default): zip64 headers are emitted only for a sheet whose `rowCount` hint makes a >4 GiB entry
+   * plausible (about 40M cells); everything else stays a standard zip, which every reader (including SheetJS, which
+   * cannot open zip64) accepts, and a part that still passes 4 GiB fails with `ENTRY_TOO_LARGE`. `true` forces zip64
+   * on every streamed part; `false` never emits it.
    */
   readonly zip64?: 'auto' | boolean;
   readonly compression?: 'deflate' | 'store';

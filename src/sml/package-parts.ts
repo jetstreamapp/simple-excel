@@ -1,7 +1,7 @@
 import { XlsxError } from '../errors';
-import { notImplemented } from '../internal/not-implemented';
 import type { WorkbookProperties } from '../types';
 import { escapeAttr, escapeText } from '../xml/escape';
+import { XmlTokenizer } from '../xml/tokenizer';
 
 const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 const SPREADSHEET_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
@@ -216,11 +216,66 @@ export interface Relationship {
   readonly external: boolean;
 }
 
+/** The directory of a part with the trailing slash a join needs: `'xl'` and `'xl/'` both mean `'xl/'`. */
+function directoryOf(basePath: string): string {
+  if (basePath === '' || basePath.endsWith('/')) {
+    return basePath;
+  }
+  return `${basePath}/`;
+}
+
+/**
+ * Resolve a relationship target to a zip entry name (primer 2.4): backslashes become slashes
+ * (EC-BACKSLASH-REL-TARGETS), a leading slash means the target is a package-root part name
+ * (EC-ABSOLUTE-REL-TARGETS), anything else is relative to the source part's folder, and `.`/`..` segments collapse
+ * so `../comments1.xml` from `xl/worksheets/` lands on `xl/comments1.xml`.
+ */
+function resolveRelationshipTarget(target: string, basePath: string): string {
+  // A relationship with no target names no part; resolving it would produce the source folder, which is not one.
+  if (target === '') {
+    return '';
+  }
+  const slashed = target.includes('\\') ? target.replaceAll('\\', '/') : target;
+  const combined = slashed.startsWith('/') ? slashed : `${directoryOf(basePath)}${slashed}`;
+  const segments: string[] = [];
+  for (const segment of combined.split('/')) {
+    // Empty segments come from a leading, trailing or doubled slash; zip entry names never have any of those.
+    if (segment === '' || segment === '.') {
+      continue;
+    }
+    if (segment === '..') {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  return segments.join('/');
+}
+
 /** Parse a `.rels` part; `basePath` is the directory of the source part (`'xl/'` for workbook rels, `''` for root). */
 export function parseRels(xml: string, basePath: string): Relationship[] {
-  void xml;
-  void basePath;
-  throw notImplemented('sml/package-parts');
+  const relationships: Relationship[] = [];
+  const tokenizer = new XmlTokenizer({
+    start(name: string): void {
+      if (name !== 'Relationship') {
+        return;
+      }
+      const target = tokenizer.attr('Target') ?? '';
+      const external = tokenizer.attr('TargetMode') === 'External';
+      relationships.push({
+        id: tokenizer.attr('Id') ?? '',
+        type: tokenizer.attr('Type') ?? '',
+        // An external target is a URI (a hyperlink, a linked workbook), never a part: it is kept exactly as written.
+        target: external ? target : resolveRelationshipTarget(target, basePath),
+        external,
+      });
+    },
+    text(): void {},
+    end(): void {},
+  });
+  tokenizer.push(xml);
+  tokenizer.end();
+  return relationships;
 }
 
 /** True when a relationship type ends with `/relationships/<suffix>` (works for Strict and Transitional). */
@@ -235,9 +290,56 @@ export interface ContentTypes {
   typeOf(partName: string): string | undefined;
 }
 
+/** Zip entry names have no leading slash, `[Content_Types].xml` part names do; both spellings must look the same. */
+function normalizePartName(partName: string): string {
+  return partName.startsWith('/') ? partName.slice(1) : partName;
+}
+
+/** The lower-cased extension of a part name without the dot, or `''` when it has none (`xl/metadata`). */
+function extensionOf(partName: string): string {
+  const lastDot = partName.lastIndexOf('.');
+  if (lastDot < 0 || lastDot < partName.lastIndexOf('/')) {
+    return '';
+  }
+  return partName.slice(lastDot + 1).toLowerCase();
+}
+
 export function parseContentTypes(xml: string): ContentTypes {
-  void xml;
-  throw notImplemented('sml/package-parts');
+  const defaults = new Map<string, string>();
+  const overrides = new Map<string, string>();
+  const tokenizer = new XmlTokenizer({
+    start(name: string): void {
+      if (name === 'Default') {
+        const extension = tokenizer.attr('Extension');
+        const contentType = tokenizer.attr('ContentType');
+        if (extension !== undefined && extension !== '' && contentType !== undefined) {
+          const withoutDot = extension.startsWith('.') ? extension.slice(1) : extension;
+          defaults.set(withoutDot.toLowerCase(), contentType);
+        }
+        return;
+      }
+      if (name === 'Override') {
+        const partName = tokenizer.attr('PartName');
+        const contentType = tokenizer.attr('ContentType');
+        if (partName !== undefined && contentType !== undefined) {
+          overrides.set(normalizePartName(partName), contentType);
+        }
+      }
+    },
+    text(): void {},
+    end(): void {},
+  });
+  tokenizer.push(xml);
+  tokenizer.end();
+
+  return {
+    defaults,
+    overrides,
+    typeOf(partName: string): string | undefined {
+      const normalized = normalizePartName(partName);
+      return overrides.get(normalized) ?? defaults.get(extensionOf(normalized));
+    },
+  };
 }
 
 export interface WorkbookSheetEntry {
@@ -252,7 +354,58 @@ export interface ParsedWorkbook {
   readonly date1904: boolean;
 }
 
+/** Apache POI spells xsd:booleans `true`/`false` where Excel writes `1`/`0` (EC-POI-BOOLEAN-ATTRIBUTE-SPELLING). */
+function isTrueAttribute(value: string | undefined): boolean {
+  return value === '1' || value?.toLowerCase() === 'true';
+}
+
+function parseSheetState(state: string | undefined): WorkbookSheetEntry['state'] {
+  switch (state?.toLowerCase()) {
+    case 'hidden':
+      return 'hidden';
+    case 'veryhidden':
+      return 'veryHidden';
+    default:
+      return 'visible';
+  }
+}
+
 export function parseWorkbook(xml: string): ParsedWorkbook {
-  void xml;
-  throw notImplemented('sml/package-parts');
+  const sheets: WorkbookSheetEntry[] = [];
+  let date1904 = false;
+  let insideSheetList = false;
+  const tokenizer = new XmlTokenizer({
+    start(name: string): void {
+      if (name === 'sheets') {
+        insideSheetList = true;
+        return;
+      }
+      if (name === 'workbookPr') {
+        date1904 = isTrueAttribute(tokenizer.attr('date1904'));
+        return;
+      }
+      // `<sheet>` also appears under `customWorkbookViews` and vendor `extLst` blocks, where it is not a sheet entry.
+      if (name !== 'sheet' || !insideSheetList) {
+        return;
+      }
+      const sheetId = Number.parseInt(tokenizer.attr('sheetId') ?? '', 10);
+      sheets.push({
+        name: tokenizer.attr('name') ?? '',
+        // `sheetId` is an identity, not an index; when it is missing, position + 1 is what Excel would have written.
+        sheetId: Number.isFinite(sheetId) ? sheetId : sheets.length + 1,
+        // The tokenizer strips prefixes, so `r:id` arrives as `id`. Empty lets the caller fall back to sheet<N>.xml.
+        relId: tokenizer.attr('id') ?? '',
+        state: parseSheetState(tokenizer.attr('state')),
+      });
+    },
+    text(): void {},
+    end(name: string): void {
+      if (name === 'sheets') {
+        insideSheetList = false;
+      }
+    },
+  });
+  tokenizer.push(xml);
+  tokenizer.end();
+  return { sheets, date1904 };
 }
