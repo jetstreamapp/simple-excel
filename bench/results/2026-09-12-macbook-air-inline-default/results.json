@@ -1,6 +1,6 @@
 {
   "label": "inline-default",
-  "createdAt": "2026-09-12T22:41:47.041Z",
+  "createdAt": "2026-09-12T22:44:37.775Z",
   "resultsDir": "bench/results/2026-09-12-macbook-air-inline-default",
   "machine": {
     "hostname": "MacBook-Air.local",
@@ -13,9 +13,9 @@
     "nodeVersion": "v24.18.0",
     "v8": "13.6.233.17-node.50",
     "loadAvgStart": [
-      8.5185546875,
-      7.32958984375,
-      6.359375
+      6.306640625,
+      7.21044921875,
+      6.5205078125
     ]
   },
   "engines": {
@@ -71,30 +71,30 @@
       "source": "materialized",
       "status": "ok",
       "timing": {
-        "medianMs": 3015.0627080000004,
-        "minMs": 2972.1574999999993,
-        "maxMs": 3269.2730410000004,
+        "medianMs": 3076.8662079999995,
+        "minMs": 3003.476375,
+        "maxMs": 3311.550041999999,
         "runsMs": [
-          3015.0627080000004,
-          2972.1574999999993,
-          3269.2730410000004
+          3003.476375,
+          3076.8662079999995,
+          3311.550041999999
         ]
       },
       "memory": {
-        "preWarmupRssMB": 587,
-        "baselineRssMB": 588.6,
-        "peakRssMB": 666,
-        "footprintMB": 79,
-        "peakRssDeltaMB": 77.4,
-        "sampledPeakRssMB": 629,
-        "postRunRssMB": 595.8,
-        "highWaterRssMB": 666,
-        "highWaterBeforeWarmupMB": 587,
-        "samples": 367
+        "preWarmupRssMB": 553.1,
+        "baselineRssMB": 563.1,
+        "peakRssMB": 610.6,
+        "footprintMB": 57.5,
+        "peakRssDeltaMB": 47.5,
+        "sampledPeakRssMB": 610,
+        "postRunRssMB": 577.3,
+        "highWaterRssMB": 610.6,
+        "highWaterBeforeWarmupMB": 565.2,
+        "samples": 369
       },
       "bytes": 45102483,
-      "firstByteMs": 0.4014580000002752,
-      "durationMs": 14365.731125,
+      "firstByteMs": 0.4555419999996957,
+      "durationMs": 15432.670708,
       "exitCode": 0
     },
     {
@@ -109,30 +109,30 @@
       "source": "materialized",
       "status": "ok",
       "timing": {
-        "medianMs": 1775.9083340000007,
-        "minMs": 1775.54,
-        "maxMs": 1799.3985829999992,
+        "medianMs": 1727.1833749999996,
+        "minMs": 1668.8015000000005,
+        "maxMs": 1746.5984580000004,
         "runsMs": [
-          1775.54,
-          1799.3985829999992,
-          1775.9083340000007
+          1668.8015000000005,
+          1727.1833749999996,
+          1746.5984580000004
         ]
       },
       "memory": {
         "preWarmupRssMB": 585.5,
-        "baselineRssMB": 597,
-        "peakRssMB": 680.5,
-        "footprintMB": 95,
-        "peakRssDeltaMB": 83.5,
-        "sampledPeakRssMB": 631.6,
+        "baselineRssMB": 587,
+        "peakRssMB": 659.8,
+        "footprintMB": 74.3,
+        "peakRssDeltaMB": 72.9,
+        "sampledPeakRssMB": 626.2,
         "postRunRssMB": 623.4,
-        "highWaterRssMB": 680.5,
+        "highWaterRssMB": 659.8,
         "highWaterBeforeWarmupMB": 585.5,
-        "samples": 212
+        "samples": 203
       },
       "bytes": 53673586,
-      "firstByteMs": 0.23570799999970404,
-      "durationMs": 9249.788708999999,
+      "firstByteMs": 0.24870800000007875,
+      "durationMs": 8929.174792,
       "exitCode": 0
     },
     {
@@ -147,32 +147,32 @@
       "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
-        "medianMs": 1732.7014579999995,
-        "minMs": 1678.8388749999995,
-        "maxMs": 1752.6176249999999,
+        "medianMs": 1643.0283330000002,
+        "minMs": 1615.4418750000004,
+        "maxMs": 1723.165042,
         "runsMs": [
-          1752.6176249999999,
-          1678.8388749999995,
-          1732.7014579999995
+          1723.165042,
+          1643.0283330000002,
+          1615.4418750000004
         ]
       },
       "memory": {
-        "preWarmupRssMB": 242.3,
-        "baselineRssMB": 726.9,
-        "peakRssMB": 1048.2,
-        "footprintMB": 805.9,
-        "peakRssDeltaMB": 321.3,
-        "sampledPeakRssMB": 1048.2,
-        "postRunRssMB": 1048.2,
-        "highWaterRssMB": 1048.2,
-        "highWaterBeforeWarmupMB": 242.3,
-        "samples": 205
+        "preWarmupRssMB": 242.4,
+        "baselineRssMB": 797.6,
+        "peakRssMB": 1052.5,
+        "footprintMB": 810.1,
+        "peakRssDeltaMB": 254.9,
+        "sampledPeakRssMB": 1052.4,
+        "postRunRssMB": 1051,
+        "highWaterRssMB": 1052.5,
+        "highWaterBeforeWarmupMB": 242.4,
+        "samples": 197
       },
       "bytes": 99829672,
       "firstByteMs": null,
       "rowsRead": 100000,
       "cellsRead": 2000000,
-      "durationMs": 8007.562875,
+      "durationMs": 7664.0987079999995,
       "exitCode": 0,
       "fixture": {
         "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
@@ -193,32 +193,32 @@
       "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
-        "medianMs": 1828.0343750000002,
-        "minMs": 1668.537292,
-        "maxMs": 2022.0826670000001,
+        "medianMs": 1686.691125,
+        "minMs": 1654.2913330000001,
+        "maxMs": 1837.6623750000003,
         "runsMs": [
-          2022.0826670000001,
-          1668.537292,
-          1828.0343750000002
+          1686.691125,
+          1837.6623750000003,
+          1654.2913330000001
         ]
       },
       "memory": {
-        "preWarmupRssMB": 242.5,
-        "baselineRssMB": 757.8,
-        "peakRssMB": 1081.6,
-        "footprintMB": 839.2,
-        "peakRssDeltaMB": 323.9,
-        "sampledPeakRssMB": 1081.6,
-        "postRunRssMB": 1077.6,
-        "highWaterRssMB": 1081.6,
-        "highWaterBeforeWarmupMB": 242.5,
-        "samples": 212
+        "preWarmupRssMB": 242.6,
+        "baselineRssMB": 1016,
+        "peakRssMB": 1055.5,
+        "footprintMB": 812.9,
+        "peakRssDeltaMB": 39.5,
+        "sampledPeakRssMB": 1055.5,
+        "postRunRssMB": 1054.1,
+        "highWaterRssMB": 1055.5,
+        "highWaterBeforeWarmupMB": 242.6,
+        "samples": 205
       },
       "bytes": 99829672,
       "firstByteMs": null,
       "rowsRead": 100000,
       "cellsRead": 2000000,
-      "durationMs": 8840.466,
+      "durationMs": 7663.035292,
       "exitCode": 0,
       "fixture": {
         "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
@@ -239,32 +239,32 @@
       "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
-        "medianMs": 1493.5384160000003,
-        "minMs": 1490.0143750000007,
-        "maxMs": 1645.568792,
+        "medianMs": 1475.511458,
+        "minMs": 1471.7165420000001,
+        "maxMs": 1481.860333,
         "runsMs": [
-          1645.568792,
-          1493.5384160000003,
-          1490.0143750000007
+          1481.860333,
+          1471.7165420000001,
+          1475.511458
         ]
       },
       "memory": {
-        "preWarmupRssMB": 242.7,
-        "baselineRssMB": 191.6,
-        "peakRssMB": 285,
-        "footprintMB": 42.2,
-        "peakRssDeltaMB": 93.4,
-        "sampledPeakRssMB": 219.7,
-        "postRunRssMB": 219.7,
-        "highWaterRssMB": 285,
-        "highWaterBeforeWarmupMB": 242.7,
-        "samples": 183
+        "preWarmupRssMB": 242.8,
+        "baselineRssMB": 193.4,
+        "peakRssMB": 288.5,
+        "footprintMB": 45.8,
+        "peakRssDeltaMB": 95.1,
+        "sampledPeakRssMB": 223.5,
+        "postRunRssMB": 223.5,
+        "highWaterRssMB": 288.5,
+        "highWaterBeforeWarmupMB": 242.8,
+        "samples": 176
       },
       "bytes": 99829672,
       "firstByteMs": null,
       "rowsRead": 100000,
       "cellsRead": 2000000,
-      "durationMs": 7246.297125,
+      "durationMs": 6773.131665999999,
       "exitCode": 0,
       "fixture": {
         "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
@@ -285,32 +285,32 @@
       "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
-        "medianMs": 1516.5327499999994,
-        "minMs": 1473.3831659999998,
-        "maxMs": 1637.399833,
+        "medianMs": 1524.1023329999998,
+        "minMs": 1482.334417,
+        "maxMs": 1577.7422500000002,
         "runsMs": [
-          1473.3831659999998,
-          1637.399833,
-          1516.5327499999994
+          1577.7422500000002,
+          1482.334417,
+          1524.1023329999998
         ]
       },
       "memory": {
-        "preWarmupRssMB": 242.7,
-        "baselineRssMB": 287,
-        "peakRssMB": 287.3,
-        "footprintMB": 44.6,
-        "peakRssDeltaMB": 0.3,
-        "sampledPeakRssMB": 287.3,
-        "postRunRssMB": 223,
-        "highWaterRssMB": 287.3,
-        "highWaterBeforeWarmupMB": 242.7,
-        "samples": 183
+        "preWarmupRssMB": 242.3,
+        "baselineRssMB": 191.9,
+        "peakRssMB": 286.5,
+        "footprintMB": 44.2,
+        "peakRssDeltaMB": 94.6,
+        "sampledPeakRssMB": 220.1,
+        "postRunRssMB": 220,
+        "highWaterRssMB": 286.5,
+        "highWaterBeforeWarmupMB": 242.3,
+        "samples": 182
       },
       "bytes": 99829672,
       "firstByteMs": null,
       "rowsRead": 100000,
       "cellsRead": 2000000,
-      "durationMs": 6944.456875,
+      "durationMs": 6954.394625,
       "exitCode": 0,
       "fixture": {
         "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
@@ -321,9 +321,9 @@
     }
   ],
   "loadAvgEnd": [
-    9.91015625,
-    7.9677734375,
-    6.65771484375
+    5.47119140625,
+    6.82177734375,
+    6.41650390625
   ],
-  "finishedAt": "2026-09-12T22:42:42.088Z"
+  "finishedAt": "2026-09-12T22:45:31.786Z"
 }

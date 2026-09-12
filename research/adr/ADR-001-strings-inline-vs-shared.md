@@ -30,10 +30,12 @@ Two measurements after the library was built changed the default from the bounde
   (`a\u0001b` becomes `a`) and mis-decodes protected escapes (`_x005F_x0041_` becomes `_x005FA`), while it reads the
   same values from inline strings correctly (goldens `golden-canonical-numbers-resave-simple-excel` vs `-inline`).
   Excel, Google Sheets, LibreOffice, openpyxl and calamine read both shapes identically.
-- On the `mixed` 100k×20 benchmark data the table saves 1.4% of compressed size and costs about 15% of write time
-  with the platform deflater (44.49 MB in 4.86 s vs 45.10 MB in 4.09 s; equal with zlib). Unique-heavy data gains
-  nothing from the table at all.
+- On the `mixed` 100k×20 benchmark data the table saves 1.4% of compressed size. In the benchmark harness the
+  inline file writes about 11% slower with the platform deflater (3.08 s vs 2.77 s: ~20% more bytes reach the
+  compressor, which is the bottleneck) and equally fast with zlib (1.73 s vs 1.71 s), for about 50 MB less writer
+  memory; reads are unchanged. Unique-heavy data gains nothing from the table at all.
 
-Inline also matches what Jetstream ships today (`bookSST: false` in SheetJS) and removes the only data structure
-whose size depended on the data. The bounded hybrid stays available as `strings: 'auto'` for very low-cardinality
+Fidelity in a mainstream application outweighs a tenth of the platform-deflate write time. Inline also matches
+what Jetstream ships today (`bookSST: false` in SheetJS) and removes the only data structure whose size depended
+on the data. The bounded hybrid stays available as `strings: 'auto'` for very low-cardinality
 exports where size matters more than speed; the goldens pin both shapes.

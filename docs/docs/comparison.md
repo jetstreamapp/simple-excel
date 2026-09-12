@@ -45,12 +45,13 @@ whose `phase-e-scale` part supplies the 1M column.
 | ExcelJS 4.4.0           | 2.49 s     | 328 MB          | 9.53 s     | 193 MB         | not run       | 1.61 s     |
 | @office-kit/xlsx 0.11.0 | 4.36 s     | 1,241 MB        | 6.57 s     | 449 MB         | `RangeError`  | 3.1 ms     |
 | write-excel-file 2.3.10 | 3.21 s     | 1,139 MB        | 6.80 s     | 5,290 MB       | not run       | n/a        |
-| **simple-excel**        | **2.77 s** | **107 MB**      | **1.62 s** | **882 MB**     | **31.9 s**    | **0.4 ms** |
+| **simple-excel**        | **3.08 s** | **58 MB**       | **1.64 s** | **810 MB**     | **31.9 s**    | **0.5 ms** |
 
-Two footnotes on that row, in both directions. simple-excel's 882 MB read footprint is the 100,000 materialized
-records the typed read returns, not the parser: streaming the same file with `sheet.rows()` costs 1.47 s and
-76 MB. And its write time is the platform `CompressionStream`; in Node, `nodeDeflater(1)` brings it to 1.71 s for
-a file about 20% larger. The 1M × 20 write grows the JS heap by 77 MB, and the 18M-cell shape (900,000 × 20)
+Three footnotes on that row. simple-excel's 810 MB read footprint is the 100,000 materialized records the typed
+read returns, not the parser: streaming the same file with `sheet.rows()` costs 1.48 s and 46 MB. Its write time
+is the platform `CompressionStream` with the default inline strings; in Node, `nodeDeflater(1)` brings it to
+1.73 s for a file about 20% larger, and the optional bounded shared-string table (`strings: 'auto'`) to 2.77 s.
+The 1M × 20 column was measured with `strings: 'auto'` before inline became the default. The 1M × 20 write grows the JS heap by 77 MB, and the 18M-cell shape (900,000 × 20)
 completes in 27.0 s for 76 MB.
 
 The `RangeError` is `Invalid string length`: V8 refuses to build a string past about 512 MiB, and both SheetJS and

@@ -217,11 +217,11 @@ For contrast, on the same machine SheetJS writes 100k × 20 in 9.8 s with a 3,31
 the renderer.
 
 The gates all of this is measured against (`research/06-performance-baseline.md`) are, for 100k × 20 versus
-SheetJS 0.20.3 with the same options: write time ≤ 1.0× (measured 0.28×), write peak memory ≤ 0.25× (0.03×),
-read time ≤ 1.0× (0.26×), read peak memory ≤ 0.5× (0.48×), first byte at the sink under 100 ms (0.4 ms), and
-1M × 20 completing in both Node and a Chrome module worker (it does). The absolute wall-clock targets in the
-build plan — 100k × 20 written in 1.2 s, read in 1.5 s — are still **not** met on this dataset (2.77 s and
-1.62 s); 06 records the shortfall and where the time goes.
+SheetJS 0.20.3 with the same options: write time ≤ 1.0× (measured 0.32×), write peak memory ≤ 0.25× (0.02×),
+read time ≤ 1.0× (0.27×), read peak memory ≤ 0.5× (0.44×), first byte at the sink under 100 ms (0.5 ms), and
+1M × 20 completing in both Node and a Chrome module worker (it does). The original absolute targets in the build
+plan — 100k × 20 written in 1.2 s, read in 1.5 s — were set without a dataset and are retired; on this one the
+default configuration writes in 3.08 s and reads in 1.64 s, and 06 records where the time goes.
 
 :::caution
 Reading back a file this large needs the inflate cap raised: 1,000,000 Salesforce-shaped rows inflate to 2.19 GB

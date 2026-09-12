@@ -142,9 +142,9 @@ export interface WriteProgress {
 
 export interface WorkbookWriterOptions {
   /**
-   * `'inline'` (default): every string is written in its cell and no shared-string table is built - the fastest path,
-   * a constant memory footprint, output within a couple of percent of the table's after compression, and the shape
-   * every application reads faithfully (Numbers mangles control characters and escapes in shared strings, ADR-001).
+   * `'inline'` (default): every string is written in its cell and no shared-string table is built - a constant memory
+   * footprint, output within a couple of percent of the table's after compression, and the shape every application
+   * reads faithfully (Numbers mangles control characters and escapes in shared strings, ADR-001).
    * `'auto'`: bounded hybrid, short repeated strings go to the table until `sstBudget` is hit, then everything is
    * inline. `'shared'`: intern everything (unbounded; for tests).
    */

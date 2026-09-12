@@ -281,6 +281,25 @@ Fixtures written by: sheetjs (see `fixture` in results.json per cell).
   100k rows is 170 MB of XML in and 213 MB out; the targets were set without that shape in mind. On a lighter
   shape the same engine is far quicker — 10k × 20 writes in 285 ms and reads in 155 ms.
 
+### Inline strings as the default (run `2026-09-12-macbook-air-inline-default`)
+
+After ADR-001's addendum made `strings: 'inline'` the writer default, the 100k × 20 `mixed` cells were re-measured
+in the default configuration. The tables above (`phase-e-*`) were measured with the bounded shared-string table
+that is now `strings: 'auto'`.
+
+| op         | engine            | inline default (new) | `strings: 'auto'` (phase-e) |
+| ---------- | ----------------- | -------------------- | --------------------------- |
+| write      | simple-excel      | 3.08 s, 58 MB        | 2.77 s, 107 MB              |
+| write      | simple-excel-zlib | 1.73 s, 74 MB        | 1.71 s, 100 MB              |
+| read-typed | simple-excel      | 1.64 s, 810 MB       | 1.62 s, 882 MB              |
+| read-raw   | simple-excel      | 1.48 s, 46 MB        | 1.47 s, 76 MB               |
+
+Inline strings send about 20% more bytes into the compressor on this repeat-heavy data (30% of its strings
+repeat), and the platform `CompressionStream` is the bottleneck, so the platform write is 11% slower; the zlib path
+and both reads are unchanged within noise, and the writer's memory footprint drops by about 50 MB because there
+is no table. The trade was made for fidelity in Apple Numbers (ADR-001 addendum). The 1M-row, 18M-cell and Chrome
+figures were not re-measured; expect the same ~10% on the platform write path.
+
 ### What the Phase E optimisation pass changed
 
 Five changes, each measured on its own with `bench` and a `--cpu-prof` run of the same workload. Byte-for-byte

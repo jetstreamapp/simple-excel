@@ -43,20 +43,23 @@ full-featured library when you edit existing workbooks or need charts, pivots an
 100,000 rows × 20 columns of Salesforce-shaped data (ids, unicode names, decimals, booleans, dates, long text,
 JSON blobs, 10% nulls — about 1.7 KB of text per row), Apple M4, Node v24.18.0, median of three runs in a fresh
 process. Full tables and method: [`research/06-performance-baseline.md`](research/06-performance-baseline.md),
-run `bench/results/2026-09-12-macbook-air-phase-e-optimized`.
+runs `bench/results/2026-09-12-macbook-air-inline-default` (100k rows, the default configuration) and
+`…-phase-e-optimized` / `…-phase-e-scale` / `…-phase-e-chrome` (1M rows, 18M cells and Chrome, measured with the
+optional bounded shared-string table, `strings: 'auto'`, before inline became the default).
 
 |                             | simple-excel                 | SheetJS 0.20.3                      |
 | --------------------------- | ---------------------------- | ----------------------------------- |
-| Write                       | 2.77 s                       | 9.75 s                              |
-| Write peak memory over idle | 107 MB                       | 3,313 MB                            |
-| Read (typed records)        | 1.62 s                       | 6.17 s                              |
-| Read peak memory over idle  | 882 MB                       | 1,837 MB                            |
-| First byte at the sink      | 0.4 ms                       | n/a (nothing until the end)         |
+| Write                       | 3.08 s                       | 9.75 s                              |
+| Write peak memory over idle | 58 MB                        | 3,313 MB                            |
+| Read (typed records)        | 1.64 s                       | 6.17 s                              |
+| Read peak memory over idle  | 810 MB                       | 1,837 MB                            |
+| First byte at the sink      | 0.5 ms                       | n/a (nothing until the end)         |
 | 1,000,000 × 20 write        | 31.9 s, 77 MB of heap growth | `RangeError: Invalid string length` |
 | 18M cells (900,000 × 20)    | 27.0 s, 76 MB of heap growth | `RangeError: Invalid string length` |
 
-The 882 MB read figure is the 100,000 materialized records the typed read returns, not the parser: streaming the
-same file with `sheet.rows()` costs 1.47 s and 76 MB.
+The 810 MB read figure is the 100,000 materialized records the typed read returns, not the parser: streaming the
+same file with `sheet.rows()` costs 1.48 s and 46 MB. With `strings: 'auto'` (the bounded shared-string table)
+the write is 2.77 s: fewer bytes reach the compressor, which is the bottleneck.
 
 In a Chrome module worker (Chromium 153, writing to `collectToBlob()`), simple-excel writes 100k × 20 in 3.88 s
 for +236 MB of renderer RSS and 1,000,000 × 20 in 39.6 s for +254 MB — flat across a 10× row increase. SheetJS
@@ -64,7 +67,7 @@ takes 7.64 s and +3,039 MB at 100k and crashes the renderer at 1M
 (`bench/results/2026-09-12-macbook-air-phase-e-chrome`).
 
 In Node, passing the `/node` entry's `nodeDeflater(1)` instead of the platform `CompressionStream` cuts write time
-by about 38% (1.71 s at 100k, 19.1 s at 1M) for a file about 20% larger.
+by about 44% (1.73 s at 100k, 19.1 s at 1M) for a file about 20% larger.
 
 ## Install
 

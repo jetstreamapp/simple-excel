@@ -243,9 +243,10 @@ Excel can store strings in a workbook-wide table (`xl/sharedStrings.xml`) and ha
 inline them in the sheet. The table shrinks files with repeated values, and grows in memory with every unique one
 — which is exactly how a streaming writer runs out of heap on a column of record ids.
 
-The default is **inline** (ADR-001, revised): no table is built, memory does not grow with unique strings, writing
-is measurably faster, the compressed file is within a couple of percent of the table version on typical data, and
-it is the shape every application reads faithfully — Numbers truncates shared strings at control characters and
+The default is **inline** (ADR-001, revised): no table is built, memory does not grow with unique strings, the
+compressed file is within a couple of percent of the table version on typical data (the platform deflater gets
+about 20% more bytes, which costs roughly a tenth of the write time on repeat-heavy data), and it is the shape
+every application reads faithfully — Numbers truncates shared strings at control characters and
 mis-decodes protected `_xHHHH_` escapes in them, but reads inline strings correctly. It is also what SheetJS
 writes by default, so files look the same as before to anyone migrating.
 
