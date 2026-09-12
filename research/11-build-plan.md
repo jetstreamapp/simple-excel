@@ -290,7 +290,8 @@ Status on 2026-09-12:
 3. Golden bytes pinned, validator clean, Excel 365 (macOS) and LibreOffice oracle clean: done. Google Sheets manual
    check of `canonical.xlsx` and `canonical.inline.xlsx`: PASS (2026-09-12, application-side display quirks only; the zip64 variant is refused
    by Drive, as expected). Excel for Mac (by hand) and Numbers 14.4 manual checks of `canonical.xlsx`: PASS (2026-09-12;
-   Numbers unhides the hidden sheet and has its own precision limits). **The Windows Excel check is still open** (`fixtures/golden/simple-excel/STEPS.md`).
+   Numbers unhides the hidden sheet and has its own precision limits). Excel for the web (Microsoft's engine, the stand-in for Windows, which the project cannot run) round-tripped both
+   goldens at 650/658 with only the writer's own conventions differing. **Every manual check is closed** (`fixtures/golden/simple-excel/STEPS.md`).
 4. ~~README comparison table backed by the bench numbers; docs site has write/read/streaming/errors pages.~~ Done.
 5. ~~Jetstream adapter notes (08) updated to the final API.~~ Done.
 6. Open: create the GitHub repository and push; first release (`npm run release` derives 0.1.0 from the changelog);

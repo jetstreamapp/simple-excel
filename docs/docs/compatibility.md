@@ -65,8 +65,11 @@ zeroing of sub-precision subtractions and its `9.99999999999999E+307` formula ca
 intact in its re-save. **Apple Numbers 14.4** opened `canonical.xlsx` with one banner, "hidden sheets were made
 visible" (Numbers has no hidden sheets); dates were right, time-only values sit on its 1899-12-31 marker day, and its
 own limits apply — 15-significant-digit precision (`EC-NUMBERS-15-DIGIT-PRECISION`) and no representation of the max
-double (`EC-NUMBERS-INF-VALUE`). **Excel for Windows** has not yet been recorded for this
-engine's output; the procedure and results log live in
+double (`EC-NUMBERS-INF-VALUE`). **Excel for the web** (Microsoft's server-side engine, standing in for Excel on Windows, which the project cannot
+run) re-downloaded both goldens with every value, escape, control character, hidden sheet and sheet name intact:
+the re-downloads read back at 650/658, the same as the originals. Its only on-screen remark was the cosmetic
+"text that looks like a formula" outline on the cells that deliberately hold `=`-prefixed text. The procedure and
+results log live in
 [`fixtures/golden/simple-excel/STEPS.md`](https://github.com/jetstreamapp/simple-excel/blob/main/fixtures/golden/simple-excel/STEPS.md).
 
 ## What the reader has passed

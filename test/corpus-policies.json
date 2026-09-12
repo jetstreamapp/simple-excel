@@ -320,5 +320,15 @@
       "Features!B6"
     ],
     "reason": "Corpus: Apple Numbers 14.4 export of our own golden (manual round trip 2026-09-12, oracle run numbers-on-ours). Numbers' export writes time-only values on day 1 and 1900-02-28 as serial 60 (temporal-mismatch x40 - its day-0 is 1899-12-31 with no leap-day rule), drops empty strings (empty-string-vs-blank), rounds to 15 significant digits (number-precision), writes the max double as <v>inf</v> (type-mismatch x3, EC-NUMBERS-INF-VALUE), replaces error cells and their formulas with nothing (formula-dropped, cell-missing), makes the hidden sheet visible (hidden-state), and truncates strings at DEL (string-mismatch x4 on E5/E14/E23-style cells); date-as-text and dst-gap-shift-1h are our writer's conventions carried through. Inline-string source: control characters and escapes survive (only the DEL truncation remains), so this file is the cleaner Numbers round trip. Parity: SheetJS decodes _X0041_, collapses the CR that Numbers kept as _x000D_, refuses serial 60 (Numbers' 1900-02-28) and returns the raw number, reads Numbers' <v>inf</v> as NaN where we keep the text 'inf', and drops error values to defval."
+  },
+  "golden-canonical-excel-web-resave-simple-excel": {
+    "allowedCategories": ["date-as-text", "dst-gap-shift-1h"],
+    "parityExemptions": ["Data!F", "Data!D7", "Data!D16", "Data!D25", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: Excel for the web re-download of our own golden (manual round trip 2026-09-12, oracle run excel-web-on-ours): only date-as-text and dst-gap-shift-1h, our writer's own conventions, remain - Excel preserved every string, escape, control character, number, date, the hidden sheet and the 31-character sheet name (650/658, the same as the original file). Parity: SheetJS decodes _X0041_, collapses the CR that Excel kept as _x000D_, and drops error values to defval."
+  },
+  "golden-canonical-excel-web-resave-simple-excel-inline": {
+    "allowedCategories": ["date-as-text", "dst-gap-shift-1h"],
+    "parityExemptions": ["Data!F", "Data!D7", "Data!D16", "Data!D25", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: Excel for the web re-download of our own golden (manual round trip 2026-09-12, oracle run excel-web-on-ours): only date-as-text and dst-gap-shift-1h, our writer's own conventions, remain - Excel preserved every string, escape, control character, number, date, the hidden sheet and the 31-character sheet name (650/658, the same as the original file). Parity: SheetJS decodes _X0041_, collapses the CR that Excel kept as _x000D_, and drops error values to defval. Inline-strings variant: identical verdict."
   }
 }

@@ -56,6 +56,15 @@ are compared with Jetstream's truncation applied.
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------ |
 | `hostile-biff8-xls-renamed`<br>Microsoft Excel 16.112.4 macOS<br>expect `NOT_XLSX` | ACCEPTED (Data: 31 rows, Features: 12 rows, It's a very long sheet name 001: 2 rows, Hidden: 2 rows) | REJECTED: OpenXmlNotImplementedError: Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool | REJECTED: BadZipFile: File is not a zip file | REJECTED: ZipError: invalid Zip archive: Could not find EOCD |
 
+### Run `excel-web-on-ours` (2026-09-12-excel-web-on-ours)
+
+2026-09-12T23:13:59.157Z, MacBook-Air.local, Node v24.18.0.
+
+| fixture (generator)                                                          | simple-excel                             | sheetjs                                               | validator | calamine                                           | excel |
+| ---------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------- | --------- | -------------------------------------------------- | ----- |
+| `golden-canonical-excel-web-resave-simple-excel`<br>Excel for the web        | 99% (dst-gap-shift-1h 5, date-as-text 3) | 94% (time-only-has-date-part 24, temporal-mismatch 6) | PASS      | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS  |
+| `golden-canonical-excel-web-resave-simple-excel-inline`<br>Excel for the web | 99% (dst-gap-shift-1h 5, date-as-text 3) | 94% (time-only-has-date-part 24, temporal-mismatch 6) | PASS      | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS  |
+
 ### Run `goldens` (2026-09-12-goldens)
 
 2026-09-12T04:07:38.145Z, MacBook-Air.local, Node v24.18.0.
@@ -103,6 +112,15 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------- |
 | `hostile-biff8-xls-renamed`<br>Microsoft Excel 16.112.4 macOS<br>expect `NOT_XLSX` | ACCEPTED (Data: 31 rows, Features: 12 rows, It's a very long sheet name 001: 2 rows, Hidden: 2 rows) | REJECTED: OpenXmlNotImplementedError: Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool                                                                       | REJECTED: OpenXmlNotImplementedError: Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool                                                                       | REJECTED: OSError: File contains no valid workbook part | REJECTED: CalamineError: File not found 'theme/theme/_rels/workbook.xml.rels' | FAIL: 1 schema error |
 | `hostile-xlsb-renamed`<br>Microsoft Excel 16.112.4 macOS<br>expect `NOT_XLSX`      | ACCEPTED (Data: 31 rows, Features: 12 rows, It's a very long sheet name 001: 2 rows, Hidden: 2 rows) | REJECTED: Error: readTagExp returned undefined at position 857. Context: "\u0000\u0000m\u0000i\u0000c\u0000r\u0000o\u0000s\u0000o\u0000f\u0000t\u0000.\u0000c\u0000o\u0000 | REJECTED: Error: readTagExp returned undefined at position 857. Context: "\u0000\u0000m\u0000i\u0000c\u0000r\u0000o\u0000s\u0000o\u0000f\u0000t\u0000.\u0000c\u0000o\u0000 | REJECTED: OSError: File contains no valid workbook part | REJECTED: CalamineError: File not found 'xl/_rels/workbook.xml.rels'          | FAIL: 1 schema error |
+
+### Run `numbers-on-ours` (2026-09-12-numbers-on-ours)
+
+2026-09-12T22:34:47.823Z, MacBook-Air.local, Node v24.18.0.
+
+| fixture (generator)                                                    | simple-excel                                         | sheetjs                                              | validator | calamine                                             | excel              |
+| ---------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | --------- | ---------------------------------------------------- | ------------------ |
+| `golden-canonical-numbers-resave-simple-excel`<br>Apple Numbers        | 83% (temporal-mismatch 40, string-mismatch 22)       | 82% (temporal-mismatch 37, string-mismatch 26)       | PASS      | 83% (temporal-mismatch 37, string-mismatch 22)       | REPAIRED (see log) |
+| `golden-canonical-numbers-resave-simple-excel-inline`<br>Apple Numbers | 88% (temporal-mismatch 40, empty-string-vs-blank 15) | 87% (temporal-mismatch 37, empty-string-vs-blank 15) | PASS      | 88% (temporal-mismatch 37, blank-vs-empty-string 19) | REPAIRED (see log) |
 
 ### Run `phase-b-writer` (2026-09-12-phase-b-writer)
 
