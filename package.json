@@ -1,0 +1,106 @@
+{
+  "name": "@jetstreamapp/simple-excel",
+  "version": "0.0.0",
+  "description": "Streaming, dependency-free xlsx reader and writer for browsers and Node. Built for large files that must open cleanly in Excel, Google Sheets, LibreOffice and Numbers.",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.mjs",
+  "types": "dist/types/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.mjs"
+    },
+    "./node": {
+      "types": "./dist/types/node/index.d.ts",
+      "require": "./dist/cjs/node.js",
+      "import": "./dist/esm/node.mjs"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist/*",
+    "prebuild": "npm run clean",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:declarations",
+    "build:esm": "esbuild src/index.ts --bundle --outfile=dist/esm/index.mjs --minify --format=esm --platform=browser --target=es2022 --banner:js='/*! @jetstreamapp/simple-excel | MIT License | https://github.com/jetstreamapp/simple-excel */' && esbuild src/node/index.ts --bundle --outfile=dist/esm/node.mjs --minify --format=esm --platform=node --target=node20 --banner:js='/*! @jetstreamapp/simple-excel | MIT License | https://github.com/jetstreamapp/simple-excel */'",
+    "build:cjs": "esbuild src/index.ts --bundle --outfile=dist/cjs/index.js --minify --format=cjs --platform=browser --target=es2022 --banner:js='/*! @jetstreamapp/simple-excel | MIT License | https://github.com/jetstreamapp/simple-excel */' && esbuild src/node/index.ts --bundle --outfile=dist/cjs/node.js --minify --format=cjs --platform=node --target=node20 --banner:js='/*! @jetstreamapp/simple-excel | MIT License | https://github.com/jetstreamapp/simple-excel */'",
+    "build:declarations": "tsc --project tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:corpus": "vitest run --project corpus",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fixtures:check": "node fixtures/generate.mjs --check",
+    "fixtures:generate": "node fixtures/generate.mjs",
+    "oracle": "node oracle/run.mjs",
+    "bench": "node bench/run.mjs",
+    "research:regenerate": "bash research/regenerate.sh",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "release": "node scripts/release.mjs",
+    "release:ci": "release-it",
+    "release:increment": "node scripts/derive-increment.mjs --explain"
+  },
+  "author": "Austin Turner <austin@getjetstream.app>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist/**",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@release-it/keep-a-changelog": "^8.0.0",
+    "@types/node": "^25.9.5",
+    "@vitest/coverage-v8": "^4.1.10",
+    "esbuild": "^0.28.2",
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
+    "release-it": "^21.0.2",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "@office-kit/xlsx": "^0.11.0",
+    "@xarsh/ooxml-validator": "^0.3.0",
+    "exceljs": "^4.4.0",
+    "read-excel-file": "^5.8.0",
+    "write-excel-file": "^2.3.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "keywords": [
+    "xlsx",
+    "excel",
+    "spreadsheet",
+    "streaming",
+    "browser",
+    "ooxml",
+    "spreadsheetml",
+    "openxml",
+    "zip",
+    "sheetjs",
+    "exceljs",
+    "alternative"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jetstreamapp/simple-excel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jetstreamapp/simple-excel/issues"
+  },
+  "homepage": "https://github.com/jetstreamapp/simple-excel#readme",
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
+  }
+}

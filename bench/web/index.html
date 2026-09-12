@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>xlsx engine browser bench</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        margin: 1.5rem;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 0.75rem;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>xlsx engine browser bench</h1>
+    <p>
+      Driven by <code>lib/chrome.mjs</code> through <code>window.bench.run(...)</code>. Cross-origin isolated:
+      <strong id="isolated">?</strong>. Manual use: open the console and call
+      <code>bench.run({ engine: 'office-kit', dataset: 'mixed', rows: 100000 })</code>.
+    </p>
+    <pre id="log"></pre>
+    <script type="module">
+      const logElement = document.getElementById('log');
+      document.getElementById('isolated').textContent = String(self.crossOriginIsolated);
+      const log = line => {
+        logElement.textContent += `${line}\n`;
+      };
+
+      /**
+       * Samples memory while a run is in flight. `performance.memory` (page isolate only) is read
+       * synchronously every `sampleMs`. `measureUserAgentSpecificMemory` covers the whole agent cluster
+       * (page + dedicated workers) but only resolves at the next garbage collection Chrome schedules, which
+       * can be seconds away, so measurements run back-to-back on their own chain instead of gating the
+       * interval; `stop()` waits a short grace period so an in-flight measurement can still land.
+       */
+      function startMemorySampler(sampleMs) {
+        const samples = [];
+        let stopped = false;
+        const canMeasure = self.crossOriginIsolated && typeof performance.measureUserAgentSpecificMemory === 'function';
+        const timer = setInterval(() => {
+          samples.push({ at: performance.now(), pageHeap: performance.memory?.usedJSHeapSize ?? null });
+        }, sampleMs);
+        let measurements = 0;
+        (async () => {
+          while (!stopped && canMeasure) {
+            try {
+              const measurement = await performance.measureUserAgentSpecificMemory();
+              measurements++;
+              samples.push({
+                at: performance.now(),
+                bytes: measurement.bytes,
+                workerBytes: measurement.breakdown
+                  .filter(entry => entry.attribution.some(attribution => attribution.scope === 'DedicatedWorkerGlobalScope'))
+                  .reduce((total, entry) => total + entry.bytes, 0),
+              });
+            } catch {
+              break;
+            }
+          }
+        })();
+        return {
+          canMeasure,
+          async stop(graceMs = 1500) {
+            stopped = true;
+            clearInterval(timer);
+            await new Promise(resolve => setTimeout(resolve, graceMs));
+            return { samples, measurements };
+          },
+        };
+      }
+
+      const peakBetween = (samples, key, from, to) =>
+        samples
+          .filter(sample => sample.at >= from && sample.at <= to && sample[key] != null)
+          .reduce((max, sample) => Math.max(max, sample[key]), 0) || null;
+      const lastBefore = (samples, key, at) => samples.filter(sample => sample.at <= at && sample[key] != null).at(-1)?.[key] ?? null;
+
+      async function run({ engine, dataset, rows, seed = 20260911, sampleMs = 100 }) {
+        const runId = `${engine}-${dataset}-${rows}-${Date.now()}`;
+        log(`run ${runId}`);
+        const worker = new Worker('./worker.bundle.js', { type: 'module' });
+        const sampler = startMemorySampler(sampleMs);
+        const phases = {};
+        const startedAt = performance.now();
+        const outcome = await new Promise(resolve => {
+          worker.onmessage = ({ data }) => {
+            if (data.runId !== runId) {
+              return;
+            }
+            if (data.type === 'phase') {
+              phases[data.phase] = data.at;
+            } else if (data.type === 'progress') {
+              log(`  ${data.rows.toLocaleString()} rows`);
+            } else if (data.type === 'result') {
+              resolve(data);
+            }
+          };
+          worker.onerror = event => {
+            resolve({ ok: false, error: { name: 'WorkerError', message: event.message || 'worker error (possibly out of memory)' } });
+          };
+          worker.postMessage({ type: 'run', runId, engine, dataset, rows, seed });
+        });
+        const finishedAt = performance.now();
+        // keep the worker alive through the grace period so a late agent-cluster measurement still includes it
+        const { samples, measurements } = await sampler.stop();
+        const stoppedAt = performance.now();
+        worker.terminate();
+        const writeStart = phases['write-start'] ?? startedAt;
+        const result = {
+          engine,
+          dataset,
+          rows,
+          seed,
+          ...outcome,
+          wallMs: finishedAt - startedAt,
+          phases,
+          memory: {
+            method: sampler.canMeasure ? 'performance.measureUserAgentSpecificMemory' : 'unavailable (not cross-origin isolated)',
+            sampleMs,
+            samples: samples.length,
+            measurements,
+            baselineBytes: lastBefore(samples, 'bytes', writeStart),
+            peakBytes: peakBetween(samples, 'bytes', writeStart, stoppedAt),
+            peakWorkerBytes: peakBetween(samples, 'workerBytes', writeStart, stoppedAt),
+            peakBytesOverall: peakBetween(samples, 'bytes', 0, stoppedAt),
+            pageHeapPeak: peakBetween(samples, 'pageHeap', 0, finishedAt),
+          },
+        };
+        log(
+          `  -> ${outcome.ok ? `${(outcome.ms / 1000).toFixed(2)} s, ${(outcome.bytes / 1048576).toFixed(1)} MB` : `ERROR ${outcome.error.name}: ${outcome.error.message}`}`,
+        );
+        return result;
+      }
+
+      window.bench = { run };
+      window.benchReady = true;
+    </script>
+  </body>
+</html>

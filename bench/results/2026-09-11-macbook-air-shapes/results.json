@@ -1,0 +1,463 @@
+{
+  "label": "shapes",
+  "createdAt": "2026-09-12T04:00:59.261Z",
+  "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-shapes",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "loadAvgStart": [5.39208984375, 6.3134765625, 4.9423828125]
+  },
+  "engines": {
+    "sheetjs": {
+      "version": "0.20.3",
+      "supportsStreaming": false
+    },
+    "office-kit": {
+      "version": "0.11.0",
+      "supportsStreaming": true
+    }
+  },
+  "options": {
+    "engines": ["sheetjs", "office-kit"],
+    "ops": ["write", "read-typed"],
+    "datasets": ["strings-unique", "numeric", "wide"],
+    "sizes": ["100k"],
+    "runs": 3,
+    "warmup": 1,
+    "source": "materialized",
+    "label": "shapes",
+    "timeoutSeconds": 600,
+    "seed": 20260911,
+    "nodeFlags": ["--expose-gc", "--max-old-space-size=12288"],
+    "rebuildFixtures": false,
+    "merge": null,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "strings-unique",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 4425.9025,
+        "minMs": 4374.681584,
+        "maxMs": 6355.971625,
+        "runsMs": [6355.971625, 4374.681584, 4425.9025]
+      },
+      "memory": {
+        "preWarmupRssMB": 684.8,
+        "baselineRssMB": 1310.1,
+        "peakRssMB": 4092.5,
+        "footprintMB": 3407.7,
+        "peakRssDeltaMB": 2782.4,
+        "sampledPeakRssMB": null,
+        "postRunRssMB": 3583.1,
+        "highWaterRssMB": 4092.5,
+        "highWaterBeforeWarmupMB": 684.8,
+        "samples": 0
+      },
+      "bytes": 56129700,
+      "firstByteMs": null,
+      "durationMs": 21858.1885,
+      "exitCode": 0
+    },
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "strings-unique",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 4116.363625,
+        "minMs": 4030.7055419999997,
+        "maxMs": 4215.808290999999,
+        "runsMs": [4215.808290999999, 4030.7055419999997, 4116.363625]
+      },
+      "memory": {
+        "preWarmupRssMB": 687,
+        "baselineRssMB": 1210.7,
+        "peakRssMB": 1576.7,
+        "footprintMB": 889.7,
+        "peakRssDeltaMB": 365.9,
+        "sampledPeakRssMB": 1440.4,
+        "postRunRssMB": 1359.5,
+        "highWaterRssMB": 1576.7,
+        "highWaterBeforeWarmupMB": 687,
+        "samples": 264
+      },
+      "bytes": 38915717,
+      "firstByteMs": 2.3937500000010914,
+      "durationMs": 19538.170208,
+      "exitCode": 0
+    },
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "numeric",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 3091.0635,
+        "minMs": 2732.376957999999,
+        "maxMs": 3265.5879580000005,
+        "runsMs": [3265.5879580000005, 2732.376957999999, 3091.0635]
+      },
+      "memory": {
+        "preWarmupRssMB": 116.6,
+        "baselineRssMB": 636.2,
+        "peakRssMB": 1930.9,
+        "footprintMB": 1814.3,
+        "peakRssDeltaMB": 1294.7,
+        "sampledPeakRssMB": null,
+        "postRunRssMB": 1930.9,
+        "highWaterRssMB": 1930.9,
+        "highWaterBeforeWarmupMB": 116.6,
+        "samples": 0
+      },
+      "bytes": 33894543,
+      "firstByteMs": null,
+      "durationMs": 12686.111042,
+      "exitCode": 0
+    },
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "numeric",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 1839.925083,
+        "minMs": 1837.0288329999994,
+        "maxMs": 1895.9019580000004,
+        "runsMs": [1895.9019580000004, 1839.925083, 1837.0288329999994]
+      },
+      "memory": {
+        "preWarmupRssMB": 118.5,
+        "baselineRssMB": 165.4,
+        "peakRssMB": 172.6,
+        "footprintMB": 54.1,
+        "peakRssDeltaMB": 7.2,
+        "sampledPeakRssMB": 172.6,
+        "postRunRssMB": 172.6,
+        "highWaterRssMB": 172.6,
+        "highWaterBeforeWarmupMB": 118.5,
+        "samples": 202
+      },
+      "bytes": 17799246,
+      "firstByteMs": 3.2684169999993173,
+      "durationMs": 8431.333791,
+      "exitCode": 0
+    },
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "wide",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 107,
+      "cells": 10700000,
+      "runs": 3,
+      "status": "error",
+      "phase": "process",
+      "error": {
+        "name": "ChildProcessError",
+        "message": "child exited with code null signal SIGABRT and no result; stderr tail: re/fnm/node-versions/v24.18.0/installation/bin/node]\n34: 0x103d98d3c uv_run [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n35: 0x102db06a8 node::SpinEventLoopInternal(node::Environment*) [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n36: 0x102f28314 node::NodeMainInstance::Run() [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n37: 0x102e7baa0 node::Start(int, char**) [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n38: 0x18e79fe00 start [/usr/lib/dyld]"
+      },
+      "durationMs": 18650.336292
+    },
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "wide",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 107,
+      "cells": 10700000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 16296.126540999998,
+        "minMs": 16140.878207999995,
+        "maxMs": 16489.657791999998,
+        "runsMs": [16296.126540999998, 16489.657791999998, 16140.878207999995]
+      },
+      "memory": {
+        "preWarmupRssMB": 1795.1,
+        "baselineRssMB": 3047.7,
+        "peakRssMB": 3523.1,
+        "footprintMB": 1728,
+        "peakRssDeltaMB": 475.3,
+        "sampledPeakRssMB": 3432,
+        "postRunRssMB": 2451.5,
+        "highWaterRssMB": 3523.1,
+        "highWaterBeforeWarmupMB": 1795.1,
+        "samples": 1171
+      },
+      "bytes": 155120474,
+      "firstByteMs": 2.479124999998021,
+      "durationMs": 73245.53525,
+      "exitCode": 0
+    },
+    {
+      "engine": "sheetjs",
+      "op": "read-typed",
+      "dataset": "strings-unique",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 4088.8941250000007,
+        "minMs": 3923.1369159999995,
+        "maxMs": 4401.7592079999995,
+        "runsMs": [4088.8941250000007, 3923.1369159999995, 4401.7592079999995]
+      },
+      "memory": {
+        "preWarmupRssMB": 167.1,
+        "baselineRssMB": 1116.7,
+        "peakRssMB": 1289.8,
+        "footprintMB": 1122.7,
+        "peakRssDeltaMB": 173.1,
+        "sampledPeakRssMB": null,
+        "postRunRssMB": 1219.6,
+        "highWaterRssMB": 1289.8,
+        "highWaterBeforeWarmupMB": 167.1,
+        "samples": 0
+      },
+      "bytes": 56129700,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 2000000,
+      "durationMs": 17581.39175,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+        "producer": "sheetjs",
+        "producerVersion": "0.20.3",
+        "bytes": 56129700
+      }
+    },
+    {
+      "engine": "office-kit",
+      "op": "read-typed",
+      "dataset": "strings-unique",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 4989.20975,
+        "minMs": 4872.389249999998,
+        "maxMs": 5006.35175,
+        "runsMs": [5006.35175, 4989.20975, 4872.389249999998]
+      },
+      "memory": {
+        "preWarmupRssMB": 68.4,
+        "baselineRssMB": 318.7,
+        "peakRssMB": 388.3,
+        "footprintMB": 320,
+        "peakRssDeltaMB": 69.6,
+        "sampledPeakRssMB": null,
+        "postRunRssMB": 388.3,
+        "highWaterRssMB": 388.3,
+        "highWaterBeforeWarmupMB": 68.5,
+        "samples": 0
+      },
+      "bytes": 56129700,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 2000000,
+      "durationMs": 20701.861582999998,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+        "producer": "sheetjs",
+        "producerVersion": "0.20.3",
+        "bytes": 56129700
+      }
+    },
+    {
+      "engine": "sheetjs",
+      "op": "read-typed",
+      "dataset": "numeric",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 3157.603541999999,
+        "minMs": 3135.1267500000004,
+        "maxMs": 3207.023958,
+        "runsMs": [3207.023958, 3135.1267500000004, 3157.603541999999]
+      },
+      "memory": {
+        "preWarmupRssMB": 124.9,
+        "baselineRssMB": 831.4,
+        "peakRssMB": 1028.7,
+        "footprintMB": 903.9,
+        "peakRssDeltaMB": 197.4,
+        "sampledPeakRssMB": null,
+        "postRunRssMB": 958.8,
+        "highWaterRssMB": 1028.7,
+        "highWaterBeforeWarmupMB": 124.9,
+        "samples": 0
+      },
+      "bytes": 33894543,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 2000000,
+      "durationMs": 13683.614709000001,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+        "producer": "sheetjs",
+        "producerVersion": "0.20.3",
+        "bytes": 33894543
+      }
+    },
+    {
+      "engine": "office-kit",
+      "op": "read-typed",
+      "dataset": "numeric",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 4680.414375,
+        "minMs": 4282.129999999999,
+        "maxMs": 4828.813958000001,
+        "runsMs": [4680.414375, 4828.813958000001, 4282.129999999999]
+      },
+      "memory": {
+        "preWarmupRssMB": 68.4,
+        "baselineRssMB": 387.6,
+        "peakRssMB": 423.6,
+        "footprintMB": 355.2,
+        "peakRssDeltaMB": 36.1,
+        "sampledPeakRssMB": null,
+        "postRunRssMB": 418.3,
+        "highWaterRssMB": 423.6,
+        "highWaterBeforeWarmupMB": 68.4,
+        "samples": 0
+      },
+      "bytes": 33894543,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 2000000,
+      "durationMs": 19610.711875,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+        "producer": "sheetjs",
+        "producerVersion": "0.20.3",
+        "bytes": 33894543
+      }
+    },
+    {
+      "engine": "sheetjs",
+      "op": "read-typed",
+      "dataset": "wide",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 107,
+      "cells": 10700000,
+      "runs": 3,
+      "status": "timeout",
+      "timeoutMs": 600000,
+      "durationMs": 600109.1362910001,
+      "fixture": {
+        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+        "producer": "office-kit",
+        "producerVersion": "0.11.0",
+        "bytes": 155120474
+      }
+    },
+    {
+      "engine": "office-kit",
+      "op": "read-typed",
+      "dataset": "wide",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 107,
+      "cells": 10700000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 63466.408707999995,
+        "minMs": 57682.91641599999,
+        "maxMs": 65433.873375000025,
+        "runsMs": [63466.408707999995, 57682.91641599999, 65433.873375000025]
+      },
+      "memory": {
+        "preWarmupRssMB": 68.6,
+        "baselineRssMB": 1477.5,
+        "peakRssMB": 5492.3,
+        "footprintMB": 5423.7,
+        "peakRssDeltaMB": 4014.8,
+        "sampledPeakRssMB": 2206.1,
+        "postRunRssMB": 2271.1,
+        "highWaterRssMB": 5492.3,
+        "highWaterBeforeWarmupMB": 68.8,
+        "samples": 13
+      },
+      "bytes": 155120474,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 10700000,
+      "durationMs": 250343.484541,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+        "producer": "office-kit",
+        "producerVersion": "0.11.0",
+        "bytes": 155120474
+      }
+    }
+  ],
+  "loadAvgEnd": [7.0927734375, 9.98779296875, 9.24853515625],
+  "finishedAt": "2026-09-12T04:19:25.745Z"
+}

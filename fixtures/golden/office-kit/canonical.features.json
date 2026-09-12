@@ -1,0 +1,30 @@
+{
+  "generator": "@office-kit/xlsx 0.11.0",
+  "applied": [
+    "merges",
+    "autoFilter",
+    "hyperlink",
+    "richText",
+    "note",
+    "validation",
+    "conditionalFormat",
+    "hiddenRows",
+    "hiddenColumns",
+    "columnWidths",
+    "hiddenSheet"
+  ],
+  "skipped": [
+    {
+      "feature": "formula cached error at r4c2",
+      "reason": "setFormula cachedValue cannot be an error value"
+    },
+    {
+      "feature": "formula cached error at r5c2",
+      "reason": "setFormula cachedValue cannot be an error value"
+    },
+    {
+      "feature": "freeze",
+      "reason": "freezePanes: cols must be a positive integer; got 0"
+    }
+  ]
+}

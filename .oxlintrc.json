@@ -1,0 +1,72 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // typescript, unicorn, oxc and import apply everywhere. vitest is enabled only in the test
+  // override below, so its rules cannot fire on source files.
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  // correctness, suspicious and perf catch defects, so they are errors. style and pedantic stay
+  // off because oxfmt owns layout and the rest is opinion rather than defect detection.
+  // restriction and nursery are off by default, listed so the whole policy reads in one place.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "pedantic": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    "no-underscore-dangle": "off",
+    // The library is streaming by design: awaiting a sink write or a chunk inside a loop is the whole point, and
+    // Promise.all would defeat back-pressure.
+    "no-await-in-loop": "off"
+  },
+  "overrides": [
+    {
+      // The release script polls external state and the oracle/bench drive one external process at a
+      // time; each iteration must observe the result of the previous one, so the sequential awaits are deliberate.
+      "files": ["scripts/**", "oracle/**", "bench/**", "fixtures/**"],
+      "rules": {
+        "no-console": "off",
+        // The tooling is plain scripts, not library code: recreating a helper closure per call, spreading in a
+        // map or sorting in place are fine there and rewriting them buys nothing.
+        "unicorn/consistent-function-scoping": "off",
+        "unicorn/no-array-sort": "off",
+        "unicorn/prefer-array-find": "off",
+        "oxc/no-map-spread": "off",
+        // canonical.mjs deliberately contains 3.14159 as a float trap value.
+        "oxc/approx-constant": "off"
+      }
+    },
+    {
+      "files": ["src/**/__tests__/**", "test/**"],
+      "plugins": ["vitest"],
+      "rules": {
+        // Vitest's `expect(actual, message)` takes a second message argument; the rule assumes Jest.
+        "vitest/valid-expect": "off",
+        // The suites are table driven - titles come from the test-case records in test-cases.ts,
+        // which this rule wants to be string literals.
+        "vitest/valid-title": "off",
+        // Shared runners branch on the expected outcome but assert in every branch.
+        "vitest/no-conditional-expect": "off",
+        // `describe('X', () => runTestCases(Y))` - a concise arrow returning a void call.
+        "vitest/valid-describe-callback": "off",
+        // Table-driven error cases assert the error type, not a message.
+        "vitest/require-to-throw-message": "off",
+        // Helpers are intentionally scoped to the block whose cases they serve.
+        "unicorn/consistent-function-scoping": "off",
+        // Manifest-driven suites register one test per fixture and skip fixtures with a recorded policy.
+        "vitest/no-conditional-tests": "off",
+        "vitest/no-disabled-tests": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    ".generated/**",
+    "bench/web/**",
+    // docs/ is a separate npm project (Docusaurus, React) with its own dependencies and
+    // conventions - run its own tooling from inside that directory.
+    "docs/**"
+  ]
+}

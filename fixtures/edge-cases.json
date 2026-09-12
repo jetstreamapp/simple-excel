@@ -1,0 +1,706 @@
+[
+  {
+    "id": "EC-XML-CONTROL-CHARS",
+    "family": "Strings",
+    "symptom": "U+0000-U+001F (except tab/LF/CR) are illegal in XML 1.0; Salesforce long-text can contain them.",
+    "seenIn": "office-kit writes _x0001_ (correct); ExcelJS silently strips them; openpyxl raises IllegalCharacterError and refuses the cell; Excel decodes _x0001_ back to the control char.",
+    "expected": "Writer: encode as _xHHHH_. Reader: decode _xHHHH_ to the character.",
+    "status": "verified 2026-09-11 (Excel oracle E2)"
+  },
+  {
+    "id": "EC-XML-ESCAPE-LITERAL",
+    "family": "Strings",
+    "symptom": "Literal text that looks like an escape (_x0041_) must be written as _x005F_x0041_ or readers decode it to 'A'.",
+    "seenIn": "ExcelJS, SheetJS, write-excel-file, XlsxWriter write _x0041_ raw (read back as 'A'); office-kit escapes the first underscore correctly.",
+    "expected": "Writer: prefix every _xHHHH_-shaped run with _x005F_. Reader: decode _x005F_ to '_' and continue scanning after it.",
+    "status": "verified (Excel shows _x0041_ for office-kit's _x005F_x0041_)"
+  },
+  {
+    "id": "EC-XML-ESCAPE-OVERLAP",
+    "family": "Strings",
+    "symptom": "Overlapping escape-shaped runs: the literal _x005F_x0041_ needs three escapes (_x005F_x005F_x005F_x0041_).",
+    "seenIn": "office-kit writes _x005F_x005F_x0041_, which Excel and SheetJS both decode to '_x005FA' (Excel oracle F3).",
+    "expected": "Escape every underscore that starts an _xHHHH_ match, including the underscore shared by two matches.",
+    "status": "office-kit writer bug candidate (upstream issue)"
+  },
+  {
+    "id": "EC-XML-ESCAPE-CASE",
+    "family": "Strings",
+    "symptom": "_X0041_ (uppercase X) is not an escape per ST_Xstring; SheetJS decodes it to 'A' anyway.",
+    "seenIn": "SheetJS reader (case-insensitive regex); office-kit reader leaves it as text.",
+    "expected": "Only lowercase _x + 4 hex digits + _ is an escape.",
+    "status": "SheetJS reader over-eager; Excel behaviour recorded in oracle F7"
+  },
+  {
+    "id": "EC-XML-ESCAPE-UNDECODED",
+    "family": "Strings",
+    "symptom": "Reader returns the raw _x0001_ / _x000d_ text instead of the character.",
+    "seenIn": "office-kit reader (document and stream) on SheetJS/office-kit output.",
+    "expected": "Decode on read (Excel does).",
+    "status": "office-kit reader bug (upstream issue; related to open issue #131 on numeric char refs)"
+  },
+  {
+    "id": "EC-CRLF-NORMALIZED",
+    "family": "Strings",
+    "symptom": "A raw CR inside <t> is collapsed to LF by XML line-end normalization; Excel writes CR as _x000D_.",
+    "seenIn": "ExcelJS, write-excel-file, openpyxl, XlsxWriter emit raw CR (lost by every reader); office-kit emits _x000D_ but SheetJS's unescapexml then collapses \\r\\n to \\n on read.",
+    "expected": "Writer: escape CR as _x000D_. Reader: decode it and do not normalize.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-XML-SPACE-PRESERVE",
+    "family": "Strings",
+    "symptom": "Leading/trailing/only-whitespace strings need xml:space=\"preserve\" or some readers trim them.",
+    "seenIn": "calamine trims a whitespace-only cell to '' (openpyxl golden). All JS writers emit the attribute.",
+    "expected": "Emit xml:space=\"preserve\" whenever the text starts/ends with whitespace.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-CELL-32767-LIMIT",
+    "family": "Strings",
+    "symptom": "Cells above 32,767 chars: SheetJS throws 'Text length must not exceed 32767 characters'; other writers emit an invalid file.",
+    "seenIn": "Jetstream truncates with '...(truncated)' (prepareExcelFile); Permission Manager path does not.",
+    "expected": "Truncate with a visible suffix and report the count (policy:truncate-32767).",
+    "status": "policy"
+  },
+  {
+    "id": "EC-FORMULA-LIKE-TEXT-WRITTEN-AS-FORMULA",
+    "family": "Strings",
+    "symptom": "Text starting with '=' ('=SUM(A1)', '=cmd|calc') becomes a formula; Excel then REPAIRS the file ('Removed Records: Formula').",
+    "seenIn": "openpyxl (smart typing) and LibreOffice CSV import. SheetJS/ExcelJS/office-kit/XlsxWriter keep it as text.",
+    "expected": "Never infer formulas from user text (formula-injection surface); write t=\"s\"/inlineStr.",
+    "status": "verified (Excel repair logs 2026-09-11)"
+  },
+  {
+    "id": "EC-SST-ABSENT-INLINE-ONLY",
+    "family": "Strings",
+    "symptom": "Workbook without xl/sharedStrings.xml, every string inline (t=\"inlineStr\").",
+    "seenIn": "SheetJS bookSST:false (Jetstream default); accepted by Excel, LibreOffice, calamine, openpyxl, office-kit.",
+    "expected": "Readers must not require the SST part.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-NUM-15-SIGNIFICANT-DIGITS",
+    "family": "Numbers",
+    "symptom": "Excel displays/rounds to 15 significant digits: 9007199254740991 shows as 9.007199254741E+15.",
+    "seenIn": "Excel oracle I2. Files may still carry 17 digits; readers return the stored double.",
+    "expected": "Store shortest round-trip; document that Excel UI shows 15 digits.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-NUM-MAX-DOUBLE",
+    "family": "Numbers",
+    "symptom": "1.7976931348623157e308 round-trips as Infinity or is dropped.",
+    "seenIn": "openpyxl reads its own output as inf; office-kit drops the cell (null) from openpyxl/XlsxWriter files.",
+    "expected": "Parse xsd:double exactly; treat overflow as an error cell rather than dropping the cell.",
+    "status": "observed"
+  },
+  {
+    "id": "EC-NUM-NEGATIVE-ZERO",
+    "family": "Numbers",
+    "symptom": "-0 has no representation; readers return 0.",
+    "seenIn": "all writers/readers",
+    "expected": "Normalize -0 to 0.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-SERIAL-EPOCH-UTC-FIELDS",
+    "family": "Dates",
+    "symptom": "Library computes the serial from a Date's UTC fields, so a local-midnight Date lands in the file with the host UTC offset as a time fraction (07:00 here); Excel shows 7:00 AM or ######## for negatives.",
+    "seenIn": "office-kit dateToExcel/excelToDate ('wall clock in UTC fields' convention, like openpyxl naive datetimes). SheetJS write uses local fields; SheetJS raw read returns UTC-field Dates and sheet_to_json converts with utc_to_local.",
+    "expected": "Document the convention and convert at the boundary: new Date(Date.UTC(y,m,d,h,i,s)) before handing local Dates to office-kit.",
+    "status": "verified (Excel oracle M2/N2/O2 on the office-kit golden)"
+  },
+  {
+    "id": "EC-DATE-TIME-ONLY-NEGATIVE-SERIAL",
+    "family": "Dates",
+    "symptom": "A time-only value carried as a JS Date on 1899-12-30 is written as a NEGATIVE serial; Excel shows ########.",
+    "seenIn": "SheetJS datenum (res < 60 => res - 1) and office-kit dateToExcel both produce -0.47 for 1899-12-30T12:34:56.",
+    "expected": "Represent time-only values as a fraction of a day (serial 0.x, Excel's 'Jan 0 1900').",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-1900-LEAP-BUG",
+    "family": "Dates",
+    "symptom": "Serial 60 is the fake 1900-02-29; serials 1-59 map to 1900-01-01..02-28 and 61+ to 03-01 onward.",
+    "seenIn": "SheetJS returns the raw number 60 (no Date) for that cell; office-kit maps 60 to 02-28; XlsxWriter writes 1900-01-01 12:00 as serial 0.5 (Excel shows '1/0/1900 12:00').",
+    "expected": "Map 60 to a documented value; never shift real dates.",
+    "status": "verified (SheetJS date-as-serial 60)"
+  },
+  {
+    "id": "EC-DATE-PRE-1900",
+    "family": "Dates",
+    "symptom": "Dates before 1900-01-01 are not representable as Excel dates (serial <= 0 shows '1/0/1900' or ########); Salesforce allows dates from 1700.",
+    "seenIn": "All writers emit serial 0/negative for 1899-12-31.",
+    "expected": "Write pre-1900 dates as text (ISO) or reject with a clear error.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-DST-GAP",
+    "family": "Dates",
+    "symptom": "Constructing a local Date for a wall clock that does not exist (US DST gap 02:30) silently shifts it by one hour before it reaches the file.",
+    "seenIn": "Every JS writer fed local Dates (dst-gap-shift-1h in the diffs).",
+    "expected": "Carry wall-clock components (or UTC-field Dates) instead of local Date instants.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-HISTORICAL-TZ-OFFSET",
+    "family": "Dates",
+    "symptom": "JS Dates before ~1901 carry LMT offsets (e.g. -7:52:58 in Los Angeles), so UTC-field <-> local conversions of 1899/1900 dates are off by minutes/seconds.",
+    "seenIn": "historical-tz-offset-shift category on 1900-01-01 12:00 values.",
+    "expected": "Avoid local-time math for pre-1901 dates; use UTC fields.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-DETECTION-VIA-NUMFMT",
+    "family": "Dates",
+    "symptom": "A date cell is a number whose cellXf number format is a date format; readers that skip styles return raw serials.",
+    "seenIn": "office-kit loadWorkbook and loadWorkbookStream both return serials; the consumer must resolve cellXfs -> numFmtId -> isDateFormat.",
+    "expected": "Expose typed Dates or a one-call resolver; built-in ids 14-22/45-47 plus custom codes containing y/m/d/h/s outside quotes/brackets.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ERROR-CELL-TEXT-SUPPRESSED",
+    "family": "Cells",
+    "symptom": "With cellText:false SheetJS error cells carry only the BIFF code in v (42 = #N/A) and no w text.",
+    "seenIn": "Jetstream's read options.",
+    "expected": "Map codes to error names (0 #NULL!, 7 #DIV/0!, 15 #VALUE!, 23 #REF!, 29 #NAME?, 36 #NUM!, 42 #N/A).",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ERROR-CELL-AS-TEXT",
+    "family": "Cells",
+    "symptom": "Writers without an error-cell API write '#N/A' as a string (t=\"s\"), which readers cannot distinguish from an error.",
+    "seenIn": "XlsxWriter (no write_error), write-excel-file.",
+    "expected": "Use t=\"e\" for errors.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-FORMULA-CACHED-ERROR",
+    "family": "Cells",
+    "symptom": "Formula whose cached value is an error (=1/0) - some writers cannot express the cached error.",
+    "seenIn": "office-kit setFormula cachedValue accepts number|string|boolean only; openpyxl never writes cached values.",
+    "expected": "Writer supports t=\"e\" + <f>; reader returns the cached value.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-BLANK-VS-EMPTY-STRING",
+    "family": "Cells",
+    "symptom": "A missing <c> and an empty-string cell are different things; readers disagree on which they return.",
+    "seenIn": "calamine returns '' for blanks (skip_empty_area=False); write-excel-file/XlsxWriter write '' as blank; Jetstream defval:'' maps both to ''.",
+    "expected": "Define the contract (Jetstream: '' for both).",
+    "status": "verified"
+  },
+  {
+    "id": "EC-RICH-TEXT-RUNS",
+    "family": "Cells",
+    "symptom": "Rich text is <r> runs in SST/inline strings; readers must flatten.",
+    "seenIn": "ExcelJS, office-kit ({ kind: 'rich-text', runs }), openpyxl, XlsxWriter write runs; SheetJS CE flattens on read.",
+    "expected": "Flatten to plain text on read; writing runs is optional.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-TIME-ONLY-HAS-DATE-PART",
+    "family": "Dates",
+    "symptom": "Time-only cells (serial < 1) come back as a datetime on 1899-12-31 (Excel's 'Jan 0 1900') or 1899-12-30 depending on the reader.",
+    "seenIn": "SheetJS -> 1899-12-31; office-kit excelToDate -> 1899-12-31; openpyxl -> datetime.time when the format is a time format.",
+    "expected": "Document the marker date; Jetstream's transformTime must accept both.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-STYLES-FONT-ELEMENT-ORDER",
+    "family": "Structure",
+    "symptom": "CT_Font children have a fixed schema order (b, i, strike, ..., sz, color, name, family, charset, scheme); most writers emit them out of order.",
+    "seenIn": "Open XML SDK validator fails ExcelJS ('sz' unexpected), office-kit ('b', 'color'), write-excel-file ('b'), openpyxl ('color'). Excel and LibreOffice open them anyway.",
+    "expected": "Emit in schema order so strict validators pass.",
+    "status": "verified (validator run 2026-09-12)"
+  },
+  {
+    "id": "EC-COLS-WIDTH-OVER-255",
+    "family": "Structure",
+    "symptom": "<col width> above 255 violates the schema.",
+    "seenIn": "LibreOffice CSV import writes width 296.22 for the 40,000-char column; validator FAIL, Excel opens it.",
+    "expected": "Clamp widths to 255.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ZIP-DATA-DESCRIPTORS",
+    "family": "Container",
+    "symptom": "Streaming writers set general-purpose bit 3 and put sizes/CRC in a trailing data descriptor.",
+    "seenIn": "Google Sheets export (the shipped multi-object template), ExcelJS streaming, office-kit streaming.",
+    "expected": "Readers must honour bit 3 (read sizes from the central directory); Excel accepts it.",
+    "status": "verified (template fixture)"
+  },
+  {
+    "id": "EC-ZIP-CONTENT-TYPES-LAST",
+    "family": "Container",
+    "symptom": "[Content_Types].xml is the last zip entry, not the first.",
+    "seenIn": "Google Sheets export.",
+    "expected": "Locate parts via the central directory, never by entry order.",
+    "status": "verified (template fixture)"
+  },
+  {
+    "id": "EC-PART-NONSTANDARD-NAMES",
+    "family": "Container",
+    "symptom": "Extra parts without extensions (xl/metadata, xl/commentsmeta0) and legacy VML comment parts.",
+    "seenIn": "Google Sheets export.",
+    "expected": "Ignore unknown parts; resolve everything through rels + content types.",
+    "status": "verified (template fixture)"
+  },
+  {
+    "id": "EC-COMMENTS-VML",
+    "family": "Structure",
+    "symptom": "Legacy notes are stored as xl/commentsN.xml plus VML drawings.",
+    "seenIn": "Google Sheets export, ExcelJS, office-kit, openpyxl, XlsxWriter, SheetJS.",
+    "expected": "Readers may ignore; writers that emit notes must emit both parts.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-SHEET-INSTRUCTIONS",
+    "family": "Jetstream",
+    "symptom": "Multi-object loader skips any sheet whose lowercased name contains 'instructions'.",
+    "seenIn": "Jetstream load-records-multi-object-utils.ts; shipped template has an 'Instructions' sheet.",
+    "expected": "Preserve this rule in any replacement.",
+    "status": "contract"
+  },
+  {
+    "id": "EC-MULTI-OBJECT-TEMPLATE",
+    "family": "Jetstream",
+    "symptom": "B1 object, B2 operation, B3 external id, row 5 headers, data from row 6; sparse cell access by A1 address.",
+    "seenIn": "Jetstream multi-object loader.",
+    "expected": "Reader exposes cheap A1 access for a prefix region plus a row-range/array mode.",
+    "status": "contract"
+  },
+  {
+    "id": "EC-INPUT-CSV-BYTES",
+    "family": "Jetstream",
+    "symptom": "CSV bytes reach the xlsx parser (Electron open-with, Google Drive alt=media).",
+    "seenIn": "Jetstream parseFile; SheetJS sniffs and parses CSV silently.",
+    "expected": "Sniff magic bytes and route text to papaparse.",
+    "status": "contract"
+  },
+  {
+    "id": "EC-INPUT-CSV-IMPORT",
+    "family": "Jetstream",
+    "symptom": "CSV imported by a spreadsheet app re-types every column (leading zeros lost, '=text' evaluated, dates guessed).",
+    "seenIn": "LibreOffice CSV import golden (Excel repaired it because of the evaluated formulas).",
+    "expected": "Treat CSV-derived workbooks as untyped; expect surprises in the first row.",
+    "status": "observed"
+  },
+  {
+    "id": "EC-CONTROL-CHARS-REJECTED",
+    "family": "Strings",
+    "symptom": "Writer refuses the whole cell when it contains a control character.",
+    "seenIn": "openpyxl IllegalCharacterError.",
+    "expected": "Escape instead of rejecting.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-SHEET-NAME-31-APOSTROPHE",
+    "family": "Structure",
+    "symptom": "31-char sheet name with an apostrophe inside; formulas referencing it need quoting.",
+    "seenIn": "Every generator wrote it; every reader read it back.",
+    "expected": "Allow; reject only : \\ / ? * [ ] and leading/trailing apostrophes.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-BASELINE",
+    "family": "Structure",
+    "symptom": "Hand-built minimal 7-part workbook (content types, rels, workbook, styles, SST, one sheet).",
+    "seenIn": "Opened by every reader, Excel, LibreOffice; validator PASS.",
+    "expected": "Reference point for the other edge fixtures.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-NO-DIMENSION",
+    "family": "Structure",
+    "symptom": "Worksheet without <dimension> (Google Sheets omits it).",
+    "seenIn": "All readers derive the range from the cells.",
+    "expected": "Never require <dimension>.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-MISSING-R-ATTRIBUTES",
+    "family": "Structure",
+    "symptom": "<row> and <c> without r attributes: positions must be inferred (previous row/col + 1).",
+    "seenIn": "SheetJS, calamine, LibreOffice and Excel infer them; office-kit loadWorkbook throws 'worksheet: <row> missing required @r' and loadWorkbookStream returns every cell at the wrong position (0/9); openpyxl handles it.",
+    "expected": "Infer positions.",
+    "status": "office-kit reader gap (upstream issue candidate)"
+  },
+  {
+    "id": "EC-EMPTY-V-ELEMENT",
+    "family": "Cells",
+    "symptom": "<v/> (empty value) and <c s=\"1\"/> (no value child) must read as blank.",
+    "seenIn": "SheetJS/office-kit/openpyxl blank; calamine returns '' for <v/> and treats the styled empty cell differently (type-mismatch / date-as-text).",
+    "expected": "Blank, never 0 or ''.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-INLINE-STRINGS-CDATA",
+    "family": "Strings",
+    "symptom": "CDATA sections and rich-text runs inside <is>.",
+    "seenIn": "Every reader flattened them identically.",
+    "expected": "Support CDATA and <r> runs in inline strings.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-PREFIXED-ELEMENTS",
+    "family": "Structure",
+    "symptom": "Worksheet XML with a namespace prefix on every element (<x:sheetData>).",
+    "seenIn": "All readers, LibreOffice and Excel fine; the Open XML SDK validator FAILS it.",
+    "expected": "Match element local names, not prefixed names.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-STRICT-NAMESPACES",
+    "family": "Structure",
+    "symptom": "Strict OOXML (purl.oclc.org namespaces, Strict relationship types, t=\"d\" ISO date cells).",
+    "seenIn": "SheetJS, LibreOffice and Excel open it; office-kit fails ('root rels missing officeDocument relationship'), calamine 'Relationship not found', openpyxl finds no sheet.",
+    "expected": "Match relationship types by suffix and accept both namespace families.",
+    "status": "office-kit reader gap"
+  },
+  {
+    "id": "EC-ABSOLUTE-REL-TARGETS",
+    "family": "Structure",
+    "symptom": "Relationship targets written as absolute part names (/xl/worksheets/sheet1.xml).",
+    "seenIn": "All readers handle it.",
+    "expected": "Resolve absolute and relative targets.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-BACKSLASH-REL-TARGETS",
+    "family": "Structure",
+    "symptom": "Relationship target with a Windows separator (worksheets\\sheet1.xml).",
+    "seenIn": "SheetJS, LibreOffice and Excel open it; office-kit 'sheet part not found', calamine WorksheetNotFound, openpyxl no sheet.",
+    "expected": "Normalize backslashes to slashes.",
+    "status": "office-kit reader gap (calamine changelog 0.29 fixed the same)"
+  },
+  {
+    "id": "EC-ZIP-STORED-ENTRIES",
+    "family": "Container",
+    "symptom": "Entries stored uncompressed (method 0).",
+    "seenIn": "All readers fine.",
+    "expected": "Support stored and deflated entries.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-SST-INDEX-OUT-OF-RANGE",
+    "family": "Cells",
+    "symptom": "t=\"s\" cell whose index exceeds the shared string table.",
+    "seenIn": "SheetJS throws, office-kit loadWorkbook throws a clear error, loadWorkbookStream silently drops the cells, openpyxl/calamine throw; Excel opens the file (no recovery log).",
+    "expected": "Treat as blank with a warning, matching Excel.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-1904",
+    "family": "Dates",
+    "symptom": "workbookPr date1904=\"1\" shifts the epoch by 1,462 days.",
+    "seenIn": "office-kit handles it; SheetJS raw cells, openpyxl and calamine returned the 1900-epoch date in this run (to re-check via sheet_to_json).",
+    "expected": "Honour date1904 everywhere dates are decoded.",
+    "status": "observed"
+  },
+  {
+    "id": "EC-HIDDEN-SHEETS",
+    "family": "Structure",
+    "symptom": "state=\"hidden\" and state=\"veryHidden\" worksheets.",
+    "seenIn": "All readers list them; Jetstream's picker shows every sheet name today.",
+    "expected": "Expose the state so the UI can hide or mark them.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-XXE-DOCTYPE",
+    "family": "Security",
+    "symptom": "DOCTYPE with external and recursive entities in sharedStrings.xml.",
+    "seenIn": "office-kit rejects ('DTD declarations are not permitted'); openpyxl/calamine reject undefined entities; SheetJS accepts and leaves '&xxe;' as literal text (no expansion, no rejection).",
+    "expected": "Reject DOCTYPE outright.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ZIP-TRUNCATED",
+    "family": "Security",
+    "symptom": "Archive cut before the central directory.",
+    "seenIn": "Every reader rejects (SheetJS 'Bad compressed size', office-kit 'no End-of-Central-Directory signature').",
+    "expected": "Clear error.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ZIP-CRC-MISMATCH",
+    "family": "Security",
+    "symptom": "Entry CRC does not match the data.",
+    "seenIn": "SheetJS and office-kit accept (no CRC check); openpyxl and calamine reject; validator PASS.",
+    "expected": "Either is defensible; document it.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ZIP-DUPLICATE-ENTRIES",
+    "family": "Security",
+    "symptom": "Two entries named xl/worksheets/sheet1.xml.",
+    "seenIn": "SheetJS uses the FIRST entry (3 rows); office-kit, openpyxl and calamine use the LAST (1 row).",
+    "expected": "Reject, or pick deterministically and warn.",
+    "status": "verified (readers disagree)"
+  },
+  {
+    "id": "EC-XML-DEEP-NESTING",
+    "family": "Security",
+    "symptom": "50,000 nested <r> runs in one shared string.",
+    "seenIn": "Every reader rejects (office-kit 'Maximum nested tags exceeded'); the Open XML SDK validator crashes with a stack overflow.",
+    "expected": "Depth cap with a clear error.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-ZIP-BOMB",
+    "family": "Security",
+    "symptom": "30 MB sheet XML deflated ~190:1.",
+    "seenIn": "SheetJS parses it fully; office-kit has decompression limits (see hostile run).",
+    "expected": "Cap inflated bytes and ratio; fail fast.",
+    "status": "observed"
+  },
+  {
+    "id": "EC-INPUT-ODS-RENAMED",
+    "family": "Jetstream",
+    "symptom": ".ods bytes with an .xlsx name.",
+    "seenIn": "SheetJS parses ODS silently (Jetstream today); office-kit 'missing [Content_Types].xml', openpyxl KeyError, calamine '_rels/.rels not found'.",
+    "expected": "Detect the mimetype entry and say 'OpenDocument file - save as .xlsx'.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-INPUT-XLS-RENAMED",
+    "family": "Jetstream",
+    "symptom": "BIFF8 .xls bytes with an .xlsx name (CFB container).",
+    "seenIn": "SheetJS parses BIFF8 silently; office-kit reports 'Encrypted xlsx is not supported' (misclassifies any CFB file as encrypted); calamine 'invalid Zip archive' when the extension says xlsx.",
+    "expected": "Distinguish legacy .xls (Workbook stream) from encrypted (EncryptedPackage stream) and say which.",
+    "status": "office-kit message gap"
+  },
+  {
+    "id": "EC-INPUT-ENCRYPTED",
+    "family": "Jetstream",
+    "symptom": "Password-protected workbook (CFB with EncryptedPackage).",
+    "seenIn": "office-kit: 'Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool first.' (does not contain 'password-protected', which Jetstream's UI matches on); calamine 'Workbook is password protected'; SheetJS throws.",
+    "expected": "Error whose message includes 'password-protected' (or an adapter mapping).",
+    "status": "verified"
+  },
+  {
+    "id": "EC-INPUT-SPREADSHEETML-2003",
+    "family": "Jetstream",
+    "symptom": "SpreadsheetML 2003 XML text with an .xlsx name.",
+    "seenIn": "Every reader rejects with a zip error; SheetJS rejects too.",
+    "expected": "Sniff and say 'not an xlsx'.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-LEAP-WRITER-OFF-BY-ONE",
+    "family": "Dates",
+    "symptom": "1900-02-28 written as serial 60 (Excel shows 1900-02-29 / Mar 1).",
+    "seenIn": "SheetJS (datenum uses < 60 instead of < 61), write-excel-file, LibreOffice CSV import; ExcelJS shifts every pre-1900-03-01 date by +1 day and +UTC offset.",
+    "expected": "Serial 59 for 1900-02-28; only serials >= 61 skip the fake day.",
+    "status": "verified (Excel oracle M3)"
+  },
+  {
+    "id": "EC-DATE-XLSXWRITER-JAN-1900",
+    "family": "Dates",
+    "symptom": "1900-01-01 12:00 written as serial 0.5 (Excel value 1899-12-31 12:00).",
+    "seenIn": "XlsxWriter 3.2.9 golden (Excel oracle O6); openpyxl writes 1.5 correctly.",
+    "expected": "Serial 1.5.",
+    "status": "observed (verify against XlsxWriter's documented epoch handling)"
+  },
+  {
+    "id": "EC-EXCEL-ORACLE-CAVEATS",
+    "family": "Jetstream",
+    "symptom": "Excel's displayed text shows ######## when the column is too narrow, and AppleScript date values pass through macOS local-time normalization (02:30 in a DST gap reads as 03:30).",
+    "seenIn": "Excel oracle sentinel table.",
+    "expected": "Read `value` for numbers/dates and widen columns in goldens; treat DST-gap displays as oracle noise.",
+    "status": "tooling note"
+  },
+  {
+    "id": "EC-GSHEETS-DATE-FORMAT-UNMAPPED",
+    "family": "Dates",
+    "symptom": "Custom date/time number formats (yyyy-mm-dd, hh:mm:ss, yyyy-mm-dd hh:mm:ss) import into Google Sheets with no named format selected in Format > Number.",
+    "seenIn": "User check of the ExcelJS golden in Google Sheets (2026-09-12); the re-export is fixture golden-canonical-gsheets-resave.",
+    "expected": "Values stay dates; verify what numFmt Google writes back on export.",
+    "status": "observed (user)"
+  },
+  {
+    "id": "EC-GSHEETS-VALIDATION-NO-DROPDOWN",
+    "family": "Structure",
+    "symptom": "A list data validation ('Red,Green,Blue') imports into Google Sheets as a rule ('Input must be an item on the specified list') without the dropdown chip.",
+    "seenIn": "User check of the ExcelJS golden in Google Sheets.",
+    "expected": "Load-template picklists would need Google's own dropdown format; note for the v2 data-validation feature.",
+    "status": "observed (user)"
+  },
+  {
+    "id": "EC-NUMBERS-FORMULAS-REPLACED",
+    "family": "Cells",
+    "symptom": "Numbers replaces formulas it does not support with their cached value on import ('Unsupported formulas were replaced by the last calculated value').",
+    "seenIn": "Numbers 14.4 importing the ExcelJS golden (=NA(), =1/0, =Data!A2&\"x\").",
+    "expected": "Cached values must be present in written files or Numbers users see blanks.",
+    "status": "observed (user)"
+  },
+  {
+    "id": "EC-NUMBERS-HIDDEN-SHEETS-SHOWN",
+    "family": "Structure",
+    "symptom": "Numbers makes hidden sheets visible on import ('Hidden sheets were made visible: Sheet: Hidden') and its export loses the hidden state.",
+    "seenIn": "Numbers 14.4 importing the ExcelJS golden.",
+    "expected": "Do not rely on hidden sheets to hide data from users.",
+    "status": "observed (user)"
+  },
+  {
+    "id": "EC-SFDC-REPORT-DETAILS",
+    "family": "Jetstream",
+    "symptom": "Salesforce 'Details Only' report export: Apache POI workbook, one sheet, header row first, typed cells (dates, currency, percent, booleans).",
+    "seenIn": "golden-sfdc-report-details (dev org, 2026-09-12).",
+    "expected": "Load Records must map its header row and typed values like any other upload.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-SFDC-REPORT-FORMATTED",
+    "family": "Jetstream",
+    "symptom": "Salesforce 'Formatted Report' export: report title and filter rows above the header, grouping/subtotal and footer rows below, merged cells.",
+    "seenIn": "golden-sfdc-report-formatted.",
+    "expected": "Header detection must skip the title block; footer rows must not become records.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-TITLE-AND-FOOTER-ROWS",
+    "family": "Jetstream",
+    "symptom": "Files whose first row is not the header (report titles) and whose last rows are totals.",
+    "seenIn": "Salesforce Formatted Report export; common in exports from BI tools.",
+    "expected": "Offer a header-row picker or heuristics; today parseWorkbook treats row 1 as the header.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-POI-BOOLEAN-ATTRIBUTE-SPELLING",
+    "family": "Structure",
+    "symptom": "Apache POI writes xsd:boolean attributes as true/false (customWidth=\"true\") where Excel writes 1/0.",
+    "seenIn": "Salesforce report exports.",
+    "expected": "Accept true/false/1/0 for every boolean attribute.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-EXCEL-CSV-IMPORT-TYPING",
+    "family": "Jetstream",
+    "symptom": "Excel's CSV import re-types every column (leading zeros dropped, =text evaluated or quoted, dates parsed with locale rules, 17-digit integers rounded to 15 digits).",
+    "seenIn": "golden-canonical-excel-365-from-csv, golden-canonical-gsheets-from-csv.",
+    "expected": "Compare with the reader dumps to document what survives; explains why users' CSV-derived uploads differ from the source system.",
+    "status": "observed"
+  },
+  {
+    "id": "EC-POI-UNDERLINE-NONE-REJECTED",
+    "family": "Structure",
+    "symptom": "Apache POI writes <u val=\"none\"/> in fonts; 'none' is a legal ST_UnderlineValues member but office-kit's parser only accepts single/double/singleAccounting/doubleAccounting and throws.",
+    "seenIn": "Both Salesforce report exports (golden-sfdc-report-details/-formatted): office-kit loadWorkbook and loadWorkbookStream fail; SheetJS, openpyxl, calamine, LibreOffice and Excel open them.",
+    "expected": "Accept every ST_UnderlineValues member, and generally never fail a whole workbook on a style enum.",
+    "status": "office-kit reader bug - BLOCKING for Jetstream (users upload Salesforce report exports)"
+  },
+  {
+    "id": "EC-POI-RGB-6-HEX",
+    "family": "Structure",
+    "symptom": "Apache POI writes 6-digit colour values (rgb=\"8E9297\") where the schema requires 8-digit ARGB hexBinary.",
+    "seenIn": "Salesforce report exports: 20 and 39 validator errors; Excel and every reader tolerate it.",
+    "expected": "Accept 6- and 8-digit hex on read; write 8-digit ARGB.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-CSV-NO-BOM-MOJIBAKE",
+    "family": "Jetstream",
+    "symptom": "Excel opens a UTF-8 CSV without a byte-order mark using the legacy code page: 'Zoë Ångström' becomes 'Zo√´ √Öngstr√∂m', Hebrew becomes box characters.",
+    "seenIn": "golden-canonical-excel-365-from-csv (Excel 365 macOS opening canonical.csv). Jetstream's prepareCsvFile (papaparse unparse) writes no BOM; the docs warn Windows users to use the UTF-8 import option.",
+    "expected": "Prefix CSV exports with \\uFEFF (hardening candidate, 08) or steer users to xlsx.",
+    "status": "verified (user golden)"
+  },
+  {
+    "id": "EC-EXCEL-CSV-FORMULA-EVAL",
+    "family": "Jetstream",
+    "symptom": "Excel's CSV import evaluates '=SUM(A1)' as a formula (cached 0) - the classic CSV injection path.",
+    "seenIn": "golden-canonical-excel-365-from-csv G2 read back as a formula cell.",
+    "expected": "CSV exports of user data need the same '=text' hygiene as xlsx (quote or prefix); another reason to prefer xlsx.",
+    "status": "verified (user golden)"
+  },
+  {
+    "id": "EC-EXCEL-CSV-IMPORT-KEEPS-BIG-INTS-AS-TEXT",
+    "family": "Numbers",
+    "symptom": "Excel's CSV import kept 16-17 digit integers as text and ISO dates such as 1899-12-31 / 2024-03-10T02:30:00.000 as text, while typing 12:34:56.789 as a time.",
+    "seenIn": "golden-canonical-excel-365-from-csv (number-as-text 36, date-as-text 32, time typed).",
+    "expected": "Document; CSV-derived uploads carry Excel's heuristics, not the source types.",
+    "status": "verified (user golden)"
+  },
+  {
+    "id": "EC-LIBREOFFICE-CSV-IMPORT-TYPING",
+    "family": "Jetstream",
+    "symptom": "LibreOffice's CSV import drops leading zeros ('00123' -> 123), keeps TRUE/FALSE as text and ISO dates as text, and evaluates '=text' as formulas.",
+    "seenIn": "golden-canonical-libreoffice-from-csv vs expected/canonical-csv-import.json (text-as-number 42, boolean-as-text 30, date-as-text 30).",
+    "expected": "Document; CSV-derived uploads differ per importing application.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-STRICT-ISO-DATE-PRECISION",
+    "family": "Dates",
+    "symptom": "Excel's Strict Open XML save writes t=\"d\" cells as ISO strings with 17 fractional digits (2024-03-10T09:29:59.9999995809048412) and time-only cells as bare times (19:34:56.789…); the Open XML SDK validator rejects them (133 errors, incl. 0%/800% attribute values in drawing fallbacks).",
+    "seenIn": "golden-canonical-excel-365-strict (Excel 365 macOS 16.03).",
+    "expected": "Readers must parse ISO 8601 with arbitrary fraction digits and bare times; do not trust the validator for Strict files.",
+    "status": "verified (user golden)"
+  },
+  {
+    "id": "EC-STRICT-REAL-EXCEL-UNREADABLE",
+    "family": "Structure",
+    "symptom": "A genuine Excel 'Strict Open XML Spreadsheet' file cannot be opened by office-kit ('root rels missing officeDocument relationship'), calamine ('Relationship not found') or openpyxl (no sheets); SheetJS, LibreOffice and Excel open it.",
+    "seenIn": "golden-canonical-excel-365-strict.",
+    "expected": "Match relationship types by suffix; accept purl.oclc.org namespaces.",
+    "status": "verified (upgrades EC-STRICT-NAMESPACES from hand-built to real-world)"
+  },
+  {
+    "id": "EC-NUMBERS-INF-VALUE",
+    "family": "Numbers",
+    "symptom": "Numbers exports the max double as <v>inf</v>; openpyxl crashes (int('inf')) and Excel repairs the sheet ('Repaired Records: Cell information from /xl/worksheets/sheet1.xml part').",
+    "seenIn": "golden-canonical-numbers (Numbers 14.4 export of the ExcelJS golden).",
+    "expected": "Never emit inf/nan; readers should treat non-numeric <v> in a numeric cell as an error cell rather than crash.",
+    "status": "verified (user golden + Excel recovery log)"
+  },
+  {
+    "id": "EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS",
+    "family": "Dates",
+    "symptom": "Excel re-saving a library-written workbook preserves the library's serials exactly (ExcelJS's +7h UTC shift, office-kit's negative time serials), so a bad writer's dates cannot be 'fixed' by an Excel round trip.",
+    "seenIn": "golden-canonical-excel-365-resave (M2 = 1.2916666666678793) and -resave-office-kit.",
+    "expected": "Fix dates at write time.",
+    "status": "verified (user golden)"
+  },
+  {
+    "id": "EC-GSHEETS-CSV-IMPORT-TYPING",
+    "family": "Jetstream",
+    "symptom": "Google Sheets' CSV import trims leading/trailing whitespace, drops leading zeros ('00123' -> 123), keeps 17-digit integers as text, names the sheet after the file including the extension ('canonical.csv'), and evaluates '=SUM(A1)' / '=cmd|calc' as formulas - Excel then repairs the exported file ('Removed Records: Formula').",
+    "seenIn": "golden-canonical-gsheets-from-csv (2026-09-12 redo): whitespace-trimmed 12, text-as-number 38, number-as-text 16; Excel oracle REPAIRED.",
+    "expected": "Same as the other CSV importers: treat CSV-derived uploads as re-typed; '=text' is a formula-injection surface in every spreadsheet app.",
+    "status": "verified (user golden + Excel recovery log)"
+  },
+  {
+    "id": "EC-CSV-SHEET-NAMED-AFTER-FILE",
+    "family": "Structure",
+    "symptom": "Single-sheet workbooks produced from a CSV carry the file name as the sheet name ('canonical' in Excel/LibreOffice, 'canonical.csv' in Google Sheets).",
+    "seenIn": "All three CSV-import goldens.",
+    "expected": "Never assume 'Sheet1'; the oracle compares single-sheet workbooks by position.",
+    "status": "verified"
+  },
+  {
+    "id": "EC-DATE-1904-RAW-CELLS",
+    "family": "Dates",
+    "symptom": "On a workbook saved with the 1904 date system, SheetJS's raw cells (cellDates:true, before sheet_to_json) come back 1,462 days early; office-kit, openpyxl and calamine apply the epoch.",
+    "seenIn": "golden-canonical-excel-365-1904 (Excel 365 re-save with date1904=1): sheetjs temporal-mismatch 90 vs office-kit 65 (its usual UTC-field shift only).",
+    "expected": "Honour workbookPr date1904 wherever serials are decoded; Jetstream reads through sheet_to_json, which must be checked separately.",
+    "status": "observed"
+  },
+  {
+    "id": "EC-EXCEL-APPLESCRIPT-WORKBOOK-NORMAL-IS-XLSX",
+    "family": "Jetstream",
+    "symptom": "Excel 16 for Mac's AppleScript 'workbook normal file format' saves the default format (xlsx), not Excel 97-2004; BIFF8 is 'Excel98to2004 file format' and xlsb is 'Excel binary file format'. There is no Strict Open XML member and no ad-hoc VBA hook.",
+    "seenIn": "fixtures/generators/excel-goldens.mjs (2026-09-12).",
+    "expected": "Use the Excel98to2004 / Excel binary enumerators for legacy sources; save Strict by hand.",
+    "status": "tooling note"
+  },
+  {
+    "id": "EC-INPUT-XLSB-RENAMED",
+    "family": "Jetstream",
+    "symptom": ".xlsb (Excel Binary Workbook) bytes under an .xlsx name: a zip whose parts are binary records (xl/workbook.bin, sheet1.bin), so it passes a zip-signature sniff but has no SpreadsheetML.",
+    "seenIn": "hostile-xlsb-renamed (Excel 365 'Excel binary file format' save).",
+    "expected": "Detect via [Content_Types].xml (application/vnd.ms-excel.sheet.binary.macroEnabled.main) and say 'save as .xlsx'.",
+    "status": "observed"
+  }
+]

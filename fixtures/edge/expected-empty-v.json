@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Name", "Amount", "When"],
+        ["Zoë", null, null],
+        ["x", true, { "$formula": "B2*2", "cached": 25 }]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Name", "Amount", "When"],
+        ["Zoë", 12.5, { "$date": "2024-02-29" }],
+        ["x", true, { "$formula": "B2*2", "cached": 25 }]
+      ]
+    },
+    { "name": "Hidden", "hidden": true, "rows": [["hidden"]] },
+    { "name": "VeryHidden", "hidden": true, "rows": [["veryHidden"]] }
+  ]
+}

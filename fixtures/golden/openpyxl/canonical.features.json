@@ -1,0 +1,111 @@
+{
+  "generator": "openpyxl 3.1.5",
+  "applied": [
+    "merges",
+    "freeze",
+    "autoFilter",
+    "hyperlink",
+    "richText",
+    "note",
+    "validation",
+    "conditionalFormat",
+    "hiddenRows",
+    "hiddenColumns",
+    "columnWidths",
+    "hiddenSheet"
+  ],
+  "skipped": [
+    {
+      "feature": "cell Data!r2c5",
+      "reason": "IllegalCharacterError: a\u0001b cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r3c5",
+      "reason": "IllegalCharacterError: x\u001fy cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r4c5",
+      "reason": "IllegalCharacterError: bell\u0007 cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r7c5",
+      "reason": "IllegalCharacterError: nul\u0000? cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r8c5",
+      "reason": "IllegalCharacterError: esc\u001b[0m cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r9c5",
+      "reason": "IllegalCharacterError: a\u0001b cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r10c5",
+      "reason": "IllegalCharacterError: x\u001fy cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r11c5",
+      "reason": "IllegalCharacterError: bell\u0007 cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r14c5",
+      "reason": "IllegalCharacterError: nul\u0000? cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r15c5",
+      "reason": "IllegalCharacterError: esc\u001b[0m cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r16c5",
+      "reason": "IllegalCharacterError: a\u0001b cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r17c5",
+      "reason": "IllegalCharacterError: x\u001fy cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r18c5",
+      "reason": "IllegalCharacterError: bell\u0007 cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r21c5",
+      "reason": "IllegalCharacterError: nul\u0000? cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r22c5",
+      "reason": "IllegalCharacterError: esc\u001b[0m cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r23c5",
+      "reason": "IllegalCharacterError: a\u0001b cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r24c5",
+      "reason": "IllegalCharacterError: x\u001fy cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r25c5",
+      "reason": "IllegalCharacterError: bell\u0007 cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r28c5",
+      "reason": "IllegalCharacterError: nul\u0000? cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r29c5",
+      "reason": "IllegalCharacterError: esc\u001b[0m cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r30c5",
+      "reason": "IllegalCharacterError: a\u0001b cannot be used in worksheets."
+    },
+    {
+      "feature": "cell Data!r31c5",
+      "reason": "IllegalCharacterError: x\u001fy cannot be used in worksheets."
+    },
+    {
+      "feature": "formula cached values",
+      "reason": "openpyxl never writes cached formula results"
+    }
+  ]
+}

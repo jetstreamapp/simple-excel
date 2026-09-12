@@ -1,0 +1,14 @@
+{
+  "generator": "write-excel-file 2.3.10",
+  "applied": [],
+  "skipped": [
+    {
+      "feature": "hiddenSheet",
+      "reason": "write-excel-file has no sheet state option"
+    },
+    {
+      "feature": "features",
+      "reason": "write-excel-file writes values and cell formats only"
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "meta": {
+    "date": "2026-09-12T15:42:31.907Z",
+    "host": "MacBook-Air.local",
+    "label": "hostile",
+    "node": "v24.18.0",
+    "readers": ["sheetjs", "office-kit", "office-kit-stream", "openpyxl", "calamine", "validator"],
+    "fixtures": ["hostile-biff8-xls-renamed", "hostile-xlsb-renamed"]
+  },
+  "results": [
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "sheetjs",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "ACCEPTED",
+      "ms": 90,
+      "readerVersion": "sheetjs 0.20.3",
+      "expectedError": "NOT_XLSX",
+      "sheets": [
+        {
+          "name": "Data",
+          "rows": 31
+        },
+        {
+          "name": "Features",
+          "rows": 12
+        },
+        {
+          "name": "It's a very long sheet name 001",
+          "rows": 2
+        },
+        {
+          "name": "Hidden",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "office-kit",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 123,
+      "expectedError": "NOT_XLSX",
+      "error": "^ | OpenXmlNotImplementedError: Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool first. | Node.js v24.18.0"
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "office-kit-stream",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 113,
+      "expectedError": "NOT_XLSX",
+      "error": "^ | OpenXmlNotImplementedError: Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool first. | Node.js v24.18.0"
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "openpyxl",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 257,
+      "readerVersion": "openpyxl",
+      "expectedError": "NOT_XLSX",
+      "error": "OSError: File contains no valid workbook part",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "calamine",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 84,
+      "readerVersion": "calamine",
+      "expectedError": "NOT_XLSX",
+      "error": "CalamineError: File not found 'theme/theme/_rels/workbook.xml.rels'",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "validator",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "FAIL",
+      "ms": 560,
+      "exit": 1,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/fixtures/hostile/biff8-xls-renamed.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"Encrypted packages are not supported.\",\n      \"path\": null,\n      \"xPath\": null,\n      \"id\": null,\n      \"errorType\": \"Exception\"\n    }\n  ]\n}\n",
+      "stderr": "",
+      "schemaErrors": 1,
+      "errorsSample": [
+        {
+          "description": "Encrypted packages are not supported.",
+          "path": null,
+          "xPath": null,
+          "id": null,
+          "errorType": "Exception"
+        }
+      ]
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "sheetjs",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "ACCEPTED",
+      "ms": 50,
+      "readerVersion": "sheetjs 0.20.3",
+      "expectedError": "NOT_XLSX",
+      "sheets": [
+        {
+          "name": "Data",
+          "rows": 31
+        },
+        {
+          "name": "Features",
+          "rows": 12
+        },
+        {
+          "name": "It's a very long sheet name 001",
+          "rows": 2
+        },
+        {
+          "name": "Hidden",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "office-kit",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 65,
+      "expectedError": "NOT_XLSX",
+      "error": "[cause]: Error: readTagExp returned undefined at position 857. Context: \"\u0000\u0000m\u0000i\u0000c\u0000r\u0000o\u0000s\u0000o\u0000f\u0000t\u0000.\u0000c\u0000o\u0000m\u0000:\u0000L\u0000A\u0000M\u0000B\u0000D\u0000A\u0000_\u0000W\u0000F\u0000�'<\u0000\u0000\u0000\u0000\u001a\u0000\u0000\u0000m\u0000i\u0000c\u0000r\u0000o\u0000s\u0000o\u0000f\u0000t\u0000.\u0000c\u0000o\u0000m\u0000:\u0000A\u0000R\u0000R\u0000A\u0000Y\u0000T\u0000E\" | } | Node.js v24.18.0"
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "office-kit-stream",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 59,
+      "expectedError": "NOT_XLSX",
+      "error": "[cause]: Error: readTagExp returned undefined at position 857. Context: \"\u0000\u0000m\u0000i\u0000c\u0000r\u0000o\u0000s\u0000o\u0000f\u0000t\u0000.\u0000c\u0000o\u0000m\u0000:\u0000L\u0000A\u0000M\u0000B\u0000D\u0000A\u0000_\u0000W\u0000F\u0000�'<\u0000\u0000\u0000\u0000\u001a\u0000\u0000\u0000m\u0000i\u0000c\u0000r\u0000o\u0000s\u0000o\u0000f\u0000t\u0000.\u0000c\u0000o\u0000m\u0000:\u0000A\u0000R\u0000R\u0000A\u0000Y\u0000T\u0000E\" | } | Node.js v24.18.0"
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "openpyxl",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 81,
+      "readerVersion": "openpyxl",
+      "expectedError": "NOT_XLSX",
+      "error": "OSError: File contains no valid workbook part",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "calamine",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 40,
+      "readerVersion": "calamine",
+      "expectedError": "NOT_XLSX",
+      "error": "CalamineError: File not found 'xl/_rels/workbook.xml.rels'",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "validator",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "FAIL",
+      "ms": 343,
+      "exit": 1,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/fixtures/hostile/xlsb-renamed.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The document cannot be opened because there is an invalid part with an unexpected content type. \\r\\n[Part Uri=/xl/calcChain.bin], \\r\\n[Content Type=application/vnd.ms-excel.calcChain], \\r\\n[Expected Content Type=application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml].\",\n      \"path\": null,\n      \"xPath\": null,\n      \"id\": null,\n      \"errorType\": \"Exception\"\n    }\n  ]\n}\n",
+      "stderr": "",
+      "schemaErrors": 1,
+      "errorsSample": [
+        {
+          "description": "The document cannot be opened because there is an invalid part with an unexpected content type. \r\n[Part Uri=/xl/calcChain.bin], \r\n[Content Type=application/vnd.ms-excel.calcChain], \r\n[Expected Content Type=application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml].",
+          "path": null,
+          "xPath": null,
+          "id": null,
+          "errorType": "Exception"
+        }
+      ]
+    }
+  ]
+}

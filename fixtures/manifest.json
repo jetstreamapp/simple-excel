@@ -1,0 +1,859 @@
+{
+  "$schema": "./manifest.schema.json",
+  "fixtures": [
+    {
+      "id": "jetstream-multi-object-template-gsheets",
+      "path": "jetstream/multi-object-template.gsheets.xlsx",
+      "bytes": 35642,
+      "sha256": "f7693e3d668eb8f76a4d826d7eac4853025d98bf932e835c537c6c740b11f83d",
+      "generator": {
+        "name": "Google Sheets",
+        "version": "xlsx export, workbook created 2021-07-10",
+        "os": "n/a"
+      },
+      "provenance": "copy-of:apps/api/src/assets/content/Jetstream - Load Records to Multiple Objects - Template.xlsx",
+      "license": "Jetstream in-repo asset",
+      "tags": [
+        "kind:jetstream",
+        "generator:gsheets",
+        "EC-ZIP-DATA-DESCRIPTORS",
+        "EC-ZIP-CONTENT-TYPES-LAST",
+        "EC-PART-NONSTANDARD-NAMES",
+        "EC-COMMENTS-VML",
+        "EC-SHEET-INSTRUCTIONS",
+        "EC-MULTI-OBJECT-TEMPLATE"
+      ],
+      "expected": null,
+      "generated": false,
+      "notes": "The shipped 'Load Records to Multiple Objects' template. Zip uses data descriptors (flag 0x0808) with [Content_Types].xml as the LAST entry; carries xl/metadata and xl/commentsmeta0-2 parts without extensions plus legacy VML comments on all three sheets ('Instructions', 'Create Accounts', 'Create Contacts'). No docProps/app.xml."
+    },
+    {
+      "id": "jetstream-records-product2-sheetjs",
+      "path": "jetstream/records-product2.sheetjs.xlsx",
+      "bytes": 17599,
+      "sha256": "5eb297efd4dc8b39052b94dbe7ca9d704053ff2f000d20da38138c521e4483bd",
+      "generator": {
+        "name": "SheetJS",
+        "version": "unknown (docProps/app.xml Application=SheetJS, 2023-01-08)",
+        "os": "n/a"
+      },
+      "provenance": "copy-of:apps/jetstream-e2e/src/assets/records-Product2.xlsx",
+      "license": "Jetstream in-repo asset",
+      "tags": ["kind:jetstream", "generator:sheetjs", "EC-SST-ABSENT-INLINE-ONLY"],
+      "expected": null,
+      "generated": false,
+      "notes": "Playwright upload fixture (Load Records). SheetJS output with bookSST:false - no sharedStrings part, every string inline."
+    },
+    {
+      "id": "jetstream-records-product2-csv",
+      "path": "jetstream/records-product2.csv",
+      "bytes": 1066,
+      "sha256": "7b2ba0cdaf0341b6699c4aec4f6a9efa89072466d9d92b6c3330be1a1626a912",
+      "generator": {
+        "name": "hand-authored CSV"
+      },
+      "provenance": "copy-of:apps/jetstream-e2e/src/assets/records-Product2.csv",
+      "license": "Jetstream in-repo asset",
+      "tags": ["kind:jetstream", "EC-INPUT-CSV-BYTES"],
+      "expected": null,
+      "generated": false,
+      "notes": "CSV twin of the xlsx fixture; also the 'CSV bytes reach the xlsx parser' case (Electron open-with / Drive alt=media)."
+    },
+    {
+      "id": "golden-canonical-sheetjs",
+      "path": "golden/sheetjs/canonical.xlsx",
+      "bytes": 30645,
+      "sha256": "63bfcd7746613b76f830342f3240f8fc896db6b36ee618a3a0b87812b13c9e13",
+      "generator": {
+        "name": "SheetJS",
+        "version": "0.20.3",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/canonical-sheetjs.mjs",
+      "license": "Apache-2.0 (SheetJS CE)",
+      "tags": ["kind:golden", "generator:sheetjs", "policy:truncate-32767", "EC-SST-ABSENT-INLINE-ONLY"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Jetstream production options: aoa_to_sheet, bookSST:false, compression:true. No freeze/richText/validation/condfmt (CE)."
+    },
+    {
+      "id": "golden-canonical-exceljs",
+      "path": "golden/exceljs/canonical.xlsx",
+      "bytes": 16228,
+      "sha256": "8622103615a27a0514b5bce493b125210398f7b631a84fc67e7883a6d174b4d6",
+      "generator": {
+        "name": "ExcelJS",
+        "version": "4.4.0",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/canonical-exceljs.mjs",
+      "license": "MIT",
+      "tags": ["kind:golden", "generator:exceljs", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Document API; every structural feature applied."
+    },
+    {
+      "id": "golden-canonical-write-excel-file",
+      "path": "golden/write-excel-file/canonical.xlsx",
+      "bytes": 11271,
+      "sha256": "8ccae700e96c82f0256b21ceedc2f71ed365d3c81d51e69b015b6ab6cb08a512",
+      "generator": {
+        "name": "write-excel-file",
+        "version": "2.3.10",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/canonical-write-excel-file.mjs",
+      "license": "MIT",
+      "tags": ["kind:golden", "generator:write-excel-file", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Values + formats only; hidden sheet omitted; formulas/errors written as text."
+    },
+    {
+      "id": "golden-canonical-openpyxl",
+      "path": "golden/openpyxl/canonical.xlsx",
+      "bytes": 13776,
+      "sha256": "1836dd23f797f252409e8a1ed7889b775d55174c727de643a4f681819d130cd6",
+      "generator": {
+        "name": "openpyxl",
+        "version": "3.1.5",
+        "os": "macOS"
+      },
+      "provenance": "script:oracle/python/write_goldens.py",
+      "license": "MIT",
+      "tags": [
+        "EC-CONTROL-CHARS-REJECTED",
+        "EC-FORMULA-LIKE-TEXT-WRITTEN-AS-FORMULA",
+        "excel:REPAIRED",
+        "generator:openpyxl",
+        "kind:golden",
+        "policy:truncate-32767"
+      ],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "openpyxl raises IllegalCharacterError for control characters, so the Control column cells with U+0000/0001/0007/001B/001F are BLANK in this golden (see sidecar). No cached formula values. EXCEL REPAIR PROMPT (2026-09-11, user-observed): 'Removed Records: Formula from /xl/worksheets/sheet1.xml part' - openpyxl wrote the FormulaLikeText strings ('=SUM(A1)', '=cmd|calc', '=1+1') as formulas; Excel rejected them on open. Log copied to oracle/results/2026-09-12-goldens/excel-repair-logs/."
+    },
+    {
+      "id": "golden-canonical-xlsxwriter",
+      "path": "golden/xlsxwriter/canonical.xlsx",
+      "bytes": 14304,
+      "sha256": "97885f117dd0b38a217775e292a8e37c03ec4f7ba81dba339bcacd9d7c2510fb",
+      "generator": {
+        "name": "XlsxWriter",
+        "version": "3.2.9",
+        "os": "macOS"
+      },
+      "provenance": "script:oracle/python/write_goldens.py",
+      "license": "BSD-2-Clause",
+      "tags": ["kind:golden", "generator:xlsxwriter", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Formula cached values written; literal error cell B6 written as text (no write_error)."
+    },
+    {
+      "id": "golden-canonical-libreoffice-resave",
+      "path": "golden/libreoffice/canonical.from-exceljs.xlsx",
+      "bytes": 18486,
+      "sha256": "1a22dd4461164ccbec30296f3f2b971414d5959801e2340f40456d7fa66b106a",
+      "generator": {
+        "name": "LibreOffice",
+        "version": "26.2.5.2",
+        "os": "macOS"
+      },
+      "provenance": "soffice --headless --convert-to xlsx golden/exceljs/canonical.xlsx",
+      "license": "MPL-2.0 (generator)",
+      "tags": ["kind:golden", "generator:libreoffice"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "LibreOffice Calc re-save of the ExcelJS golden (what a user gets after editing in LibreOffice)."
+    },
+    {
+      "id": "golden-canonical-libreoffice-from-csv",
+      "path": "golden/libreoffice/canonical.from-csv.xlsx",
+      "bytes": 10971,
+      "sha256": "04fd7393a2dac6b9db95559a49651f5c07ae27629133bf0492d45bd7e908652f",
+      "generator": {
+        "name": "LibreOffice",
+        "version": "26.2.5.2",
+        "os": "macOS"
+      },
+      "provenance": "soffice --headless --convert-to xlsx canonical/canonical.csv",
+      "license": "MPL-2.0 (generator)",
+      "tags": [
+        "kind:golden",
+        "generator:libreoffice",
+        "source:csv",
+        "EC-INPUT-CSV-IMPORT",
+        "EC-FORMULA-LIKE-TEXT-WRITTEN-AS-FORMULA",
+        "excel:REPAIRED"
+      ],
+      "expected": "expected/canonical-csv-import.json",
+      "generated": false,
+      "notes": "CSV import (single sheet named after the file). EXCEL REPAIR PROMPT (2026-09-11): 'Removed Records: Formula' - LibreOffice's CSV import evaluated '=SUM(A1)' / '=cmd|calc' cells as formulas."
+    },
+    {
+      "id": "golden-canonical-office-kit",
+      "path": "golden/office-kit/canonical.xlsx",
+      "bytes": 11193,
+      "sha256": "db0d02194bf326a067b3f5fde6920bf402f5006a2245dcc68f9fcb2db051095b",
+      "generator": {
+        "name": "@office-kit/xlsx",
+        "version": "0.11.0",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/canonical-office-kit.mjs",
+      "license": "MIT",
+      "tags": ["kind:golden", "generator:office-kit", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Document API. Remaining gaps (sidecar): freezePanes(ws, rows, 0) rejects cols=0 (use setFreezePanes(ws, 'A3')); formula cached values cannot be error values. Rich text works with a { kind: 'rich-text', runs } value (setCellRichText is declared but not exported). Dates: dateToExcel reads UTC fields, so local-midnight Dates land in the file with the host UTC offset as a time fraction."
+    },
+    {
+      "id": "edge-baseline-minimal",
+      "path": "edge/baseline-minimal.xlsx",
+      "bytes": 2463,
+      "sha256": "d31a04758cee97150d89e819d644ac03f2ab6241e4f3a942f14c68f6a57e1780",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-BASELINE"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-no-dimension",
+      "path": "edge/no-dimension.xlsx",
+      "bytes": 2448,
+      "sha256": "e7d444ecc746e6ed79cad94bf3a609aeab53a735f2113595c6aa670c43f68e93",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-NO-DIMENSION"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-missing-r-attributes",
+      "path": "edge/missing-r-attributes.xlsx",
+      "bytes": 2437,
+      "sha256": "e03ef36019bddd3ebd37c06893af4f717d35addaf8ba0f0fc6c0714c8030b749",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-MISSING-R-ATTRIBUTES"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-empty-v-element",
+      "path": "edge/empty-v-element.xlsx",
+      "bytes": 2456,
+      "sha256": "91e1122b5fb3b03ae49d251006762a205172ae5b2bd65b56d51cf2856aec7f96",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-EMPTY-V-ELEMENT"],
+      "expected": "edge/expected-empty-v.json",
+      "generated": false,
+      "notes": "B2 is <v/> (empty value element) and C2 is <c s=\"1\"/> with no value at all: both must read as blank, not 0 or ''."
+    },
+    {
+      "id": "edge-inline-strings-cdata",
+      "path": "edge/inline-strings-cdata.xlsx",
+      "bytes": 2522,
+      "sha256": "5f3f0f8cec1cfa973b23fe381c0190da0811f0ae13d0fa4f453d74848e418078",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-INLINE-STRINGS-CDATA", "EC-RICH-TEXT-RUNS", "EC-XML-SPACE-PRESERVE"],
+      "expected": "edge/expected-inline-cdata.json",
+      "generated": false,
+      "notes": "inlineStr cells: CDATA with & and <, rich text runs (<r>) flattened to 'When', xml:space=\"preserve\" around ' Zoë '."
+    },
+    {
+      "id": "edge-prefixed-elements",
+      "path": "edge/prefixed-elements.xlsx",
+      "bytes": 2473,
+      "sha256": "6e09581104b72fc23e17253b7b8059b685cb9b77f18c62b0b1b49d36f098af04",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-PREFIXED-ELEMENTS"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-strict-namespaces",
+      "path": "edge/strict-namespaces.xlsx",
+      "bytes": 2448,
+      "sha256": "1dc1f772b7fd18ebbc0c76140edd3f7a1bda4e60f04a373f195659fe9f73246e",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-STRICT-NAMESPACES"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-absolute-rel-targets",
+      "path": "edge/absolute-rel-targets.xlsx",
+      "bytes": 2464,
+      "sha256": "04f486148c0e11c4a2603acb824203c1d4e33c8a98c6a90254ec2296db8e1769",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-ABSOLUTE-REL-TARGETS"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-backslash-rel-targets",
+      "path": "edge/backslash-rel-targets.xlsx",
+      "bytes": 2463,
+      "sha256": "174499774ef61e7b9181c26701c5d2f5fcbf32242664997fb5a3b90d8849d8b5",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-BACKSLASH-REL-TARGETS"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-sst-after-sheet-data-descriptors",
+      "path": "edge/sst-after-sheet-data-descriptors.xlsx",
+      "bytes": 2575,
+      "sha256": "7960d36d94d6e9c47e36245c0d688503ef39ab86704bb307973595ec706555d8",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-ZIP-DATA-DESCRIPTORS"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-stored-entries",
+      "path": "edge/stored-entries.xlsx",
+      "bytes": 4321,
+      "sha256": "acc5da55a0c8b4c42db9a82c412297d32169ce677542180503add04dcd3f35b4",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-ZIP-STORED-ENTRIES"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-no-shared-strings-part",
+      "path": "edge/no-shared-strings-part.xlsx",
+      "bytes": 2125,
+      "sha256": "85a14a1b22b5338cf928ccda97ca4f3137851bd0c79f947e8f694f7f5f9d6ae1",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-SST-ABSENT-INLINE-ONLY"],
+      "expected": "edge/expected-no-sst.json",
+      "generated": false,
+      "notes": "No sharedStrings part, no sst relationship, no content-type override; all strings inline."
+    },
+    {
+      "id": "edge-sst-index-out-of-range",
+      "path": "edge/sst-index-out-of-range.xlsx",
+      "bytes": 2442,
+      "sha256": "a7b2a015e45e3817705f695c0d4155522d511b9254a4174d974bd525b5812f0d",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-SST-INDEX-OUT-OF-RANGE"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-date1904",
+      "path": "edge/date1904.xlsx",
+      "bytes": 2470,
+      "sha256": "1f7f5f5f9ad3a1260c93be84c631d9bb48fb870f2637e8a3768e631f9e2ce08b",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-DATE-1904"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false
+    },
+    {
+      "id": "edge-hidden-and-veryhidden-sheets",
+      "path": "edge/hidden-and-veryhidden-sheets.xlsx",
+      "bytes": 3138,
+      "sha256": "50c95ec5cc52fff971bf7ff0fcabf779f52326bfcd3cab0436eb8e2f4ad28a9d",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-HIDDEN-SHEETS"],
+      "expected": "edge/expected-hidden-sheets.json",
+      "generated": false,
+      "notes": "state=\"hidden\" and state=\"veryHidden\" sheets; readers must report both as hidden and Jetstream's sheet picker must still list or skip them consistently."
+    },
+    {
+      "id": "hostile-xxe-doctype-in-sharedstrings",
+      "path": "hostile/xxe-doctype-in-sharedstrings.xlsx",
+      "bytes": 2523,
+      "sha256": "ee28677efce7b9e39857c9902757658a5ec1e029f68c70c0266ac15adbac1794",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-XXE-DOCTYPE"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "XML_DOCTYPE"
+    },
+    {
+      "id": "hostile-truncated-central-directory",
+      "path": "hostile/truncated-central-directory.xlsx",
+      "bytes": 1400,
+      "sha256": "1f071937a3432a00fe296caed232332ef92f1bb2d2cb4bc327945fdb890c8f45",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-ZIP-TRUNCATED"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "TRUNCATED"
+    },
+    {
+      "id": "hostile-crc-mismatch",
+      "path": "hostile/crc-mismatch.xlsx",
+      "bytes": 2463,
+      "sha256": "f977b4703a7f0785e2d3dad09c191c5dfe1fbf1899c7d30bb6e8acbdaf4d6da7",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-ZIP-CRC-MISMATCH"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "CRC_MISMATCH"
+    },
+    {
+      "id": "hostile-duplicate-sheet-entries",
+      "path": "hostile/duplicate-sheet-entries.xlsx",
+      "bytes": 2786,
+      "sha256": "a6c926ebcb8cd0ac21ba78ff3ba0c73b92ff5cba67d31ba0bbd467221f4052c4",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-ZIP-DUPLICATE-ENTRIES"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "DUPLICATE_ENTRY"
+    },
+    {
+      "id": "hostile-deeply-nested-rich-text",
+      "path": "hostile/deeply-nested-rich-text.xlsx",
+      "bytes": 2877,
+      "sha256": "1826b30271e521f37ff3c84a4e5cd3729f2f0e29edef96fdafa61c6467dc630a",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-XML-DEEP-NESTING"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED"
+    },
+    {
+      "id": "hostile-csv-bytes-renamed",
+      "path": "hostile/csv-bytes-renamed.xlsx",
+      "bytes": 84049,
+      "sha256": "844ca89a4be16ac19f7b57d77d199af39dd75fbcde738ca8863f08e3c5d8e307",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-INPUT-CSV-BYTES"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "NOT_XLSX"
+    },
+    {
+      "id": "hostile-ods-renamed",
+      "path": "hostile/ods-renamed.xlsx",
+      "bytes": 44833,
+      "sha256": "6fa04c67341bd4d3182e1a495cfd1befaed746256856c82a0f5c004007d2b4fb",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-INPUT-ODS-RENAMED"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "NOT_XLSX"
+    },
+    {
+      "id": "hostile-biff8-xls-renamed",
+      "path": "hostile/biff8-xls-renamed.xlsx",
+      "bytes": 112640,
+      "sha256": "3bb3fd7dd2cf28e3a91498b1ce9429fcd5ccc2b513b75f1e8d634788887cc189",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": ["generator:excel-365", "kind:hostile", "EC-INPUT-XLS-RENAMED"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "NOT_XLSX",
+      "notes": "Excel 97-2004 (BIFF8, Excel98to2004 file format) save of the ExcelJS golden under an .xlsx name: the renamed-legacy-format hostile input."
+    },
+    {
+      "id": "hostile-encrypted-password-test",
+      "path": "hostile/encrypted-password-test.xlsx",
+      "bytes": 21504,
+      "sha256": "1b156873c0037f2c049c22755ede1fa15231bac7ab5ba4455fe50d2dc468e79c",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-INPUT-ENCRYPTED"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "ENCRYPTED"
+    },
+    {
+      "id": "hostile-not-a-zip",
+      "path": "hostile/not-a-zip.xlsx",
+      "bytes": 124,
+      "sha256": "e0ee904eed2c43b3e7477909d339cfb19b9b6149d9c54ce85758f9d04ba23a4b",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-INPUT-SPREADSHEETML-2003"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "NOT_XLSX"
+    },
+    {
+      "id": "hostile-zip-bomb-30mb-sheet",
+      "path": "hostile/zip-bomb-30mb-sheet.xlsx",
+      "bytes": 159357,
+      "sha256": "22ab460e150322d9a4f3fdd4af9dc26a8e821b40adef03bfe11d3e41ac04c46a",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-ZIP-BOMB"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "ZIP_BOMB",
+      "notes": "30 MB well-formed sheet1.xml (6,000 rows x 20 inline cells of 200 chars) deflated ~190:1. Readers with decompression guards should reject or cap it; ones without will allocate 30 MB+ of XML."
+    },
+    {
+      "id": "golden-canonical-excel-365-from-csv",
+      "path": "golden/excel-365/canonical.from-csv.xlsx",
+      "bytes": 16092,
+      "sha256": "e18a1d9e785eff4d3e644a10634b8e009ff81fe82d5ef44780b21959b8999184",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": [
+        "kind:golden",
+        "generator:excel-365",
+        "source:csv",
+        "EC-INPUT-CSV-IMPORT",
+        "EC-EXCEL-CSV-IMPORT-TYPING",
+        "EC-CSV-NO-BOM-MOJIBAKE",
+        "EC-EXCEL-CSV-FORMULA-EVAL"
+      ],
+      "expected": "expected/canonical-csv-import.json",
+      "generated": false,
+      "notes": "Excel opened canonical.csv (UTF-8, no BOM) and saved it as .xlsx: every column typed by Excel's CSV heuristics, non-ASCII text mojibaked, '=text' evaluated."
+    },
+    {
+      "id": "golden-canonical-excel-365-resave",
+      "path": "golden/excel-365/canonical.from-exceljs.xlsx",
+      "bytes": 19619,
+      "sha256": "54129f4bd011c7d1e0bd4ca1b76f4e089cf0cb25cb14d900e4cce033fca06eda",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Excel re-save of the ExcelJS golden (styles, SST, theme, calcChain rewritten by Excel)."
+    },
+    {
+      "id": "golden-canonical-excel-365-strict",
+      "path": "golden/excel-365/canonical.from-exceljs.strict.xlsx",
+      "bytes": 21597,
+      "sha256": "e1c01d2cf96eaaa331cb9d6a8aacfcfe2a187631d2c2472abe184b8d9cad2c88",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 365 macOS 16.03 (trial license, desktop)",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/excel-365/STEPS.md",
+      "license": "Microsoft Excel output",
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767", "EC-STRICT-NAMESPACES"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Excel 'Strict Open XML Spreadsheet' save of the ExcelJS golden: purl.oclc.org namespaces, Strict relationship types, ISO date cells."
+    },
+    {
+      "id": "golden-canonical-excel-365-resave-office-kit",
+      "path": "golden/excel-365/canonical.from-office-kit.xlsx",
+      "bytes": 19512,
+      "sha256": "bf1e3bc02269b477b10ba99dbb216bd43e87d4021777b6738d520f84ff852883",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767", "EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Excel re-save of the office-kit golden (its UTC-offset date serials and double-escaped _x005F literal survive the round trip)."
+    },
+    {
+      "id": "golden-canonical-gsheets-resave",
+      "path": "golden/gsheets/canonical.from-exceljs.xlsx",
+      "bytes": 42135,
+      "sha256": "7b5805b69daa9ba17fd73787a1605862e0817d996a106062df6a38e4712b9856",
+      "generator": {
+        "name": "Google",
+        "version": "Sheets (xlsx export, 2026-09-12)",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/gsheets/STEPS.md",
+      "license": "Google Sheets export",
+      "tags": ["kind:golden", "generator:gsheets", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "ExcelJS golden imported into Google Sheets and downloaded as .xlsx. User observations: no 'features lost' banner; the date/time/datetime cells showed no selected number format in Format > Number; S30 kept the ...(truncated) 32,767-char text; the list data validation survived as a rule ('Input must be an item on the specified list') rather than a dropdown."
+    },
+    {
+      "id": "golden-canonical-numbers",
+      "path": "golden/numbers/canonical.from-exceljs.xlsx",
+      "bytes": 16665,
+      "sha256": "ea6010e26b0c065dfa51cb252964a062540d019a2da830ee5ef85152d1dc6576",
+      "generator": {
+        "name": "Numbers",
+        "version": "14.4",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/numbers/STEPS.md",
+      "license": "Apple Numbers export",
+      "tags": ["kind:golden", "generator:numbers", "policy:truncate-32767", "EC-HIDDEN-SHEETS", "EC-FORMULA-CACHED-ERROR"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "ExcelJS golden opened in Numbers and exported to Excel by hand (AppleScript export produced an empty document). Import banners: 'Unsupported formulas were replaced by the last calculated value' and 'Hidden sheets were made visible: Sheet: Hidden'."
+    },
+    {
+      "id": "golden-sfdc-report-details",
+      "path": "golden/sfdc-report/canonical.details.xlsx",
+      "bytes": 7002,
+      "sha256": "b6adead04ef412eeee54b0e8d9bd6606ac453c353b4cd8221192f96112b576b6",
+      "generator": {
+        "name": "Salesforce",
+        "version": "report export (Apache POI)",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/sfdc-report/STEPS.md",
+      "license": "Salesforce export (dev org data)",
+      "tags": ["kind:golden", "generator:sfdc-report", "generator:apache-poi", "EC-SFDC-REPORT-DETAILS"],
+      "expected": null,
+      "generated": false,
+      "notes": "Details Only export of the 'xlsx-engine canonical' Opportunity report (30 rows). Application = Apache POI; column widths written with customWidth=\"true\"."
+    },
+    {
+      "id": "golden-sfdc-report-formatted",
+      "path": "golden/sfdc-report/canonical.formatted.xlsx",
+      "bytes": 8436,
+      "sha256": "a330d95296cbeb641601d7a73701ef24e842dc6aeb470bef0a440646f1554eaf",
+      "generator": {
+        "name": "Salesforce",
+        "version": "report export (Apache POI)",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/sfdc-report/STEPS.md",
+      "license": "Salesforce export (dev org data)",
+      "tags": ["kind:golden", "generator:sfdc-report", "generator:apache-poi", "EC-SFDC-REPORT-FORMATTED", "EC-TITLE-AND-FOOTER-ROWS"],
+      "expected": null,
+      "generated": false,
+      "notes": "Formatted Report export: report title/filter rows above the header, grouping and footer rows below; the shape users upload into Load Records."
+    },
+    {
+      "id": "golden-canonical-gsheets-from-csv",
+      "path": "golden/gsheets/canonical.from-csv.xlsx",
+      "bytes": 10022,
+      "sha256": "665343f95ae012a8ce355156823cf13eee6451c4bd6b0d58c2e1adc0e7482fe5",
+      "generator": {
+        "name": "Google",
+        "version": "Sheets (xlsx export, 2026-09-12)",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/gsheets/STEPS.md",
+      "license": "Google Sheets export",
+      "tags": ["kind:golden", "generator:gsheets", "source:csv", "EC-INPUT-CSV-IMPORT"],
+      "expected": "expected/canonical-csv-import.json",
+      "generated": false,
+      "notes": "canonical.csv imported into a new Google Sheet (File > Import > Replace) and downloaded as .xlsx: Google's CSV typing heuristics."
+    },
+    {
+      "id": "golden-canonical-excel-365-resave-sheetjs",
+      "path": "golden/excel-365/canonical.from-sheetjs.xlsx",
+      "bytes": 19088,
+      "sha256": "78b0018672441a537cd7938195397cea3d4e0da2495b82b4389a14526f3bb552",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Excel re-save of the SheetJS golden - what a user gets after opening a Jetstream export in Excel and saving."
+    },
+    {
+      "id": "golden-canonical-excel-365-1904",
+      "path": "golden/excel-365/canonical.from-exceljs.1904.xlsx",
+      "bytes": 19626,
+      "sha256": "521ebae84a8b95497ec97bcafb5192f9e15d0bf1cbafd74911539c86cf3869f4",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767", "EC-DATE-1904"],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Excel re-save with the 1904 date system switched on (workbookPr date1904=\"1\"); serials shift by 1,462 days while displayed dates stay the same."
+    },
+    {
+      "id": "hostile-xlsb-renamed",
+      "path": "hostile/xlsb-renamed.xlsx",
+      "bytes": 18803,
+      "sha256": "dc13d90ee2f91bbf25aa152aabc56fbd74f6e191074679b5bb6bb3ed9333845a",
+      "generator": {
+        "name": "Microsoft",
+        "version": "Excel 16.112.4 macOS (desktop)",
+        "os": "macOS"
+      },
+      "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
+      "license": "Microsoft Excel output",
+      "tags": ["generator:excel-365", "kind:hostile", "EC-INPUT-XLSB-RENAMED"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "NOT_XLSX",
+      "notes": "Excel Binary Workbook (.xlsb) save of the ExcelJS golden under an .xlsx name: a zip container whose parts are binary records, not XML."
+    }
+  ]
+}

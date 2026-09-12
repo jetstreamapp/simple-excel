@@ -1,0 +1,141 @@
+{
+  "label": "ceiling",
+  "createdAt": "2026-09-12T04:20:17.388Z",
+  "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-ceiling",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "loadAvgStart": [5.8095703125, 9.14599609375, 8.97998046875]
+  },
+  "engines": {
+    "office-kit": {
+      "version": "0.11.0",
+      "supportsStreaming": true
+    },
+    "sheetjs": {
+      "version": "0.20.3",
+      "supportsStreaming": false
+    }
+  },
+  "options": {
+    "engines": ["office-kit", "sheetjs"],
+    "ops": ["write"],
+    "datasets": ["mixed"],
+    "sizes": ["250k", "500k"],
+    "runs": 1,
+    "warmup": 1,
+    "source": "materialized",
+    "label": "ceiling",
+    "timeoutSeconds": 600,
+    "seed": 20260911,
+    "nodeFlags": ["--expose-gc", "--max-old-space-size=12288"],
+    "rebuildFixtures": false,
+    "merge": null,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "250k",
+      "rows": 250000,
+      "columns": 20,
+      "cells": 5000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 11700.260042,
+        "minMs": 11700.260042,
+        "maxMs": 11700.260042,
+        "runsMs": [11700.260042]
+      },
+      "memory": {
+        "preWarmupRssMB": 1193.6,
+        "baselineRssMB": 2789.1,
+        "peakRssMB": 3627.5,
+        "footprintMB": 2433.9,
+        "peakRssDeltaMB": 838.4,
+        "sampledPeakRssMB": 3178.3,
+        "postRunRssMB": 3178.4,
+        "highWaterRssMB": 3627.5,
+        "highWaterBeforeWarmupMB": 1193.6,
+        "samples": 185
+      },
+      "bytes": 107915475,
+      "firstByteMs": 4.615499999999884,
+      "durationMs": 28152.198540999998,
+      "exitCode": 0
+    },
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "250k",
+      "rows": 250000,
+      "columns": 20,
+      "cells": 5000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+      },
+      "durationMs": 8097.876416,
+      "exitCode": 0
+    },
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "500k",
+      "rows": 500000,
+      "columns": 20,
+      "cells": 10000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+      },
+      "durationMs": 20661.915957999998,
+      "exitCode": 1
+    },
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "500k",
+      "rows": 500000,
+      "columns": 20,
+      "cells": 10000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+      },
+      "durationMs": 17736.995125,
+      "exitCode": 0
+    }
+  ],
+  "loadAvgEnd": [6.43408203125, 8.5810546875, 8.77587890625],
+  "finishedAt": "2026-09-12T04:21:33.168Z"
+}

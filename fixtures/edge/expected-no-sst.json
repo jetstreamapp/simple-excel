@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Name", "Amount"],
+        ["Zoë", 12.5]
+      ]
+    }
+  ]
+}

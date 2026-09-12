@@ -1,0 +1,23 @@
+{
+  "generator": "XlsxWriter 3.2.9",
+  "applied": [
+    "merges",
+    "freeze",
+    "autoFilter",
+    "hyperlink",
+    "richText",
+    "note",
+    "validation",
+    "conditionalFormat",
+    "hiddenRows",
+    "hiddenColumns",
+    "columnWidths",
+    "hiddenSheet"
+  ],
+  "skipped": [
+    {
+      "feature": "error cell r6c2",
+      "reason": "XlsxWriter has no write_error; written as text"
+    }
+  ]
+}

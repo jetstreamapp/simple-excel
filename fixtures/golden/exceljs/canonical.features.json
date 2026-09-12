@@ -1,0 +1,18 @@
+{
+  "generator": "ExcelJS 4.4.0",
+  "applied": [
+    "merges",
+    "freeze",
+    "autoFilter",
+    "hyperlink",
+    "richText",
+    "note",
+    "validation",
+    "conditionalFormat",
+    "hiddenRows",
+    "hiddenColumns",
+    "columnWidths",
+    "hiddenSheet"
+  ],
+  "skipped": []
+}

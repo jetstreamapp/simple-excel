@@ -1,0 +1,280 @@
+{
+  "meta": {
+    "date": "2026-09-12T04:13:13.844Z",
+    "host": "MacBook-Air.local",
+    "label": "edge",
+    "node": "v24.18.0",
+    "readers": ["sheetjs", "office-kit", "office-kit-stream", "openpyxl", "calamine"],
+    "fixtures": ["edge-empty-v-element", "edge-inline-strings-cdata", "edge-no-shared-strings-part", "edge-hidden-and-veryhidden-sheets"]
+  },
+  "results": [
+    {
+      "fixture": "edge-empty-v-element",
+      "reader": "sheetjs",
+      "file": "edge/empty-v-element.xlsx",
+      "status": "PASS",
+      "ms": 113,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 7,
+      "matches": 7,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-empty-v-element",
+      "reader": "office-kit",
+      "file": "edge/empty-v-element.xlsx",
+      "status": "PASS",
+      "ms": 311,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 7,
+      "matches": 7,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-empty-v-element",
+      "reader": "office-kit-stream",
+      "file": "edge/empty-v-element.xlsx",
+      "status": "PASS",
+      "ms": 230,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 7,
+      "matches": 7,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-empty-v-element",
+      "reader": "openpyxl",
+      "file": "edge/empty-v-element.xlsx",
+      "status": "DIFF",
+      "ms": 373,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 7,
+      "matches": 6,
+      "byCategory": {
+        "cell-missing": 1
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "edge-empty-v-element",
+      "reader": "calamine",
+      "file": "edge/empty-v-element.xlsx",
+      "status": "DIFF",
+      "ms": 193,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 9,
+      "matches": 7,
+      "byCategory": {
+        "blank-vs-empty-string": 2
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "edge-inline-strings-cdata",
+      "reader": "sheetjs",
+      "file": "edge/inline-strings-cdata.xlsx",
+      "status": "PASS",
+      "ms": 217,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 6,
+      "matches": 6,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-inline-strings-cdata",
+      "reader": "office-kit",
+      "file": "edge/inline-strings-cdata.xlsx",
+      "status": "PASS",
+      "ms": 275,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 6,
+      "matches": 6,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-inline-strings-cdata",
+      "reader": "office-kit-stream",
+      "file": "edge/inline-strings-cdata.xlsx",
+      "status": "DIFF",
+      "ms": 530,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 6,
+      "matches": 5,
+      "byCategory": {
+        "string-mismatch": 1
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "edge-inline-strings-cdata",
+      "reader": "openpyxl",
+      "file": "edge/inline-strings-cdata.xlsx",
+      "status": "PASS",
+      "ms": 429,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 6,
+      "matches": 6,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-inline-strings-cdata",
+      "reader": "calamine",
+      "file": "edge/inline-strings-cdata.xlsx",
+      "status": "PASS",
+      "ms": 187,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 6,
+      "matches": 6,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-no-shared-strings-part",
+      "reader": "sheetjs",
+      "file": "edge/no-shared-strings-part.xlsx",
+      "status": "PASS",
+      "ms": 230,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 4,
+      "matches": 4,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-no-shared-strings-part",
+      "reader": "office-kit",
+      "file": "edge/no-shared-strings-part.xlsx",
+      "status": "PASS",
+      "ms": 207,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 4,
+      "matches": 4,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-no-shared-strings-part",
+      "reader": "office-kit-stream",
+      "file": "edge/no-shared-strings-part.xlsx",
+      "status": "PASS",
+      "ms": 215,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 4,
+      "matches": 4,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-no-shared-strings-part",
+      "reader": "openpyxl",
+      "file": "edge/no-shared-strings-part.xlsx",
+      "status": "PASS",
+      "ms": 252,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 4,
+      "matches": 4,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-no-shared-strings-part",
+      "reader": "calamine",
+      "file": "edge/no-shared-strings-part.xlsx",
+      "status": "PASS",
+      "ms": 179,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 4,
+      "matches": 4,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-hidden-and-veryhidden-sheets",
+      "reader": "sheetjs",
+      "file": "edge/hidden-and-veryhidden-sheets.xlsx",
+      "status": "PASS",
+      "ms": 226,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 11,
+      "matches": 11,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-hidden-and-veryhidden-sheets",
+      "reader": "office-kit",
+      "file": "edge/hidden-and-veryhidden-sheets.xlsx",
+      "status": "PASS",
+      "ms": 250,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 11,
+      "matches": 11,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-hidden-and-veryhidden-sheets",
+      "reader": "office-kit-stream",
+      "file": "edge/hidden-and-veryhidden-sheets.xlsx",
+      "status": "PASS",
+      "ms": 323,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 11,
+      "matches": 11,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    },
+    {
+      "fixture": "edge-hidden-and-veryhidden-sheets",
+      "reader": "openpyxl",
+      "file": "edge/hidden-and-veryhidden-sheets.xlsx",
+      "status": "DIFF",
+      "ms": 520,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 11,
+      "matches": 10,
+      "byCategory": {
+        "cell-missing": 1
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "edge-hidden-and-veryhidden-sheets",
+      "reader": "calamine",
+      "file": "edge/hidden-and-veryhidden-sheets.xlsx",
+      "status": "PASS",
+      "ms": 215,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 11,
+      "matches": 11,
+      "byCategory": {},
+      "structural": {},
+      "diffExit": 0
+    }
+  ]
+}

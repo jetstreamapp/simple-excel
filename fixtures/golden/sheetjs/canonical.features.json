@@ -1,0 +1,22 @@
+{
+  "generator": "SheetJS CE 0.20.3",
+  "applied": ["merges", "autoFilter", "hyperlink", "note", "columnWidths+hiddenColumns", "hiddenRows", "hiddenSheet"],
+  "skipped": [
+    {
+      "feature": "freeze",
+      "reason": "SheetJS CE does not write sheetViews/pane"
+    },
+    {
+      "feature": "richText",
+      "reason": "SheetJS CE writes plain text only"
+    },
+    {
+      "feature": "validation",
+      "reason": "not supported in CE"
+    },
+    {
+      "feature": "conditionalFormat",
+      "reason": "not supported in CE"
+    }
+  ]
+}

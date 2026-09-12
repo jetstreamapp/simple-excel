@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "date": "2026-09-12T15:41:27.883Z",
+    "host": "MacBook-Air.local",
+    "label": "excel-365",
+    "node": "v24.18.0",
+    "readers": ["sheetjs", "office-kit", "openpyxl", "calamine"],
+    "fixtures": ["hostile-biff8-xls-renamed"]
+  },
+  "results": [
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "sheetjs",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "ACCEPTED",
+      "ms": 52,
+      "readerVersion": "sheetjs 0.20.3",
+      "expectedError": "NOT_XLSX",
+      "sheets": [
+        {
+          "name": "Data",
+          "rows": 31
+        },
+        {
+          "name": "Features",
+          "rows": 12
+        },
+        {
+          "name": "It's a very long sheet name 001",
+          "rows": 2
+        },
+        {
+          "name": "Hidden",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "office-kit",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 103,
+      "expectedError": "NOT_XLSX",
+      "error": "^ | OpenXmlNotImplementedError: Encrypted xlsx is not supported. Decrypt with msoffcrypto-tool first. | Node.js v24.18.0"
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "openpyxl",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 276,
+      "readerVersion": "openpyxl",
+      "expectedError": "NOT_XLSX",
+      "error": "BadZipFile: File is not a zip file",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "calamine",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "REJECTED",
+      "ms": 71,
+      "readerVersion": "calamine",
+      "expectedError": "NOT_XLSX",
+      "error": "ZipError: invalid Zip archive: Could not find EOCD",
+      "sheets": []
+    }
+  ]
+}

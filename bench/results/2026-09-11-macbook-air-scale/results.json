@@ -1,0 +1,127 @@
+{
+  "label": "scale",
+  "createdAt": "2026-09-12T03:58:03.422Z",
+  "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-scale",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "loadAvgStart": [8.375, 6.12548828125, 4.53271484375]
+  },
+  "engines": {
+    "sheetjs": {
+      "version": "0.20.3",
+      "supportsStreaming": false
+    },
+    "office-kit": {
+      "version": "0.11.0",
+      "supportsStreaming": true
+    }
+  },
+  "options": {
+    "engines": ["sheetjs", "office-kit"],
+    "ops": ["write"],
+    "datasets": ["mixed"],
+    "sizes": ["1m", "18m-cells"],
+    "runs": 1,
+    "warmup": 1,
+    "source": "materialized",
+    "label": "scale",
+    "timeoutSeconds": 600,
+    "seed": 20260911,
+    "nodeFlags": ["--expose-gc", "--max-old-space-size=12288"],
+    "rebuildFixtures": false,
+    "merge": null,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+      },
+      "durationMs": 47265.481708,
+      "exitCode": 0
+    },
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+      },
+      "durationMs": 46929.589374999996,
+      "exitCode": 1
+    },
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "18m-cells",
+      "rows": 900000,
+      "columns": 20,
+      "cells": 18000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+      },
+      "durationMs": 36028.912082999996,
+      "exitCode": 0
+    },
+    {
+      "engine": "office-kit",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "18m-cells",
+      "rows": 900000,
+      "columns": 20,
+      "cells": 18000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+      },
+      "durationMs": 42891.2465,
+      "exitCode": 1
+    }
+  ],
+  "loadAvgEnd": [5.39208984375, 6.3134765625, 4.9423828125],
+  "finishedAt": "2026-09-12T04:00:59.219Z"
+}

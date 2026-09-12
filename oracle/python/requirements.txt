@@ -1,0 +1,4 @@
+openpyxl>=3.1
+XlsxWriter>=3.2
+python-calamine>=0.3
+fastexcel>=0.14

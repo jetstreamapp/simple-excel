@@ -1,0 +1,157 @@
+{
+  "label": "chrome",
+  "createdAt": "2026-09-12T04:30:05.601Z",
+  "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-chrome",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "loadAvgStart": [5.0654296875, 6.505859375, 7.759765625]
+  },
+  "browser": {
+    "version": "151.0.7922.34",
+    "playwright": "1.62.1",
+    "headless": true
+  },
+  "options": {
+    "engines": ["office-kit", "sheetjs"],
+    "datasets": ["mixed"],
+    "sizes": ["100k", "1m"],
+    "runs": 1,
+    "sampleMs": 100,
+    "timeoutSeconds": 240,
+    "label": "chrome",
+    "headed": false,
+    "skipBundle": false,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "office-kit",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "run": 1,
+      "seed": 20260911,
+      "runId": "office-kit-mixed-100000-1789187405982",
+      "type": "result",
+      "ok": true,
+      "ms": 6424.009999990463,
+      "bytes": 43155106,
+      "firstByteMs": 10.590000033378601,
+      "wallMs": 8011,
+      "phases": {
+        "write-start": 19.455000042915344
+      },
+      "memory": {
+        "method": "performance.measureUserAgentSpecificMemory",
+        "sampleMs": 100,
+        "samples": 64,
+        "measurements": 0,
+        "baselineBytes": null,
+        "peakBytes": null,
+        "peakWorkerBytes": null,
+        "peakBytesOverall": null,
+        "pageHeapPeak": 1458041
+      },
+      "status": "ok",
+      "process": {
+        "peakPageHeapBytes": 1447688,
+        "peakRendererRssBytes": 1838776320,
+        "baselineRendererRssBytes": 141770752,
+        "rendererRssDeltaBytes": 1697005568
+      }
+    },
+    {
+      "engine": "sheetjs",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "run": 1,
+      "seed": 20260911,
+      "runId": "sheetjs-mixed-100000-1789187414187",
+      "type": "result",
+      "ok": true,
+      "ms": 8902.405000090599,
+      "bytes": 99829672,
+      "firstByteMs": null,
+      "wallMs": 10552,
+      "phases": {
+        "write-start": 20.59999990463257
+      },
+      "memory": {
+        "method": "performance.measureUserAgentSpecificMemory",
+        "sampleMs": 100,
+        "samples": 89,
+        "measurements": 0,
+        "baselineBytes": null,
+        "peakBytes": null,
+        "peakWorkerBytes": null,
+        "peakBytesOverall": null,
+        "pageHeapPeak": 1460261
+      },
+      "status": "ok",
+      "process": {
+        "peakPageHeapBytes": 1449892,
+        "peakRendererRssBytes": 3155755008,
+        "baselineRendererRssBytes": 141606912,
+        "rendererRssDeltaBytes": 3014148096
+      }
+    },
+    {
+      "engine": "office-kit",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "run": 1,
+      "ok": false,
+      "error": {
+        "name": "RendererCrash",
+        "message": "page crashed (renderer out of memory or killed)"
+      },
+      "status": "error",
+      "wallMs": 47874,
+      "process": {
+        "peakPageHeapBytes": 1461528,
+        "peakRendererRssBytes": 4211916800,
+        "baselineRendererRssBytes": 141606912,
+        "rendererRssDeltaBytes": 4070309888
+      }
+    },
+    {
+      "engine": "sheetjs",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "run": 1,
+      "ok": false,
+      "error": {
+        "name": "RendererCrash",
+        "message": "page crashed (renderer out of memory or killed)"
+      },
+      "status": "error",
+      "wallMs": 14825,
+      "process": {
+        "peakPageHeapBytes": 1464860,
+        "peakRendererRssBytes": 2816917504,
+        "baselineRendererRssBytes": 142229504,
+        "rendererRssDeltaBytes": 2674688000
+      }
+    }
+  ],
+  "loadAvgEnd": [6.9931640625, 6.77294921875, 7.73974609375]
+}

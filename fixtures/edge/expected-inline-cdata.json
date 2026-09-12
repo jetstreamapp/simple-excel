@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Name", "Amount & <more>", "When"],
+        [" Zoë ", 12.5, { "$date": "2024-02-29" }]
+      ]
+    }
+  ]
+}

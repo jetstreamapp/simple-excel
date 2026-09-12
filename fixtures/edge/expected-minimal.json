@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "generatedBy": "hand-written ground truth for the hand-built edge fixtures (generators/edge/build-edge-fixtures.mjs)",
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Name", "Amount", "When"],
+        ["Zoë", 12.5, { "$date": "2024-02-29" }],
+        ["x", true, { "$formula": "B2*2", "cached": 25 }]
+      ]
+    }
+  ]
+}

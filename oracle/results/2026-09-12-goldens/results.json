@@ -1,0 +1,869 @@
+{
+  "meta": {
+    "date": "2026-09-12T04:07:38.145Z",
+    "host": "MacBook-Air.local",
+    "label": "goldens",
+    "node": "v24.18.0",
+    "readers": ["excel"],
+    "fixtures": [
+      "golden-canonical-sheetjs",
+      "golden-canonical-exceljs",
+      "golden-canonical-write-excel-file",
+      "golden-canonical-openpyxl",
+      "golden-canonical-xlsxwriter",
+      "golden-canonical-libreoffice-resave",
+      "golden-canonical-libreoffice-from-csv",
+      "golden-canonical-office-kit"
+    ]
+  },
+  "results": [
+    {
+      "fixture": "golden-canonical-sheetjs",
+      "reader": "excel",
+      "file": "golden/sheetjs/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1321,
+      "workbookName": "canonical.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "A",
+          "text": "A"
+        },
+        {
+          "ref": "F3",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.0072E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.798E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "Sunday, December 31, 1899 at 12:00:00 AM",
+          "text": "1900-01-00"
+        },
+        {
+          "ref": "M3",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "1900-02-29"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "1900-03-01"
+        },
+        {
+          "ref": "N2",
+          "value": "-0.475731608796",
+          "text": "##########"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "##########"
+        },
+        {
+          "ref": "O6",
+          "value": "Monday, January 1, 1900 at 12:00:00 PM",
+          "text": "##########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-exceljs",
+      "reader": "excel",
+      "file": "golden/exceljs/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1336,
+      "workbookName": "canonical.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "ab",
+          "text": "ab"
+        },
+        {
+          "ref": "F2",
+          "value": "A",
+          "text": "A"
+        },
+        {
+          "ref": "F3",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.8E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "Monday, January 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M3",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.815935057872",
+          "text": "19:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 9:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Tuesday, January 2, 1900 at 7:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-write-excel-file",
+      "reader": "excel",
+      "file": "golden/write-excel-file/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1318,
+      "workbookName": "canonical.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "ab",
+          "text": "ab"
+        },
+        {
+          "ref": "F2",
+          "value": "A",
+          "text": "A"
+        },
+        {
+          "ref": "F3",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.0072E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.798E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "Monday, January 1, 1900 at 7:00:00 AM",
+          "text": "1900-01-01"
+        },
+        {
+          "ref": "M3",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "1900-02-29"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "1900-03-01"
+        },
+        {
+          "ref": "N2",
+          "value": "0.815935057872",
+          "text": "19:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 9:30:00 AM",
+          "text": "##########"
+        },
+        {
+          "ref": "O6",
+          "value": "Tuesday, January 2, 1900 at 7:00:00 PM",
+          "text": "##########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-openpyxl",
+      "reader": "excel",
+      "file": "golden/openpyxl/canonical.xlsx",
+      "status": "REPAIRED",
+      "ms": 5796,
+      "workbookName": "canonical.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "",
+          "text": ""
+        },
+        {
+          "ref": "F2",
+          "value": "A",
+          "text": "A"
+        },
+        {
+          "ref": "F3",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "missing value",
+          "text": "#NULL!"
+        },
+        {
+          "ref": "M2",
+          "value": "Sunday, December 31, 1899 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M3",
+          "value": "Wednesday, February 28, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.524268391204",
+          "text": "12:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Monday, January 1, 1900 at 12:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-xlsxwriter",
+      "reader": "excel",
+      "file": "golden/xlsxwriter/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1314,
+      "workbookName": "canonical.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F3",
+          "value": "_x005FA",
+          "text": "_x005FA"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "missing value",
+          "text": "#NULL!"
+        },
+        {
+          "ref": "M2",
+          "value": "Sunday, December 31, 1899 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M3",
+          "value": "Wednesday, February 28, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.524268391204",
+          "text": "12:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Sunday, December 31, 1899 at 12:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-libreoffice-resave",
+      "reader": "excel",
+      "file": "golden/libreoffice/canonical.from-exceljs.xlsx",
+      "status": "PASS",
+      "ms": 1411,
+      "workbookName": "canonical.from-exceljs.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "ab",
+          "text": "ab"
+        },
+        {
+          "ref": "F2",
+          "value": "A",
+          "text": "A"
+        },
+        {
+          "ref": "F3",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "2E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "Monday, January 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M3",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "0.815935057872",
+          "text": "19:34:57"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 9:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Tuesday, January 2, 1900 at 7:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-libreoffice-from-csv",
+      "reader": "excel",
+      "file": "golden/libreoffice/canonical.from-csv.xlsx",
+      "status": "REPAIRED",
+      "ms": 4479,
+      "workbookName": "canonical.from-csv.xlsx",
+      "sheets": ["canonical"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F3",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.0072E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.7977E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "Monday, January 1, 1900 at 12:00:00 AM",
+          "text": "1900-01-01"
+        },
+        {
+          "ref": "M3",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "1900-02-29"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 12:00:00 AM",
+          "text": "1900-03-01"
+        },
+        {
+          "ref": "N2",
+          "value": "12:34:56.789",
+          "text": "12:34:56.789"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 3:30:00 AM",
+          "text": "2024-03-10T02:30:00.000"
+        },
+        {
+          "ref": "O6",
+          "value": "Tuesday, January 2, 1900 at 12:00:00 PM",
+          "text": "1900-01-02T12:00:00.000"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "true"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-office-kit",
+      "reader": "excel",
+      "file": "golden/office-kit/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1348,
+      "workbookName": "canonical.xlsx",
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
+      "cells": [
+        {
+          "ref": "A2",
+          "value": "001Xx000100000AAA",
+          "text": "001Xx000100000AAA"
+        },
+        {
+          "ref": "B2",
+          "value": "Zoë Ångström",
+          "text": "Zoë Ångström"
+        },
+        {
+          "ref": "D5",
+          "value": "tab\there",
+          "text": "tab\there"
+        },
+        {
+          "ref": "E2",
+          "value": "a\u0001b",
+          "text": "a\u0001b"
+        },
+        {
+          "ref": "F2",
+          "value": "_x0041_",
+          "text": "_x0041_"
+        },
+        {
+          "ref": "F3",
+          "value": "_x005FA",
+          "text": "_x005FA"
+        },
+        {
+          "ref": "F7",
+          "value": "_X0041_",
+          "text": "_X0041_"
+        },
+        {
+          "ref": "G2",
+          "value": "=SUM(A1)",
+          "text": "=SUM(A1)"
+        },
+        {
+          "ref": "I2",
+          "value": "9.007199254741E+15",
+          "text": "9.01E+15"
+        },
+        {
+          "ref": "J2",
+          "value": "0.0",
+          "text": "0"
+        },
+        {
+          "ref": "J11",
+          "value": "1.797693134862E+308",
+          "text": "1.8E+308"
+        },
+        {
+          "ref": "M2",
+          "value": "Sunday, December 31, 1899 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M3",
+          "value": "Wednesday, February 28, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "M4",
+          "value": "Thursday, March 1, 1900 at 7:00:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "N2",
+          "value": "-0.18406494213",
+          "text": "#########"
+        },
+        {
+          "ref": "O2",
+          "value": "Sunday, March 10, 2024 at 9:30:00 AM",
+          "text": "#########"
+        },
+        {
+          "ref": "O6",
+          "value": "Monday, January 1, 1900 at 7:00:00 PM",
+          "text": "#########"
+        },
+        {
+          "ref": "P2",
+          "value": "true",
+          "text": "TRUE"
+        },
+        {
+          "ref": "S30",
+          "value": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+          "text": "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        }
+      ]
+    }
+  ]
+}

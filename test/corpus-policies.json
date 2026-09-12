@@ -1,0 +1,5 @@
+{
+  "$comment": "Per-fixture allowances for the corpus and parity suites. Every entry needs a reason; the goal is an empty file.",
+  "golden-sfdc-report-details": { "skip": "no expected dump: report exports are read for smoke only (see corpus.test.ts)" },
+  "golden-sfdc-report-formatted": { "skip": "no expected dump: report exports are read for smoke only (see corpus.test.ts)" }
+}
