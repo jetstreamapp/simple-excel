@@ -39,7 +39,8 @@ src/
   sml/numfmt.ts            built-in id table, isDateFormat(code), codes we emit
   sml/sheet-name.ts        sanitize + case-insensitive dedupe (31 chars, forbidden chars, apostrophes, History)
   sml/styles.ts            registry (fonts/fills/borders/numFmts/cellXfs) + styles.xml writer + reader
-  sml/shared-strings.ts    bounded SST writer (chunked serialization) + SST reader
+  sml/shared-strings.ts    bounded SST writer (chunked serialization)
+  sml/shared-strings-reader.ts  SST reader
   sml/package-parts.ts     [Content_Types].xml, rels, workbook.xml, docProps writers + readers
   sml/worksheet-writer.ts  row-at-a-time XML with chunked encoding, cols/freeze/autofilter/merges
   sml/worksheet-reader.ts  tokenizer-driven cell state machine -> typed rows (async iterator)
@@ -156,7 +157,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 ### A3 `zip/zip-reader.ts` + `zip/source.ts`
 
 - `interface RandomAccessSource { readonly size: number; read(offset: number, length: number): Promise<Uint8Array> }`; `sourceFrom(input: ArrayBuffer | Uint8Array | Blob): RandomAccessSource`.
-- `class ZipReader { static async open(source, limits): Promise<ZipReader>; readonly entries: ReadonlyMap<string, ZipEntry>; openStream(name): ReadableStream<Uint8Array>; readEntry(name): Promise<Uint8Array> }` — EOCD scan of the last 64 KiB + 22, zip64 EOCD/locator, central directory parse, names normalized (`\`→`/`, leading `/` stripped), duplicate names → `XlsxError('ZIP_DUPLICATE_ENTRY')`, local header parsed for its own extra-field length, method 0 and 8 only, inflated-byte caps and ratio guard → `XlsxError('ZIP_BOMB')`, truncated → `XlsxError('ZIP_TRUNCATED')`. CRC checked when the entry is fully read (`readEntry`), skipped for streams (documented).
+- `class ZipReader { static open(source, limits): Promise<ZipReader>; readonly entries: ReadonlyMap<string, ZipEntry>; has(name); stream(name): AsyncIterable<Uint8Array>; read(name): Promise<Uint8Array>; readText(name): Promise<string>; close() }` — EOCD scan of the last 64 KiB + 22, zip64 EOCD/locator, central directory parse, names normalized (`\`→`/`, leading `/` stripped), duplicate names → `XlsxError('ZIP_DUPLICATE_ENTRY')`, local header parsed for its own extra-field length, method 0 and 8 only, inflated-byte caps and ratio guard → `XlsxError('ZIP_BOMB')`, truncated → `XlsxError('ZIP_TRUNCATED')`. CRC verified on both paths; a stream throws `ZIP_CRC_MISMATCH` after its last chunk.
 - Tests: every file our writer produces; the `fixtures/edge` zip variants (data descriptors, stored, SST after sheets); `fixtures/hostile` truncated / duplicate / bomb / CRC.
 
 ### A4 `compress/deflater.ts`, `compress/inflater.ts`

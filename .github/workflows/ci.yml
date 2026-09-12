@@ -30,6 +30,10 @@ jobs:
       # and this workflow is shared verbatim between both repositories.
       - run: npm run build
       - run: npm test
+      # simple-excel additions (not in soql-parser-js): the fixture corpus must match its manifest, the
+      # tooling must stay free of Jetstream imports, and the corpus suites run against the committed fixtures.
+      - run: npm run fixtures:check
+      - run: node scripts/check-purity.mjs
 
   docs-build:
     runs-on: ubuntu-latest
