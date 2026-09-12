@@ -175,12 +175,13 @@ describe('every corpus styles part parses', () => {
       expect([...styles.isDateByXf]).toEqual([0, 1]);
     }
 
-    // The canonical Data sheet's M column is `Date`, so whatever xf M2 points at must read as a date.
+    // The canonical Data sheet's M column is `Date`, so whatever xf M3 (1900-02-28) points at must read as a date.
+    // M2 is the pre-1900 trap: writers that store it as text (ours) may leave it unstyled after a re-export.
     if (fixture.expected === 'canonical/canonical.json') {
       const firstSheet = parseWorkbook(await zip.readText(workbookPart)).sheets[0];
       const sheetPart = workbookRels.find(relationship => relationship.id === firstSheet?.relId)?.target ?? '';
-      const styleIndex = styleIndexOfCell(await zip.readText(sheetPart), 'M2');
-      expect(styles.isDateByXf[styleIndex], `xf ${styleIndex} (cell M2) must render as a date`).toBe(1);
+      const styleIndex = styleIndexOfCell(await zip.readText(sheetPart), 'M3');
+      expect(styles.isDateByXf[styleIndex], `xf ${styleIndex} (cell M3) must render as a date`).toBe(1);
     }
     await zip.close();
   });

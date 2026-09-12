@@ -266,6 +266,31 @@ const SHEET_LIST_OVERRIDES: Readonly<Record<string, readonly ExpectedSheet[]>> =
     { name: "It's a very long sheet name 001", hidden: false },
     { name: 'Hidden', hidden: false },
   ],
+  // The same two application quirks on the re-exports of our own goldens.
+  'golden-canonical-gsheets-resave-simple-excel': [
+    { name: 'Data', hidden: false },
+    { name: 'Features', hidden: false },
+    { name: 'Its a very long sheet name 001', hidden: false },
+    { name: 'Hidden', hidden: true },
+  ],
+  'golden-canonical-gsheets-resave-simple-excel-inline': [
+    { name: 'Data', hidden: false },
+    { name: 'Features', hidden: false },
+    { name: 'Its a very long sheet name 001', hidden: false },
+    { name: 'Hidden', hidden: true },
+  ],
+  'golden-canonical-numbers-resave-simple-excel': [
+    { name: 'Data', hidden: false },
+    { name: 'Features', hidden: false },
+    { name: "It's a very long sheet name 001", hidden: false },
+    { name: 'Hidden', hidden: false },
+  ],
+  'golden-canonical-numbers-resave-simple-excel-inline': [
+    { name: 'Data', hidden: false },
+    { name: 'Features', hidden: false },
+    { name: "It's a very long sheet name 001", hidden: false },
+    { name: 'Hidden', hidden: false },
+  ],
   // Google Sheets names the imported sheet after the whole file name, extension included.
   'golden-canonical-gsheets-from-csv': [{ name: 'canonical.csv', hidden: false }],
 };

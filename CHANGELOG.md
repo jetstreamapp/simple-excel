@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Streaming workbook writer (`createWorkbookWriter`): one open sheet at a time, rows pushed to a sink as they are
-  written, bounded shared-string table with an inline fallback, styles (fonts, fills, borders, alignment, number
+  written, inline strings by default with an optional bounded shared-string table, styles (fonts, fills, borders, alignment, number
   formats), header rows, column widths, freeze panes, autofilter, merges, hidden sheets, deterministic output,
   progress and abort, 32,767-character cell policy, zip64 on demand, and a stored-parts fallback where
   `CompressionStream` is unavailable.

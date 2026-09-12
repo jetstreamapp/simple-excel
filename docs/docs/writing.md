@@ -243,15 +243,23 @@ Excel can store strings in a workbook-wide table (`xl/sharedStrings.xml`) and ha
 inline them in the sheet. The table shrinks files with repeated values, and grows in memory with every unique one
 — which is exactly how a streaming writer runs out of heap on a column of record ids.
 
-The default is a **bounded hybrid** (ADR-001): strings are interned while the table is under budget, then the map
-is frozen — existing entries still resolve, new strings go inline — and memory stops growing.
+The default is **inline** (ADR-001, revised): no table is built, memory does not grow with unique strings, writing
+is measurably faster, the compressed file is within a couple of percent of the table version on typical data, and
+it is the shape every application reads faithfully — Numbers truncates shared strings at control characters and
+mis-decodes protected `_xHHHH_` escapes in them, but reads inline strings correctly. It is also what SheetJS
+writes by default, so files look the same as before to anyone migrating.
 
-| Option                | Values                           | Default  | Meaning                                                                               |
-| --------------------- | -------------------------------- | -------- | ------------------------------------------------------------------------------------- |
-| `strings`             | `'auto' \| 'inline' \| 'shared'` | `'auto'` | `'inline'` never builds a table; `'shared'` interns everything (unbounded, for tests) |
-| `sstBudget.maxUnique` | number                           | 65,536   | Stop interning once this many unique strings exist                                    |
-| `sstBudget.maxChars`  | number                           | 16 Mi    | Stop interning once the interned text totals this many UTF-16 units                   |
-| `sstBudget.maxLength` | number                           | 256      | Strings longer than this are always inline                                            |
+`strings: 'auto'` gives a **bounded hybrid**: strings are interned while the table is under budget, then the map
+is frozen — existing entries still resolve, new strings go inline — and memory stops growing. Use it for very
+low-cardinality data (picklists repeated across hundreds of thousands of rows) when file size matters more than
+write speed.
+
+| Option                | Values                           | Default    | Meaning                                                                               |
+| --------------------- | -------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
+| `strings`             | `'inline' \| 'auto' \| 'shared'` | `'inline'` | `'auto'` builds a bounded table; `'shared'` interns everything (unbounded, for tests) |
+| `sstBudget.maxUnique` | number                           | 65,536     | Stop interning once this many unique strings exist                                    |
+| `sstBudget.maxChars`  | number                           | 16 Mi      | Stop interning once the interned text totals this many UTF-16 units                   |
+| `sstBudget.maxLength` | number                           | 256        | Strings longer than this are always inline                                            |
 
 `'shared'` switches the budget off entirely, so it will run out of memory on a large unique-heavy sheet. Use it
 only when you are testing something about the table itself.
@@ -263,7 +271,7 @@ const result = await workbook.close();
 result.sharedStrings; // { count, uniqueCount, frozen }
 ```
 
-`frozen: true` means the budget was reached and the rest of the workbook was written inline. Mixed `s` and
+Under `'inline'` the counts are zero. Under `'auto'`, `frozen: true` means the budget was reached and the rest of the workbook was written inline. Mixed `s` and
 `inlineStr` cells in one sheet are legal, and every reader in the compatibility matrix accepts them.
 
 ## Zip64

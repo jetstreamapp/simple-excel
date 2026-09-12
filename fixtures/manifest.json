@@ -39,11 +39,7 @@
       },
       "provenance": "copy-of:apps/jetstream-e2e/src/assets/records-Product2.xlsx",
       "license": "Jetstream in-repo asset",
-      "tags": [
-        "kind:jetstream",
-        "generator:sheetjs",
-        "EC-SST-ABSENT-INLINE-ONLY"
-      ],
+      "tags": ["kind:jetstream", "generator:sheetjs", "EC-SST-ABSENT-INLINE-ONLY"],
       "expected": null,
       "generated": false,
       "notes": "Playwright upload fixture (Load Records). SheetJS output with bookSST:false - no sharedStrings part, every string inline."
@@ -58,10 +54,7 @@
       },
       "provenance": "copy-of:apps/jetstream-e2e/src/assets/records-Product2.csv",
       "license": "Jetstream in-repo asset",
-      "tags": [
-        "kind:jetstream",
-        "EC-INPUT-CSV-BYTES"
-      ],
+      "tags": ["kind:jetstream", "EC-INPUT-CSV-BYTES"],
       "expected": null,
       "generated": false,
       "notes": "CSV twin of the xlsx fixture; also the 'CSV bytes reach the xlsx parser' case (Electron open-with / Drive alt=media). Not a workbook: openWorkbook rejects it with NOT_XLSX (ADR-007) and the application routes CSV bytes to papaparse.",
@@ -79,12 +72,7 @@
       },
       "provenance": "script:generators/canonical-sheetjs.mjs",
       "license": "Apache-2.0 (SheetJS CE)",
-      "tags": [
-        "kind:golden",
-        "generator:sheetjs",
-        "policy:truncate-32767",
-        "EC-SST-ABSENT-INLINE-ONLY"
-      ],
+      "tags": ["kind:golden", "generator:sheetjs", "policy:truncate-32767", "EC-SST-ABSENT-INLINE-ONLY"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Jetstream production options: aoa_to_sheet, bookSST:false, compression:true. No freeze/richText/validation/condfmt (CE)."
@@ -101,11 +89,7 @@
       },
       "provenance": "script:generators/canonical-exceljs.mjs",
       "license": "MIT",
-      "tags": [
-        "kind:golden",
-        "generator:exceljs",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:exceljs", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Document API; every structural feature applied."
@@ -122,11 +106,7 @@
       },
       "provenance": "script:generators/canonical-write-excel-file.mjs",
       "license": "MIT",
-      "tags": [
-        "kind:golden",
-        "generator:write-excel-file",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:write-excel-file", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Values + formats only; hidden sheet omitted; formulas/errors written as text."
@@ -167,11 +147,7 @@
       },
       "provenance": "script:oracle/python/write_goldens.py",
       "license": "BSD-2-Clause",
-      "tags": [
-        "kind:golden",
-        "generator:xlsxwriter",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:xlsxwriter", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Formula cached values written; literal error cell B6 written as text (no write_error)."
@@ -188,10 +164,7 @@
       },
       "provenance": "soffice --headless --convert-to xlsx golden/exceljs/canonical.xlsx",
       "license": "MPL-2.0 (generator)",
-      "tags": [
-        "kind:golden",
-        "generator:libreoffice"
-      ],
+      "tags": ["kind:golden", "generator:libreoffice"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "LibreOffice Calc re-save of the ExcelJS golden (what a user gets after editing in LibreOffice)."
@@ -232,11 +205,7 @@
       },
       "provenance": "script:generators/canonical-office-kit.mjs",
       "license": "MIT",
-      "tags": [
-        "kind:golden",
-        "generator:office-kit",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:office-kit", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Document API. Remaining gaps (sidecar): freezePanes(ws, rows, 0) rejects cols=0 (use setFreezePanes(ws, 'A3')); formula cached values cannot be error values. Rich text works with a { kind: 'rich-text', runs } value (setCellRichText is declared but not exported). Dates: dateToExcel reads UTC fields, so local-midnight Dates land in the file with the host UTC offset as a time fraction."
@@ -253,10 +222,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-BASELINE"
-      ],
+      "tags": ["kind:edge", "EC-BASELINE"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -272,10 +238,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-NO-DIMENSION"
-      ],
+      "tags": ["kind:edge", "EC-NO-DIMENSION"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -291,10 +254,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-MISSING-R-ATTRIBUTES"
-      ],
+      "tags": ["kind:edge", "EC-MISSING-R-ATTRIBUTES"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -310,10 +270,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-EMPTY-V-ELEMENT"
-      ],
+      "tags": ["kind:edge", "EC-EMPTY-V-ELEMENT"],
       "expected": "edge/expected-empty-v.json",
       "generated": false,
       "notes": "B2 is <v/> (empty value element) and C2 is <c s=\"1\"/> with no value at all: both must read as blank, not 0 or ''."
@@ -330,12 +287,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-INLINE-STRINGS-CDATA",
-        "EC-RICH-TEXT-RUNS",
-        "EC-XML-SPACE-PRESERVE"
-      ],
+      "tags": ["kind:edge", "EC-INLINE-STRINGS-CDATA", "EC-RICH-TEXT-RUNS", "EC-XML-SPACE-PRESERVE"],
       "expected": "edge/expected-inline-cdata.json",
       "generated": false,
       "notes": "inlineStr cells: CDATA with & and <, rich text runs (<r>) flattened to 'When', xml:space=\"preserve\" around ' Zoë '."
@@ -352,10 +304,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-PREFIXED-ELEMENTS"
-      ],
+      "tags": ["kind:edge", "EC-PREFIXED-ELEMENTS"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -371,10 +320,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-STRICT-NAMESPACES"
-      ],
+      "tags": ["kind:edge", "EC-STRICT-NAMESPACES"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -390,10 +336,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-ABSOLUTE-REL-TARGETS"
-      ],
+      "tags": ["kind:edge", "EC-ABSOLUTE-REL-TARGETS"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -409,10 +352,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-BACKSLASH-REL-TARGETS"
-      ],
+      "tags": ["kind:edge", "EC-BACKSLASH-REL-TARGETS"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -428,10 +368,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-ZIP-DATA-DESCRIPTORS"
-      ],
+      "tags": ["kind:edge", "EC-ZIP-DATA-DESCRIPTORS"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -447,10 +384,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-ZIP-STORED-ENTRIES"
-      ],
+      "tags": ["kind:edge", "EC-ZIP-STORED-ENTRIES"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -466,10 +400,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-SST-ABSENT-INLINE-ONLY"
-      ],
+      "tags": ["kind:edge", "EC-SST-ABSENT-INLINE-ONLY"],
       "expected": "edge/expected-no-sst.json",
       "generated": false,
       "notes": "No sharedStrings part, no sst relationship, no content-type override; all strings inline."
@@ -486,10 +417,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-SST-INDEX-OUT-OF-RANGE"
-      ],
+      "tags": ["kind:edge", "EC-SST-INDEX-OUT-OF-RANGE"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -505,10 +433,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-DATE-1904"
-      ],
+      "tags": ["kind:edge", "EC-DATE-1904"],
       "expected": "edge/expected-minimal.json",
       "generated": false
     },
@@ -524,10 +449,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:edge",
-        "EC-HIDDEN-SHEETS"
-      ],
+      "tags": ["kind:edge", "EC-HIDDEN-SHEETS"],
       "expected": "edge/expected-hidden-sheets.json",
       "generated": false,
       "notes": "state=\"hidden\" and state=\"veryHidden\" sheets; readers must report both as hidden and Jetstream's sheet picker must still list or skip them consistently."
@@ -544,10 +466,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-XXE-DOCTYPE"
-      ],
+      "tags": ["kind:hostile", "EC-XXE-DOCTYPE"],
       "expected": null,
       "generated": false,
       "expectedError": "XML_DOCTYPE"
@@ -564,10 +483,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-ZIP-TRUNCATED"
-      ],
+      "tags": ["kind:hostile", "EC-ZIP-TRUNCATED"],
       "expected": null,
       "generated": false,
       "expectedError": "TRUNCATED"
@@ -584,10 +500,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-ZIP-CRC-MISMATCH"
-      ],
+      "tags": ["kind:hostile", "EC-ZIP-CRC-MISMATCH"],
       "expected": null,
       "generated": false,
       "expectedError": "CRC_MISMATCH"
@@ -604,10 +517,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-ZIP-DUPLICATE-ENTRIES"
-      ],
+      "tags": ["kind:hostile", "EC-ZIP-DUPLICATE-ENTRIES"],
       "expected": null,
       "generated": false,
       "expectedError": "DUPLICATE_ENTRY"
@@ -624,10 +534,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-XML-DEEP-NESTING"
-      ],
+      "tags": ["kind:hostile", "EC-XML-DEEP-NESTING"],
       "expected": null,
       "generated": false,
       "expectedError": "LIMIT_EXCEEDED"
@@ -644,10 +551,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-INPUT-CSV-BYTES"
-      ],
+      "tags": ["kind:hostile", "EC-INPUT-CSV-BYTES"],
       "expected": null,
       "generated": false,
       "expectedError": "NOT_XLSX"
@@ -664,10 +568,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-INPUT-ODS-RENAMED"
-      ],
+      "tags": ["kind:hostile", "EC-INPUT-ODS-RENAMED"],
       "expected": null,
       "generated": false,
       "expectedError": "NOT_XLSX"
@@ -684,11 +585,7 @@
       },
       "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
       "license": "Microsoft Excel output",
-      "tags": [
-        "generator:excel-365",
-        "kind:hostile",
-        "EC-INPUT-XLS-RENAMED"
-      ],
+      "tags": ["generator:excel-365", "kind:hostile", "EC-INPUT-XLS-RENAMED"],
       "expected": null,
       "generated": false,
       "expectedError": "NOT_XLSX",
@@ -706,10 +603,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-INPUT-ENCRYPTED"
-      ],
+      "tags": ["kind:hostile", "EC-INPUT-ENCRYPTED"],
       "expected": null,
       "generated": false,
       "expectedError": "ENCRYPTED"
@@ -726,10 +620,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-INPUT-SPREADSHEETML-2003"
-      ],
+      "tags": ["kind:hostile", "EC-INPUT-SPREADSHEETML-2003"],
       "expected": null,
       "generated": false,
       "expectedError": "NOT_XLSX"
@@ -746,10 +637,7 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:hostile",
-        "EC-ZIP-BOMB"
-      ],
+      "tags": ["kind:hostile", "EC-ZIP-BOMB"],
       "expected": null,
       "generated": false,
       "expectedError": "ZIP_BOMB",
@@ -792,11 +680,7 @@
       },
       "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
       "license": "Microsoft Excel output",
-      "tags": [
-        "kind:golden",
-        "generator:excel-365",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Excel re-save of the ExcelJS golden (styles, SST, theme, calcChain rewritten by Excel)."
@@ -813,12 +697,7 @@
       },
       "provenance": "manual:golden/excel-365/STEPS.md",
       "license": "Microsoft Excel output",
-      "tags": [
-        "kind:golden",
-        "generator:excel-365",
-        "policy:truncate-32767",
-        "EC-STRICT-NAMESPACES"
-      ],
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767", "EC-STRICT-NAMESPACES"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Excel 'Strict Open XML Spreadsheet' save of the ExcelJS golden: purl.oclc.org namespaces, Strict relationship types, ISO date cells."
@@ -835,12 +714,7 @@
       },
       "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
       "license": "Microsoft Excel output",
-      "tags": [
-        "kind:golden",
-        "generator:excel-365",
-        "policy:truncate-32767",
-        "EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS"
-      ],
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767", "EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Excel re-save of the office-kit golden (its UTC-offset date serials and double-escaped _x005F literal survive the round trip)."
@@ -857,11 +731,7 @@
       },
       "provenance": "manual:golden/gsheets/STEPS.md",
       "license": "Google Sheets export",
-      "tags": [
-        "kind:golden",
-        "generator:gsheets",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:gsheets", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "ExcelJS golden imported into Google Sheets and downloaded as .xlsx. User observations: no 'features lost' banner; the date/time/datetime cells showed no selected number format in Format > Number; S30 kept the ...(truncated) 32,767-char text; the list data validation survived as a rule ('Input must be an item on the specified list') rather than a dropdown."
@@ -878,13 +748,7 @@
       },
       "provenance": "manual:golden/numbers/STEPS.md",
       "license": "Apple Numbers export",
-      "tags": [
-        "kind:golden",
-        "generator:numbers",
-        "policy:truncate-32767",
-        "EC-HIDDEN-SHEETS",
-        "EC-FORMULA-CACHED-ERROR"
-      ],
+      "tags": ["kind:golden", "generator:numbers", "policy:truncate-32767", "EC-HIDDEN-SHEETS", "EC-FORMULA-CACHED-ERROR"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "ExcelJS golden opened in Numbers and exported to Excel by hand (AppleScript export produced an empty document). Import banners: 'Unsupported formulas were replaced by the last calculated value' and 'Hidden sheets were made visible: Sheet: Hidden'."
@@ -901,12 +765,7 @@
       },
       "provenance": "manual:golden/sfdc-report/STEPS.md",
       "license": "Salesforce export (dev org data)",
-      "tags": [
-        "kind:golden",
-        "generator:sfdc-report",
-        "generator:apache-poi",
-        "EC-SFDC-REPORT-DETAILS"
-      ],
+      "tags": ["kind:golden", "generator:sfdc-report", "generator:apache-poi", "EC-SFDC-REPORT-DETAILS"],
       "expected": null,
       "generated": false,
       "notes": "Details Only export of the 'xlsx-engine canonical' Opportunity report (30 rows). Application = Apache POI; column widths written with customWidth=\"true\"."
@@ -923,13 +782,7 @@
       },
       "provenance": "manual:golden/sfdc-report/STEPS.md",
       "license": "Salesforce export (dev org data)",
-      "tags": [
-        "kind:golden",
-        "generator:sfdc-report",
-        "generator:apache-poi",
-        "EC-SFDC-REPORT-FORMATTED",
-        "EC-TITLE-AND-FOOTER-ROWS"
-      ],
+      "tags": ["kind:golden", "generator:sfdc-report", "generator:apache-poi", "EC-SFDC-REPORT-FORMATTED", "EC-TITLE-AND-FOOTER-ROWS"],
       "expected": null,
       "generated": false,
       "notes": "Formatted Report export: report title/filter rows above the header, grouping and footer rows below; the shape users upload into Load Records."
@@ -946,12 +799,7 @@
       },
       "provenance": "manual:golden/gsheets/STEPS.md",
       "license": "Google Sheets export",
-      "tags": [
-        "kind:golden",
-        "generator:gsheets",
-        "source:csv",
-        "EC-INPUT-CSV-IMPORT"
-      ],
+      "tags": ["kind:golden", "generator:gsheets", "source:csv", "EC-INPUT-CSV-IMPORT"],
       "expected": "expected/canonical-csv-import.json",
       "generated": false,
       "notes": "canonical.csv imported into a new Google Sheet (File > Import > Replace) and downloaded as .xlsx: Google's CSV typing heuristics."
@@ -968,11 +816,7 @@
       },
       "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
       "license": "Microsoft Excel output",
-      "tags": [
-        "kind:golden",
-        "generator:excel-365",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Excel re-save of the SheetJS golden - what a user gets after opening a Jetstream export in Excel and saving."
@@ -989,12 +833,7 @@
       },
       "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
       "license": "Microsoft Excel output",
-      "tags": [
-        "kind:golden",
-        "generator:excel-365",
-        "policy:truncate-32767",
-        "EC-DATE-1904"
-      ],
+      "tags": ["kind:golden", "generator:excel-365", "policy:truncate-32767", "EC-DATE-1904"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Excel re-save with the 1904 date system switched on (workbookPr date1904=\"1\"); serials shift by 1,462 days while displayed dates stay the same."
@@ -1011,11 +850,7 @@
       },
       "provenance": "applescript:oracle/excel/save-as.applescript (fixtures/generators/excel-goldens.mjs)",
       "license": "Microsoft Excel output",
-      "tags": [
-        "generator:excel-365",
-        "kind:hostile",
-        "EC-INPUT-XLSB-RENAMED"
-      ],
+      "tags": ["generator:excel-365", "kind:hostile", "EC-INPUT-XLSB-RENAMED"],
       "expected": null,
       "generated": false,
       "expectedError": "NOT_XLSX",
@@ -1033,14 +868,10 @@
       },
       "provenance": "script:generators/canonical-simple-excel.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:golden",
-        "generator:simple-excel",
-        "policy:truncate-32767"
-      ],
+      "tags": ["kind:golden", "generator:simple-excel", "policy:truncate-32767"],
       "expected": "canonical/canonical.json",
       "generated": false,
-      "notes": "Our own writer, default options: bounded shared strings (mixed t=s and t=inlineStr), deflate, zip64 auto, deterministic bytes. Pre-1900 dates are written as ISO text (EC-DATE-PRE-1900) and cells over 32,767 chars are truncated with the Jetstream suffix. Byte-pinned by test/golden-bytes.test.ts."
+      "notes": "Our own writer, default options: bounded shared strings (mixed t=s and t=inlineStr), deflate, zip64 auto, deterministic bytes. Pre-1900 dates are written as ISO text (EC-DATE-PRE-1900) and cells over 32,767 chars are truncated with the Jetstream suffix. Byte-pinned by test/golden-bytes.test.ts. Written with strings: 'auto' (the bounded shared-string table); inline strings are the writer's default."
     },
     {
       "id": "golden-canonical-simple-excel-inline",
@@ -1054,15 +885,10 @@
       },
       "provenance": "script:generators/canonical-simple-excel.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:golden",
-        "generator:simple-excel",
-        "policy:truncate-32767",
-        "EC-SST-ABSENT-INLINE-ONLY"
-      ],
+      "tags": ["kind:golden", "generator:simple-excel", "policy:truncate-32767", "EC-SST-ABSENT-INLINE-ONLY"],
       "expected": "canonical/canonical.json",
       "generated": false,
-      "notes": "strings: 'inline' - no xl/sharedStrings.xml part at all, every string cell is t=inlineStr. The A/B control for ADR-001."
+      "notes": "strings: 'inline' - no xl/sharedStrings.xml part at all, every string cell is t=inlineStr. The A/B control for ADR-001. Written with strings: 'inline', the writer's default."
     },
     {
       "id": "golden-canonical-simple-excel-zip64",
@@ -1076,12 +902,7 @@
       },
       "provenance": "script:generators/canonical-simple-excel.mjs",
       "license": "Jetstream research",
-      "tags": [
-        "kind:golden",
-        "generator:simple-excel",
-        "policy:truncate-32767",
-        "EC-ZIP64-SMALL"
-      ],
+      "tags": ["kind:golden", "generator:simple-excel", "policy:truncate-32767", "EC-ZIP64-SMALL"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "zip64: true - version-needed 45 plus the 0x0001 extra field in every worksheet/sharedStrings local header, 8-byte data descriptors, zip64 end records and all-sentinel 32-bit EOCD on a small archive (ADR-002). Excel accepts it only with APPNOTE zeros in the local size fields and sentinels in the 32-bit end record; SheetJS 0.20.3 cannot read zip64 at all."
@@ -1098,13 +919,7 @@
       },
       "provenance": "manual:golden/simple-excel/STEPS.md",
       "license": "Google Sheets export",
-      "tags": [
-        "kind:golden",
-        "generator:gsheets",
-        "source:simple-excel",
-        "policy:truncate-32767",
-        "EC-DATE-1900-LEAP-BUG"
-      ],
+      "tags": ["kind:golden", "generator:gsheets", "source:simple-excel", "policy:truncate-32767", "EC-DATE-1900-LEAP-BUG"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Google Sheets re-export of golden-canonical-simple-excel (uploaded to Drive, opened in Sheets, downloaded as .xlsx). Imported with no notice; on screen Sheets showed only its own display behaviour (15 significant digits, serials below 61 a day early, hh:mm:ss rounding)."
@@ -1121,16 +936,60 @@
       },
       "provenance": "manual:golden/simple-excel/STEPS.md",
       "license": "Google Sheets export",
-      "tags": [
-        "kind:golden",
-        "generator:gsheets",
-        "source:simple-excel",
-        "policy:truncate-32767",
-        "EC-DATE-1900-LEAP-BUG"
-      ],
+      "tags": ["kind:golden", "generator:gsheets", "source:simple-excel", "policy:truncate-32767", "EC-DATE-1900-LEAP-BUG"],
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Google Sheets re-export of golden-canonical-simple-excel-inline (the inline-strings variant); identical to the shared-strings import on screen."
+    },
+    {
+      "id": "golden-canonical-numbers-resave-simple-excel",
+      "path": "golden/numbers/canonical.from-simple-excel.xlsx",
+      "bytes": 13731,
+      "sha256": "ce0cd31ddff9408b417a62dda0516301340cb408889ab2cb3f2d5f335ba336f6",
+      "generator": {
+        "name": "Apple",
+        "version": "Numbers",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/simple-excel/STEPS.md",
+      "license": "Apple Numbers export",
+      "tags": [
+        "kind:golden",
+        "generator:numbers",
+        "source:simple-excel",
+        "policy:truncate-32767",
+        "EC-HIDDEN-SHEETS",
+        "EC-NUMBERS-INF-VALUE",
+        "EC-NUMBERS-15-DIGIT-PRECISION"
+      ],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Numbers 14.4 export of golden-canonical-simple-excel (opened by hand with the 'hidden sheets were made visible' banner, exported as Excel). Numbers holds numbers at 15 significant digits, cannot represent the max double and has no hidden sheets."
+    },
+    {
+      "id": "golden-canonical-numbers-resave-simple-excel-inline",
+      "path": "golden/numbers/canonical.inline.from-simple-excel.xlsx",
+      "bytes": 13765,
+      "sha256": "15672751fa82f010cf7ce846e982f14968b4b06c53d7ca0502f13ab4dd65372a",
+      "generator": {
+        "name": "Apple",
+        "version": "Numbers",
+        "os": "macOS"
+      },
+      "provenance": "manual:golden/simple-excel/STEPS.md",
+      "license": "Apple Numbers export",
+      "tags": [
+        "kind:golden",
+        "generator:numbers",
+        "source:simple-excel",
+        "policy:truncate-32767",
+        "EC-HIDDEN-SHEETS",
+        "EC-NUMBERS-INF-VALUE",
+        "EC-NUMBERS-15-DIGIT-PRECISION"
+      ],
+      "expected": "canonical/canonical.json",
+      "generated": false,
+      "notes": "Numbers 14.4 export of golden-canonical-simple-excel-inline (the inline-strings variant)."
     }
   ]
 }

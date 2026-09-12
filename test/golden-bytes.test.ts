@@ -1,5 +1,6 @@
 /**
- * The deterministic writer's output for the canonical workbook is pinned byte-for-byte as
+ * The deterministic writer's output for the canonical workbook (with the bounded shared-string table, `strings: 'auto'`;
+ * `canonical.inline.xlsx` covers the inline default) is pinned byte-for-byte as
  * `fixtures/golden/simple-excel/canonical.xlsx` (registered in the manifest, so the oracle and the corpus suite cover
  * it too). Any writer change that alters bytes must regenerate it deliberately:
  *
@@ -20,7 +21,7 @@ const GOLDEN = join(FIXTURES_ROOT, 'golden', 'simple-excel', 'canonical.xlsx');
 
 describe.skipIf(!WRITER_READY)('golden bytes: deterministic canonical workbook', () => {
   it('matches the committed golden byte for byte', async () => {
-    const bytes = await writeCanonicalWorkbook();
+    const bytes = await writeCanonicalWorkbook({ strings: 'auto' });
     if (process.env.UPDATE_GOLDENS === '1' || !existsSync(GOLDEN)) {
       mkdirSync(dirname(GOLDEN), { recursive: true });
       writeFileSync(GOLDEN, bytes);
@@ -38,8 +39,8 @@ describe.skipIf(!WRITER_READY)('golden bytes: deterministic canonical workbook',
   });
 
   it('is reproducible across two runs', async () => {
-    const first = await writeCanonicalWorkbook();
-    const second = await writeCanonicalWorkbook();
+    const first = await writeCanonicalWorkbook({ strings: 'auto' });
+    const second = await writeCanonicalWorkbook({ strings: 'auto' });
     expect(Buffer.from(first).equals(Buffer.from(second))).toBe(true);
   });
 });

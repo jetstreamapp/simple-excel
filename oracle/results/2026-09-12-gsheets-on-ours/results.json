@@ -4,16 +4,8 @@
     "host": "MacBook-Air.local",
     "label": "gsheets-on-ours",
     "node": "v24.18.0",
-    "readers": [
-      "simple-excel",
-      "sheetjs",
-      "validator",
-      "calamine"
-    ],
-    "fixtures": [
-      "golden-canonical-gsheets-resave-simple-excel",
-      "golden-canonical-gsheets-resave-simple-excel-inline"
-    ]
+    "readers": ["simple-excel", "sheetjs", "validator", "calamine"],
+    "fixtures": ["golden-canonical-gsheets-resave-simple-excel", "golden-canonical-gsheets-resave-simple-excel-inline"]
   },
   "results": [
     {

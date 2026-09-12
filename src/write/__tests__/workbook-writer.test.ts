@@ -97,7 +97,7 @@ const delay = (milliseconds: number): Promise<void> => new Promise(resolve => se
 
 describe('package structure', () => {
   it('writes the parts in streaming order with content types last (EC-ZIP-CONTENT-TYPES-LAST)', async () => {
-    const { pkg } = await writeSimpleWorkbook();
+    const { pkg } = await writeSimpleWorkbook({ strings: 'auto' });
     expect(pkg.names).toEqual([
       ...STATIC_PART_ORDER,
       'xl/worksheets/sheet1.xml',
@@ -115,7 +115,7 @@ describe('package structure', () => {
   });
 
   it('wires content types, relationships and the sheet list together', async () => {
-    const { pkg } = await writeSimpleWorkbook();
+    const { pkg } = await writeSimpleWorkbook({ strings: 'auto' });
     const contentTypes = await pkg.text('[Content_Types].xml');
     for (const name of pkg.names) {
       if (name.endsWith('.xml') && name !== '[Content_Types].xml') {
@@ -144,7 +144,7 @@ describe('package structure', () => {
   });
 
   it('reports what it wrote', async () => {
-    const { result } = await writeSimpleWorkbook();
+    const { result } = await writeSimpleWorkbook({ strings: 'auto' });
     expect(result.sheets).toEqual([
       { name: 'Accounts', rows: 3, columns: 3 },
       { name: 'Notes', rows: 1, columns: 1 },
@@ -303,6 +303,14 @@ describe('sheets', () => {
 });
 
 describe('strings, styles and limits', () => {
+  it('writes inline strings by default: no shared-string part, no t="s" cells (ADR-001)', async () => {
+    const { pkg, result } = await writeSimpleWorkbook();
+    expect(pkg.names).not.toContain('xl/sharedStrings.xml');
+    expect(await pkg.text('xl/worksheets/sheet1.xml')).not.toContain('t="s"');
+    expect(await pkg.text('xl/worksheets/sheet1.xml')).toContain('t="inlineStr"');
+    expect(result.sharedStrings).toEqual({ count: 0, uniqueCount: 0, frozen: false });
+  });
+
   it('omits the shared-string part entirely with strings: inline (EC-SST-ABSENT-INLINE-ONLY)', async () => {
     const { pkg, result } = await writeSimpleWorkbook({ strings: 'inline' });
     expect(pkg.names).not.toContain('xl/sharedStrings.xml');
@@ -326,7 +334,7 @@ describe('strings, styles and limits', () => {
 
   it('freezes the table mid-sheet with a small budget and keeps the file valid', async () => {
     const sink = collectToBytes();
-    const workbook = createWorkbookWriter(sink, { deterministic: true, sstBudget: { maxUnique: 2 } });
+    const workbook = createWorkbookWriter(sink, { deterministic: true, strings: 'auto', sstBudget: { maxUnique: 2 } });
     const sheet = workbook.addSheet('Data');
     await sheet.writeRow(['a', 'b', 'c', 'a']);
     await sheet.close();
@@ -407,7 +415,7 @@ describe('container decisions', () => {
   });
 
   it('keeps small known sheets 32-bit under zip64: auto', async () => {
-    const { pkg } = await writeSimpleWorkbook();
+    const { pkg } = await writeSimpleWorkbook({ strings: 'auto' });
     expect(await pkg.localHeaderVersion('xl/worksheets/sheet1.xml')).toBe(20);
     expect(await pkg.localHeaderVersion('xl/worksheets/sheet2.xml')).toBe(20);
     expect(await pkg.localHeaderVersion('xl/sharedStrings.xml')).toBe(20);
@@ -415,7 +423,7 @@ describe('container decisions', () => {
 
   it('keeps a sheet with an unknown row count 32-bit under zip64: auto (ADR-002: SheetJS cannot read zip64)', async () => {
     const sink = collectToBytes();
-    const workbook = createWorkbookWriter(sink, { deterministic: true });
+    const workbook = createWorkbookWriter(sink, { deterministic: true, strings: 'auto' });
     const streaming = workbook.addSheet('Streaming', { header: ['Id'] });
     await streaming.writeRow(['a']);
     await streaming.close();
@@ -428,7 +436,7 @@ describe('container decisions', () => {
 
   it('gives the shared-string table zip64 when any sheet had it', async () => {
     const sink = collectToBytes();
-    const workbook = createWorkbookWriter(sink, { deterministic: true });
+    const workbook = createWorkbookWriter(sink, { deterministic: true, strings: 'auto' });
     const huge = workbook.addSheet('Huge', { columns: Array.from({ length: 40 }, () => ({})), rowCount: 1_500_000 });
     await huge.writeRow(['a']);
     await huge.close();

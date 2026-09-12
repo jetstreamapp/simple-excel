@@ -25,8 +25,8 @@ const SKIPPED = [
 ];
 
 const VARIANTS = [
-  { file: 'canonical.xlsx', options: {}, note: 'defaults: bounded shared strings, deflate, zip64 auto' },
-  { file: 'canonical.inline.xlsx', options: { strings: 'inline' }, note: 'every string inline, no sharedStrings part' },
+  { file: 'canonical.xlsx', options: { strings: 'auto' }, note: "strings: 'auto' (bounded shared-string table), deflate, zip64 auto" },
+  { file: 'canonical.inline.xlsx', options: { strings: 'inline' }, note: 'the default: every string inline, no sharedStrings part' },
   { file: 'canonical.zip64.xlsx', options: { zip64: true }, note: 'zip64 declared in every local header' },
 ];
 

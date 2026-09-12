@@ -91,7 +91,7 @@ function toSheetPartInfo(record: SheetRecord): SheetPartInfo {
 }
 
 function resolveOptions(options: WorkbookWriterOptions): ResolvedOptions {
-  const strings = options.strings ?? 'auto';
+  const strings = options.strings ?? 'inline';
   const budget =
     strings === 'shared'
       ? UNBOUNDED_SHARED_STRING_BUDGET

@@ -21,16 +21,16 @@ process while you are still producing rows.
 
 What is resident at any moment:
 
-| Structure                      | Size                                                                                     |
-| ------------------------------ | ---------------------------------------------------------------------------------------- |
-| The row builder                | ≤ 64 Ki characters                                                                       |
-| The deflater's internal window | a few tens of KB                                                                         |
-| The zip central directory      | one record per part — tens of parts, a few KB                                            |
-| The shared-string table        | bounded by `sstBudget`; frozen when it fills. See [Writing](./writing.md#shared-strings) |
-| The style registry             | one entry per distinct `CellStyle` you registered                                        |
+| Structure                      | Size                                                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| The row builder                | ≤ 64 Ki characters                                                                                                       |
+| The deflater's internal window | a few tens of KB                                                                                                         |
+| The zip central directory      | one record per part — tens of parts, a few KB                                                                            |
+| The shared-string table        | none by default (`strings: 'inline'`); under `'auto'` bounded by `sstBudget`. See [Writing](./writing.md#shared-strings) |
+| The style registry             | one entry per distinct `CellStyle` you registered                                                                        |
 
 None of those is a function of row count. The shared-string table is the only one that could have been, which is
-why it has a budget rather than a policy of "intern everything".
+why it is off by default and budgeted when turned on.
 
 ## How the reader stays flat
 
@@ -169,9 +169,9 @@ on the way out.
 - Announce `rowCount` on `addSheet` when you know it. It enables `<dimension>` and lets the zip64 decision be
   made up front.
 - Use `onProgress` (every 5,000 rows) for the UI, and an `AbortSignal` so a user can cancel.
-- Consider `strings: 'inline'` when the data is mostly unique per cell — record ids, names, timestamps. The
-  shared-string table will not shrink the file much and costs memory and CPU to build. Excel re-shares strings the
-  first time the user saves anyway.
+- Leave `strings` on its inline default unless the data is very low-cardinality and file size matters more than
+  write speed; then `strings: 'auto'` builds a bounded table. Excel re-shares strings the first time the user
+  saves anyway.
 - Use `nodeDeflater(1)` in Node when throughput matters more than a few percent of file size.
 
 ## The zip64 caveat

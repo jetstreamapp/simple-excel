@@ -258,5 +258,67 @@
     ],
     "parityExemptions": ["Data!F", "Features!B4", "Features!B5", "Features!B6"],
     "reason": "Corpus: Google Sheets re-export of our own golden (manual round trip 2026-09-12, oracle run gsheets-on-ours). Sheets writes escape-shaped text back without protecting it (our _x005F_x0041_ became _x0041_ in its file, so Data!F reads one level too decoded - escape-sequence-mangled x14), folds the CR we escaped as _x000D_ (crlf-normalized x3) and drops the apostrophe from the 31-character sheet name (sheet-missing + sheet-unexpected); date-as-text and dst-gap-shift-1h are our writer's own conventions carried through unchanged. Every other cell, the hidden sheet and the values Sheets displays rounded (16-digit integers, max double, milliseconds) match exactly. Parity: SheetJS decodes _X0041_ and drops error values to defval. Inline-strings variant: byte-for-byte the same verdict as the shared-strings one."
+  },
+  "golden-canonical-numbers-resave-simple-excel": {
+    "allowedCategories": [
+      "cell-missing",
+      "control-chars-stripped",
+      "date-as-text",
+      "dst-gap-shift-1h",
+      "empty-string-vs-blank",
+      "escape-sequence-mangled",
+      "formula-dropped",
+      "hidden-state",
+      "number-precision",
+      "string-mismatch",
+      "temporal-mismatch",
+      "type-mismatch"
+    ],
+    "parityExemptions": [
+      "Data!F",
+      "Data!D7",
+      "Data!D16",
+      "Data!D25",
+      "Data!J11",
+      "Data!J21",
+      "Data!J31",
+      "Data!M3",
+      "Data!M15",
+      "Data!M27",
+      "Features!B4",
+      "Features!B5",
+      "Features!B6"
+    ],
+    "reason": "Corpus: Apple Numbers 14.4 export of our own golden (manual round trip 2026-09-12, oracle run numbers-on-ours). Numbers' export writes time-only values on day 1 and 1900-02-28 as serial 60 (temporal-mismatch x40 - its day-0 is 1899-12-31 with no leap-day rule), drops empty strings (empty-string-vs-blank), rounds to 15 significant digits (number-precision), writes the max double as <v>inf</v> (type-mismatch x3, EC-NUMBERS-INF-VALUE), replaces error cells and their formulas with nothing (formula-dropped, cell-missing), makes the hidden sheet visible (hidden-state), and truncates strings at DEL (string-mismatch x4 on E5/E14/E23-style cells); date-as-text and dst-gap-shift-1h are our writer's conventions carried through. Shared-string source specifically: Numbers truncates shared strings at the first control character (a\\u0001b -> a: string-mismatch x22, control-chars-stripped x4) and mis-decodes protected escapes in them (_x005F_x0041_ -> _x005FA: escape-sequence-mangled x14), which it does NOT do for inline strings - the reason strings: 'inline' became the writer default (ADR-001 addendum). Parity: SheetJS decodes _X0041_, collapses the CR that Numbers kept as _x000D_, refuses serial 60 (Numbers' 1900-02-28) and returns the raw number, reads Numbers' <v>inf</v> as NaN where we keep the text 'inf', and drops error values to defval."
+  },
+  "golden-canonical-numbers-resave-simple-excel-inline": {
+    "allowedCategories": [
+      "cell-missing",
+      "date-as-text",
+      "dst-gap-shift-1h",
+      "empty-string-vs-blank",
+      "formula-dropped",
+      "hidden-state",
+      "number-precision",
+      "string-mismatch",
+      "temporal-mismatch",
+      "type-mismatch"
+    ],
+    "parityExemptions": [
+      "Data!F",
+      "Data!D7",
+      "Data!D16",
+      "Data!D25",
+      "Data!J11",
+      "Data!J21",
+      "Data!J31",
+      "Data!M3",
+      "Data!M15",
+      "Data!M27",
+      "Features!B4",
+      "Features!B5",
+      "Features!B6"
+    ],
+    "reason": "Corpus: Apple Numbers 14.4 export of our own golden (manual round trip 2026-09-12, oracle run numbers-on-ours). Numbers' export writes time-only values on day 1 and 1900-02-28 as serial 60 (temporal-mismatch x40 - its day-0 is 1899-12-31 with no leap-day rule), drops empty strings (empty-string-vs-blank), rounds to 15 significant digits (number-precision), writes the max double as <v>inf</v> (type-mismatch x3, EC-NUMBERS-INF-VALUE), replaces error cells and their formulas with nothing (formula-dropped, cell-missing), makes the hidden sheet visible (hidden-state), and truncates strings at DEL (string-mismatch x4 on E5/E14/E23-style cells); date-as-text and dst-gap-shift-1h are our writer's conventions carried through. Inline-string source: control characters and escapes survive (only the DEL truncation remains), so this file is the cleaner Numbers round trip. Parity: SheetJS decodes _X0041_, collapses the CR that Numbers kept as _x000D_, refuses serial 60 (Numbers' 1900-02-28) and returns the raw number, reads Numbers' <v>inf</v> as NaN where we keep the text 'inf', and drops error values to defval."
   }
 }

@@ -688,6 +688,30 @@
     "status": "verified (user golden + manual check)"
   },
   {
+    "id": "EC-NUMBERS-SST-CONTROL-CHARS-TRUNCATE",
+    "family": "Numbers",
+    "symptom": "Apple Numbers truncates a SHARED string at its first control character (a<U+0001>b imports as 'a', 'bell<U+0007>' as 'bell') while the same values in INLINE strings import intact; DEL (U+007F) truncates in both shapes ('del<U+007F>x' -> 'del').",
+    "seenIn": "golden-canonical-numbers-resave-simple-excel (shared strings: 22 truncated cells) vs -inline (only the DEL cells), Numbers 14.4, 2026-09-12.",
+    "expected": "Write inline strings for Numbers-safe output (simple-excel's default since the ADR-001 addendum); document that DEL does not survive Numbers at all.",
+    "status": "verified (user goldens)"
+  },
+  {
+    "id": "EC-NUMBERS-SST-ESCAPES-MISDECODED",
+    "family": "Numbers",
+    "symptom": "Apple Numbers decodes _xHHHH_ escapes in SHARED strings without honouring the _x005F_ protection: the correctly written _x005F_x0041_ (literal _x0041_) imports as 'A' and _x005F_x005F_x005F_x0041_ as '_x005FA'. The same text in INLINE strings imports correctly.",
+    "seenIn": "golden-canonical-numbers-resave-simple-excel (escape-sequence-mangled x14) vs -inline (none), Numbers 14.4, 2026-09-12.",
+    "expected": "Write inline strings when Numbers is a target; nothing else a writer can do, the shared-string encoding is Excel's own.",
+    "status": "verified (user goldens)"
+  },
+  {
+    "id": "EC-NUMBERS-EXPORT-DATE-OFFSETS",
+    "family": "Numbers",
+    "symptom": "Numbers' xlsx export counts serials from 1899-12-31 with no fake leap day: 1900-02-28 is written as serial 60 (Excel reads 1900-03-01) and time-only values land on serial 1.x (Excel reads them on 1900-01-01). Dates from 1900-03-01 onward are unaffected.",
+    "seenIn": "golden-canonical-numbers-resave-simple-excel (temporal-mismatch x40 across the Date and Time columns); the earlier ExcelJS-sourced Numbers golden shows the same.",
+    "expected": "Document; a January/February-1900 date or a time-only value round-tripped through Numbers comes back a day late in Excel.",
+    "status": "verified (user goldens)"
+  },
+  {
     "id": "EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS",
     "family": "Dates",
     "symptom": "Excel re-saving a library-written workbook preserves the library's serials exactly (ExcelJS's +7h UTC shift, office-kit's negative time serials), so a bad writer's dates cannot be 'fixed' by an Excel round trip.",
