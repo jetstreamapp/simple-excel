@@ -203,6 +203,16 @@ describe('XmlTokenizer', () => {
     expect(tokenize('<t>&amp;lt;</t>')).toEqual(['start:t depth=1', 'text:"&lt;"', 'end:t']);
   });
 
+  it('EC-CRLF-NORMALIZED: raw line ends normalize, character references do not', () => {
+    // XML 1.0 2.11 runs before parsing, so a raw CRLF or a lone CR is one LF wherever it appears; a carriage return
+    // the producer meant to keep arrives as `&#13;` (or `_x000D_`, decoded a layer above) and survives.
+    expect(tokenize('<t>a\r\nb\rc\nd</t>')).toEqual(['start:t depth=1', `text:${JSON.stringify('a\nb\nc\nd')}`, 'end:t']);
+    expect(tokenize('<t>a&#13;\r\nb</t>')).toEqual(['start:t depth=1', `text:${JSON.stringify('a\r\nb')}`, 'end:t']);
+    // A CRLF split across two pushes is still one line end.
+    expect(collect(['<t>a\r', '\nb</t>'])).toEqual(['start:t depth=1', `text:${JSON.stringify('a\nb')}`, 'end:t']);
+    expect(collect(['<t>a\r', 'b</t>'])).toEqual(['start:t depth=1', `text:${JSON.stringify('a\nb')}`, 'end:t']);
+  });
+
   it('leaves references it does not recognize verbatim', () => {
     expect(tokenize('<t>&xxe; &foo &#zz; &#; 100% &</t>')).toEqual([
       'start:t depth=1',

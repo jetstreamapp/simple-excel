@@ -67,10 +67,15 @@ export function fixturePolicies(fixture: Fixture): Set<string> {
 export interface CorpusPolicy {
   /** Mismatch categories this fixture is allowed to produce against its expected dump, with the reason. */
   allowedCategories?: string[];
-  /** `Sheet!A1` cells excluded from the SheetJS parity comparison (documented SheetJS quirks). */
+  /**
+   * Cells excluded from the SheetJS parity comparison (documented SheetJS quirks), each `Sheet!A1` or, when a whole
+   * column of the canonical dataset probes the same quirk, `Sheet!A`.
+   */
   parityExemptions?: string[];
   /** Skip the fixture entirely (reason required). */
   skip?: string;
+  /** Skip only the parity comparison, for a file SheetJS cannot open (reason required). */
+  paritySkip?: string;
   reason?: string;
 }
 

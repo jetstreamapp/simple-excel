@@ -4,19 +4,8 @@
     "host": "MacBook-Air.local",
     "label": "phase-b-writer",
     "node": "v24.18.0",
-    "readers": [
-      "validator",
-      "sheetjs",
-      "openpyxl",
-      "calamine",
-      "libreoffice",
-      "excel"
-    ],
-    "fixtures": [
-      "golden-canonical-simple-excel",
-      "golden-canonical-simple-excel-inline",
-      "golden-canonical-simple-excel-zip64"
-    ]
+    "readers": ["validator", "sheetjs", "openpyxl", "calamine", "libreoffice", "excel"],
+    "fixtures": ["golden-canonical-simple-excel", "golden-canonical-simple-excel-inline", "golden-canonical-simple-excel-zip64"]
   },
   "results": [
     {
@@ -137,12 +126,7 @@
       "status": "PASS",
       "ms": 1317,
       "workbookName": "canonical.xlsx",
-      "sheets": [
-        "Data",
-        "Features",
-        "It's a very long sheet name 001",
-        "Hidden"
-      ],
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
       "cells": [
         {
           "ref": "A2",
@@ -359,12 +343,7 @@
       "status": "PASS",
       "ms": 1572,
       "workbookName": "canonical.inline.xlsx",
-      "sheets": [
-        "Data",
-        "Features",
-        "It's a very long sheet name 001",
-        "Hidden"
-      ],
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
       "cells": [
         {
           "ref": "A2",
@@ -560,12 +539,7 @@
       "status": "PASS",
       "ms": 1114,
       "workbookName": "canonical.zip64.xlsx",
-      "sheets": [
-        "Data",
-        "Features",
-        "It's a very long sheet name 001",
-        "Hidden"
-      ],
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
       "cells": [
         {
           "ref": "A2",

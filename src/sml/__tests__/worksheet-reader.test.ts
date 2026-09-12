@@ -245,11 +245,36 @@ describe('cell values', () => {
     expect(cells).toEqual([['ab', 'xy', '_X0041_', '_x0041_', '_xZZZZ_', 'crlf\rline2']]);
   });
 
-  it('EC-CRLF-NORMALIZED keeps a raw CR in the XML instead of folding it to LF', async () => {
+  it('EC-CRLF-NORMALIZED folds a raw CR to LF and keeps an escaped one', async () => {
+    // XML line-end normalization is why Excel writes a carriage return as `_x000D_`: a raw one cannot survive a
+    // parser, so a file that means CRLF has to escape it. SheetJS, office-kit and Excel all read these two cells
+    // this way (05 matrix, D6/D7 of the Excel re-saves).
     const cells = await readCells(
-      sheet('<row r="1"><c r="A1" t="inlineStr"><is><t xml:space="preserve">line1\r\nline2</t></is></c></row>'),
+      sheet(
+        '<row r="1">' +
+          '<c r="A1" t="inlineStr"><is><t xml:space="preserve">line1\r\nline2</t></is></c>' +
+          '<c r="B1" t="inlineStr"><is><t xml:space="preserve">crlf_x000D_\r\nline2</t></is></c>' +
+          '<c r="C1" t="inlineStr"><is><t xml:space="preserve">old\rmac</t></is></c>' +
+          '</row>',
+      ),
     );
-    expect(cells).toEqual([['line1\r\nline2']]);
+    expect(cells).toEqual([['line1\nline2', 'crlf\r\nline2', 'old\nmac']]);
+  });
+
+  it('EC-CRLF-NORMALIZED folds a CRLF split across two decoded chunks', async () => {
+    const xml = sheet('<row r="1"><c r="A1" t="inlineStr"><is><t xml:space="preserve">line1\r\nline2</t></is></c></row>');
+    const splitInsideLineEnd = xml.indexOf('\r\n') + 1;
+    const rows = await collect(
+      readWorksheetRows(
+        (async function* (): AsyncGenerator<Uint8Array> {
+          yield encoder.encode(xml.slice(0, splitInsideLineEnd));
+          yield encoder.encode(xml.slice(splitInsideLineEnd));
+        })(),
+        context(),
+        {},
+      ),
+    );
+    expect(rows.map(row => row.cells)).toEqual([['line1\nline2']]);
   });
 });
 

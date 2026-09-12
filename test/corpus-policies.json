@@ -1,5 +1,241 @@
 {
-  "$comment": "Per-fixture allowances for the corpus and parity suites. Every entry needs a reason; the goal is an empty file.",
-  "golden-sfdc-report-details": { "skip": "no expected dump: report exports are read for smoke only (see corpus.test.ts)" },
-  "golden-sfdc-report-formatted": { "skip": "no expected dump: report exports are read for smoke only (see corpus.test.ts)" }
+  "$comment": "Per-fixture allowances for the corpus and parity suites. Every entry needs a reason; the goal is an empty file. `allowedCategories` are mismatch categories against the fixture's expected dump that the file itself carries (cross-checked against the sheetjs and office-kit oracle dumps of the same bytes); `parityExemptions` are cells (`Sheet!A1`) or whole probe columns (`Sheet!A`) where SheetJS reports something Excel does not.",
+  "jetstream-records-product2-csv": {
+    "skip": "not a workbook: csv bytes are papaparse's input, and openWorkbook rejects them with NOT_XLSX by design (ADR-007)"
+  },
+  "golden-canonical-sheetjs": {
+    "allowedCategories": ["date-as-serial", "dst-gap-shift-1h", "escape-sequence-mangled", "temporal-mismatch"],
+    "parityExemptions": [
+      "Data!N",
+      "Data!F",
+      "Data!D7",
+      "Data!D16",
+      "Data!D25",
+      "Data!M3",
+      "Data!M15",
+      "Data!M27",
+      "Features!B4",
+      "Features!B5",
+      "Features!B6"
+    ],
+    "reason": "Corpus: SheetJS writes time-only values as negative serials (EC-DATE-TIME-ONLY-NEGATIVE-SERIAL; Excel itself shows -0.4757 for N2 in 05), 1899-12-31 as serial 0 and 1900-02-28 as the fake leap day 60 (EC-DATE-PRE-1900, 05 M2/M3), leaves a literal _x0041_ unescaped (EC-XML-ESCAPE-LITERAL) and stores the 2024-03-10 02:30 DST gap an hour late. Parity: reading its own file back SheetJS re-derives those times, decodes _X0041_ and _x005F_x0041_ that Excel leaves alone, collapses a decoded CR (EC-CRLF-NORMALIZED) and drops error values to defval."
+  },
+  "golden-canonical-exceljs": {
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "escape-sequence-mangled",
+      "string-mismatch",
+      "temporal-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Data!M3", "Data!M15", "Data!M27", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: ExcelJS strips control characters including DEL (EC-XML-CONTROL-CHARS; the string-mismatch cells are del\\u007fx), writes dates from UTC fields so every one carries the host offset (05 M2/M4), emits a raw CR that XML line-end normalization folds (EC-CRLF-NORMALIZED) and leaves _x0041_ unescaped. Parity: SheetJS refuses serial 60 (returns the number), decodes _X0041_ and drops error values to defval."
+  },
+  "golden-canonical-write-excel-file": {
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "empty-string-vs-blank",
+      "error-as-text",
+      "error-mismatch",
+      "escape-sequence-mangled",
+      "sheet-missing",
+      "string-mismatch",
+      "temporal-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Data!M3", "Data!M15", "Data!M27"],
+    "reason": "Corpus: write-excel-file strips control characters, writes UTC-field dates, writes '' as a blank cell (EC-BLANK-VS-EMPTY-STRING), writes formulas and error values as text, and has no hidden-sheet support so the Hidden sheet is absent (05 'goldens missing features'); the sheetjs and office-kit dumps report the same set. Parity: SheetJS refuses serial 60 and decodes _X0041_."
+  },
+  "golden-canonical-openpyxl": {
+    "allowedCategories": [
+      "cell-missing",
+      "crlf-normalized",
+      "empty-string-vs-blank",
+      "escape-sequence-mangled",
+      "formula-dropped",
+      "temporal-mismatch",
+      "type-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Data!J11", "Data!J21", "Data!J31", "Features!B6"],
+    "reason": "Corpus: openpyxl refuses control characters (EC-CONTROL-CHARS-REJECTED) and turns formula-like text into formulas it never caches (EC-FORMULA-LIKE-TEXT-WRITTEN-AS-FORMULA; Excel repairs the file), so those cells are empty for every reader; it rounds the max double to 1.797693134862316e+308, which overflows to Infinity, and we keep the file's text where SheetJS drops the cell (EC-NUM-MAX-DOUBLE); it writes '' as an empty inlineStr cell, which we read as blank while SheetJS and office-kit read '' (EC-BLANK-VS-EMPTY-STRING, immaterial to Jetstream's defval:''). Parity: SheetJS decodes _X0041_, drops the overflowing number and drops error values to defval."
+  },
+  "golden-canonical-xlsxwriter": {
+    "allowedCategories": ["empty-string-vs-blank", "error-as-text", "escape-sequence-mangled", "temporal-mismatch", "type-mismatch"],
+    "parityExemptions": ["Data!F", "Data!J11", "Data!J21", "Data!J31", "Data!D7", "Data!D16", "Data!D25", "Features!B4", "Features!B5"],
+    "reason": "Corpus: XlsxWriter writes '' as a blank cell, writes error values as text, escapes the underscore of an escape-shaped run only once (EC-XML-ESCAPE-OVERLAP; every reader gets _x005FA), writes 1899-12-31 as serial 0 and 1900-01-01T12:00 as serial 0.5 (EC-DATE-PRE-1900), and rounds the max double past MAX_VALUE. Parity: SheetJS decodes _X0041_, drops the overflowing number, collapses a decoded CR and drops error values to defval."
+  },
+  "golden-canonical-libreoffice-resave": {
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "empty-string-vs-blank",
+      "escape-sequence-mangled",
+      "number-precision",
+      "string-mismatch",
+      "temporal-mismatch",
+      "truncated-differently"
+    ],
+    "parityExemptions": ["Data!M3", "Data!M15", "Data!M27", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: LibreOffice's re-save of the ExcelJS golden keeps its UTC-field dates and stripped control characters, rounds the 17-digit integer to 1.23456789012346e+16, truncates the 40,000-character cell at 32,767 and writes '' as blank; the sheetjs and office-kit dumps report the same categories on the same cells. Parity: SheetJS refuses serial 60 and drops error values to defval."
+  },
+  "golden-canonical-libreoffice-from-csv": {
+    "allowedCategories": [
+      "boolean-as-text-or-number",
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-as-text",
+      "empty-string-vs-blank",
+      "error-mismatch",
+      "escape-sequence-mangled",
+      "number-precision",
+      "temporal-mismatch",
+      "text-as-number",
+      "truncated-differently"
+    ],
+    "parityExemptions": ["canonical!M3", "canonical!M15", "canonical!M27", "canonical!G8", "canonical!G17", "canonical!G26"],
+    "reason": "Corpus: the ground truth is the CSV import dump and every deviation is LibreOffice's typing heuristic - leading zeros and +1 become numbers, TRUE/FALSE stay text, times stay text, =cmd|calc becomes a formula (EC-FORMULA-LIKE-TEXT-WRITTEN-AS-FORMULA, Excel repairs it) - and all three oracle readers report the same categories (05 run csv-imports). Parity: SheetJS refuses serial 60 and drops the cached #VALUE! of that formula to defval."
+  },
+  "golden-canonical-office-kit": {
+    "allowedCategories": ["date-as-serial", "date-tz-offset-shift", "escape-sequence-mangled", "formula-dropped", "temporal-mismatch"],
+    "parityExemptions": ["Data!N", "Data!F", "Data!D7", "Data!D16", "Data!D25", "Features!B6"],
+    "reason": "Corpus: office-kit writes dates from UTC fields and time-only values as negative serials (EC-DATE-TIME-ONLY-NEGATIVE-SERIAL, doc 10), escapes an escape-shaped run only once (EC-XML-ESCAPE-OVERLAP) and writes one formula without a cached value. Parity: SheetJS turns those negative serials back into times, decodes _X0041_, collapses a decoded CR and drops the error value to defval."
+  },
+  "edge-sst-index-out-of-range": {
+    "allowedCategories": ["string-mismatch"],
+    "reason": "the fixture deliberately points three cells past the end of a two-entry shared-string table; Excel opens the file with those cells blank and the catalog asks readers to match it (EC-SST-INDEX-OUT-OF-RANGE), while SheetJS and office-kit refuse the file outright"
+  },
+  "edge-date1904": {
+    "allowedCategories": ["temporal-mismatch"],
+    "reason": "the fixture is the baseline workbook with only workbookPr/@date1904 flipped, so its one date serial means four years later under the 1904 epoch; the shared expected-minimal dump still says 2024-02-29 and SheetJS reads 2028-03-01 as we do (EC-DATE-1904)"
+  },
+  "golden-canonical-excel-365-from-csv": {
+    "allowedCategories": [
+      "cell-missing",
+      "control-chars-stripped",
+      "date-as-text",
+      "empty-string-vs-blank",
+      "number-as-text",
+      "number-precision",
+      "string-mismatch",
+      "text-as-number",
+      "truncated-differently",
+      "unexpected-cell"
+    ],
+    "parityExemptions": ["canonical!F"],
+    "reason": "Corpus: Excel's CSV import read the UTF-8 sample as mojibake (EC-CSV-NO-BOM-MOJIBAKE), evaluated =SUM(A1) (EC-EXCEL-CSV-FORMULA-EVAL), retyped leading zeros and dates and split the embedded newlines into two extra rows, which is what cell-missing and unexpected-cell count; the sheetjs and office-kit dumps report the same (05 run csv-imports). Parity: SheetJS decodes _X0041_."
+  },
+  "golden-canonical-excel-365-resave": {
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "escape-sequence-mangled",
+      "string-mismatch",
+      "temporal-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Data!M3", "Data!M15", "Data!M27", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: Excel's re-save preserves what ExcelJS wrote - stripped control characters, UTC-field dates, unescaped _x0041_ - and normalizes the raw CR to LF on the way (EC-CRLF-NORMALIZED). Parity: SheetJS refuses serial 60, decodes _X0041_ and drops error values to defval."
+  },
+  "golden-canonical-excel-365-strict": {
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "escape-sequence-mangled",
+      "string-mismatch",
+      "temporal-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: the Strict save carries the same ExcelJS deviations as the Transitional one (EC-STRICT-NAMESPACES changes only the namespaces, which we match by suffix). Parity: SheetJS decodes _X0041_ and drops error values to defval."
+  },
+  "golden-canonical-excel-365-resave-office-kit": {
+    "allowedCategories": ["date-as-serial", "date-tz-offset-shift", "escape-sequence-mangled", "temporal-mismatch"],
+    "parityExemptions": ["Data!N", "Data!F", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: Excel preserved office-kit's shifted and negative serials rather than repairing them (EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS), so the file still means what office-kit wrote. Parity: SheetJS turns the negative serials back into times, decodes _X0041_ and drops error values to defval."
+  },
+  "golden-canonical-gsheets-resave": {
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "error-as-text",
+      "escape-sequence-mangled",
+      "sheet-missing",
+      "sheet-unexpected",
+      "string-mismatch",
+      "temporal-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Data!M3", "Data!M15", "Data!M27", "Features!B6"],
+    "reason": "Corpus: Google Sheets dropped the apostrophe from the long sheet name (the sheet-missing and sheet-unexpected pair, also reported by office-kit), fully decoded _x005F_x0041_ on import, wrote cached errors as text, and kept ExcelJS's UTC-field dates and stripped control characters. Parity: SheetJS refuses serial 60, decodes _X0041_ and drops the error value to defval."
+  },
+  "golden-canonical-numbers": {
+    "allowedCategories": [
+      "cell-missing",
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-tz-offset-shift",
+      "empty-string-vs-blank",
+      "escape-sequence-mangled",
+      "formula-dropped",
+      "hidden-state",
+      "number-precision",
+      "string-mismatch",
+      "temporal-mismatch",
+      "type-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Data!M3", "Data!M15", "Data!M27", "Data!J11", "Data!J21", "Data!J31"],
+    "reason": "Corpus: Numbers replaced the unsupported formulas with their cached value or nothing (EC-NUMBERS-FORMULAS-REPLACED), dropped the hidden state of the Hidden sheet (EC-HIDDEN-SHEETS), wrote the max double as an inf literal, which we surface as the file's text where SheetJS drops the cell (EC-NUMBERS-INF-VALUE, the file Excel repairs), and kept ExcelJS's other deviations. Parity: SheetJS refuses serial 60, decodes _X0041_ and drops the inf cells."
+  },
+  "golden-sfdc-report-details": {
+    "parityExemptions": ["xlsx-engine canonical!H"],
+    "reason": "no expected dump: the report export is a corpus smoke read. Parity: its long-text column embeds the escape-literal and CRLF probes, which SheetJS decodes and collapses (EC-XML-ESCAPE-CASE, EC-CRLF-NORMALIZED)"
+  },
+  "golden-sfdc-report-formatted": {
+    "parityExemptions": ["xlsx-engine canonical!J"],
+    "reason": "no expected dump: the report export is a corpus smoke read. Parity: its long-text column embeds the escape-literal and CRLF probes, which SheetJS decodes and collapses (EC-XML-ESCAPE-CASE, EC-CRLF-NORMALIZED)"
+  },
+  "golden-canonical-gsheets-from-csv": {
+    "allowedCategories": [
+      "cell-missing",
+      "crlf-normalized",
+      "empty-string-vs-blank",
+      "escape-sequence-mangled",
+      "number-as-text",
+      "number-precision",
+      "string-mismatch",
+      "temporal-mismatch",
+      "text-as-number",
+      "whitespace-trimmed"
+    ],
+    "parityExemptions": ["canonical.csv!F", "canonical.csv!M3", "canonical.csv!M15", "canonical.csv!M27"],
+    "reason": "Corpus: Google Sheets' CSV import trims leading and trailing spaces, retypes numbers and dates, drops the control-character cells and decodes _x0041_; all three oracle readers report the same categories (05 run csv-imports). Parity: SheetJS refuses serial 60 and decodes _X0041_."
+  },
+  "golden-canonical-excel-365-resave-sheetjs": {
+    "allowedCategories": ["date-as-serial", "dst-gap-shift-1h", "escape-sequence-mangled", "temporal-mismatch"],
+    "parityExemptions": ["Data!N", "Data!F", "Data!M3", "Data!M15", "Data!M27", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: Excel's re-save preserved SheetJS's negative time serials, serial 0 and serial 60, so the file still carries them (EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS). Parity: SheetJS re-derives its own times from the negative serials, decodes _X0041_ and drops error values to defval."
+  },
+  "golden-canonical-excel-365-1904": {
+    "allowedCategories": ["control-chars-stripped", "crlf-normalized", "escape-sequence-mangled", "string-mismatch", "temporal-mismatch"],
+    "parityExemptions": ["Data!F", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: switching the workbook to the 1904 epoch left every serial untouched, so all 90 temporal cells mean four years and a day later than the ground truth, and SheetJS reads the same values (EC-DATE-1904). Parity: SheetJS decodes _X0041_ and drops error values to defval."
+  },
+  "golden-canonical-simple-excel": {
+    "allowedCategories": ["date-as-text", "dst-gap-shift-1h"],
+    "parityExemptions": ["Data!F", "Data!D7", "Data!D16", "Data!D25", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "Corpus: our own writer stores pre-1900 dates as ISO text (ADR-003) and a Date in the 2024-03-10 DST gap an hour late; sheetjs, openpyxl and calamine report exactly these two categories on the same file (oracle run 2026-09-12-phase-b-writer). Parity: SheetJS decodes _X0041_, collapses the CR we escaped as _x000D_ and drops error values to defval."
+  },
+  "golden-canonical-simple-excel-inline": {
+    "allowedCategories": ["date-as-text", "dst-gap-shift-1h"],
+    "parityExemptions": ["Data!F", "Data!D7", "Data!D16", "Data!D25", "Features!B4", "Features!B5", "Features!B6"],
+    "reason": "the same workbook as golden-canonical-simple-excel with every string inline (EC-SST-ABSENT-INLINE-ONLY), so it carries the same two writer conventions and meets the same SheetJS quirks"
+  },
+  "golden-canonical-simple-excel-zip64": {
+    "allowedCategories": ["date-as-text", "dst-gap-shift-1h"],
+    "paritySkip": "SheetJS 0.20.3 cannot open a zip64 archive (\"Unsupported ZIP file\"), so there is nothing to compare against; the corpus read of the same file still runs",
+    "reason": "the same workbook as golden-canonical-simple-excel with zip64 headers (EC-ZIP64-SMALL), so it carries the same two writer conventions"
+  }
 }

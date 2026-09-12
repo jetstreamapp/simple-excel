@@ -45,6 +45,9 @@ const COMMENT_OPEN = '<!--';
 const COMMENT_CLOSE = '-->';
 const PROCESSING_INSTRUCTION_CLOSE = '?>';
 
+/** A carriage return, alone or leading a line feed: what XML line-end normalization collapses. */
+const CARRIAGE_RETURN_PATTERN = /\r\n?/g;
+
 const DEFAULT_MAX_DEPTH = 256;
 const DEFAULT_MAX_TEXT_LENGTH = 64 * 1024 * 1024;
 /** A single tag this long is a broken (or hostile) file, not markup any spreadsheet produced. */
@@ -231,6 +234,8 @@ export class XmlTokenizer {
   private mode: number = MODE_TEXT;
   private needMoreInput = false;
   private sawFirstChunk = false;
+  /** The previous chunk ended with a carriage return, so a line feed opening this one belongs to that line end. */
+  private sawTrailingCarriageReturn = false;
   /** The chunk the running `start` callback's tag came from, with the bounds of that tag's attribute list. */
   private attributeSource = '';
   private attributeStart = 0;
@@ -256,8 +261,25 @@ export class XmlTokenizer {
         return;
       }
     }
+    text = this.normalizeLineEndings(text);
+    if (text.length === 0) {
+      return;
+    }
     this.buffer = this.buffer.length === 0 ? text : this.buffer + text;
     this.scan(false);
+  }
+
+  /**
+   * XML line-end normalization (XML 1.0 2.11): a CRLF pair and a lone CR are both one LF. It runs on the raw input,
+   * before references are decoded, so a carriage return written deliberately as `&#13;` or `_x000D_` survives - which
+   * is exactly the difference between a file that meant a CRLF and one that merely contains raw CRs
+   * (EC-CRLF-NORMALIZED).
+   */
+  private normalizeLineEndings(chunk: string): string {
+    const continuesLineEnd = this.sawTrailingCarriageReturn && chunk.charCodeAt(0) === CHAR_LINE_FEED;
+    this.sawTrailingCarriageReturn = chunk.charCodeAt(chunk.length - 1) === CHAR_CARRIAGE_RETURN;
+    const text = continuesLineEnd ? chunk.slice(1) : chunk;
+    return text.indexOf('\r') < 0 ? text : text.replace(CARRIAGE_RETURN_PATTERN, '\n');
   }
 
   /** Flush trailing text and verify every element was closed. */

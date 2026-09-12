@@ -1,13 +1,6 @@
 {
   "generator": "@jetstreamapp/simple-excel (defaults: bounded shared strings, deflate, zip64 auto)",
-  "applied": [
-    "freeze",
-    "autoFilter",
-    "merges",
-    "columnWidths",
-    "hiddenSheet",
-    "numFmts"
-  ],
+  "applied": ["freeze", "autoFilter", "merges", "columnWidths", "hiddenSheet", "numFmts"],
   "skipped": [
     {
       "feature": "hyperlink",
