@@ -193,10 +193,35 @@ more than 4 KB of XML per row, so this is rare in practice.
 
 ## Numbers
 
-The performance and memory gates the library is built to (`research/06-performance-baseline.md`) are, for a
-100k × 20 mixed dataset versus SheetJS 0.20.3 with the same options: write time ≤ 1.0×, write peak memory
-≤ 0.25×, read time ≤ 1.0×, read peak memory ≤ 0.5×, first byte at the sink under 100 ms, and 1M × 20 completing
-in both Node and a Chrome module worker.
+The claim on this page is measurable, so here is the measurement. Apple M4, Node v24.18.0, 20 columns of
+Salesforce-shaped data (about 1.7 KB of text per row), rows pulled from a generator so nothing but the writer is
+resident, peak sampled every 25 ms. Run
+[`2026-09-12-macbook-air-phase-d-baseline`](https://github.com/jetstreamapp/simple-excel/tree/main/bench/results/2026-09-12-macbook-air-phase-d-baseline)
+and its `phase-d-scale` companion.
 
-_Measured results for this engine are produced in Phase D and are not published yet._ For context, the same
-harness measured SheetJS writing 100k × 20 in 10.4 s at a 2,899 MB footprint and failing outright at 1M rows.
+| Rows written        | Time   | Output | JS heap growth | Peak process RSS |
+| ------------------- | ------ | ------ | -------------- | ---------------- |
+| 100,000 (2M cells)  | 4.7 s  | 42 MB  | 43 MB          | 144 MB           |
+| 900,000 (18M cells) | 41.8 s | 384 MB | 78 MB          | 208 MB           |
+| 1,000,000           | 46.3 s | 427 MB | 75 MB          | 218 MB           |
+
+Ten times the rows, the same heap. That is the whole design in one table. Reading is the same shape: streaming
+the 1,000,000-row file back with `sheet.rows()` takes 14.5 s and grows the heap by 61 MB.
+
+For contrast, on the same machine SheetJS writes 100k × 20 in 9.4 s with a 2,896 MB peak, and throws
+`RangeError: Invalid string length` at both 1M × 20 and 18M cells. In a Chrome module worker writing to
+`collectToBlob()`, simple-excel finishes 1,000,000 × 20 in 51.7 s for +253 MB of renderer RSS; SheetJS crashes
+the renderer.
+
+The gates all of this is measured against (`research/06-performance-baseline.md`) are, for 100k × 20 versus
+SheetJS 0.20.3 with the same options: write time ≤ 1.0× (measured 0.48×), write peak memory ≤ 0.25× (0.04×),
+read time ≤ 1.0× (0.33×), read peak memory ≤ 0.5× (0.43×), first byte at the sink under 100 ms (0.4 ms), and
+1M × 20 completing in both Node and a Chrome module worker (it does). The absolute wall-clock targets in the
+build plan — 100k × 20 written in 1.2 s, read in 1.5 s — are **not** met on this dataset; 06 records the shortfall
+and where the time goes.
+
+:::caution
+Reading back a file this large needs the inflate cap raised: 1,000,000 Salesforce-shaped rows inflate to 2.19 GB
+of sheet XML, past the 1 GiB default, and `openWorkbook` refuses it with `ZIP_BOMB`. Pass
+`limits: { maxInflatedBytes: 4 * 1024 * 1024 * 1024 }` for a file that size when you trust it.
+:::

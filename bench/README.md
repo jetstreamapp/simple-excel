@@ -6,12 +6,17 @@ fails at scale — `RangeError: Invalid string length` at 958k × 10 cells, `Inv
 against the exact SheetJS call Jetstream makes today.
 
 ```bash
+npm run build                                # required once: the simple-excel adapters import dist/
 npm run bench -- -- --help
-npm run bench -- -- --engines sheetjs,exceljs,office-kit,write-excel-file --ops write,read-typed,read-raw --datasets mixed --sizes 1k,10k,100k --label baseline
-npm run bench -- -- --datasets mixed --sizes 1m,18m-cells --engines sheetjs,office-kit --ops write --runs 1 --label scale
-npm run bench -- -- --datasets strings-unique,numeric,wide --sizes 100k --engines sheetjs,office-kit --ops write,read-typed --label shapes
+npm run bench -- -- --engines sheetjs,exceljs,office-kit,write-excel-file,simple-excel,simple-excel-zlib --ops write,read-typed,read-raw --datasets mixed --sizes 1k,10k,100k --label baseline
+npm run bench -- -- --datasets mixed --sizes 1m,18m-cells --engines sheetjs,simple-excel --ops write --runs 1 --label scale
+npm run bench -- -- --datasets strings-unique,numeric,wide --sizes 100k --engines sheetjs,simple-excel --ops write,read-typed --label shapes
 npm run bench -- -- --merge results/<a>,results/<b> --label combined   # one summary + gates over several runs
 ```
+
+`npm run bench` deliberately does not build first (a `--merge` needs no build, and a stale rebuild in the
+middle of a measurement session is worse than an explicit step): the `simple-excel` adapters import
+`dist/esm/index.mjs` and `dist/esm/node.mjs`, and report `skipped: dist/ is missing` when they are absent.
 
 Everything here is pure (`node check-purity.mjs`): no `@jetstream/*` imports, so the
 folder can lift into a standalone repository. Engines resolve through pnpm's walk-up: `xlsx` from the
@@ -28,7 +33,7 @@ repo root, the rest from `node_modules`.
 | `lib/excel-limits.mjs`    | 32,767-char truncation (Jetstream's rule, applied by every writer) and the shared date format.            |
 | `lib/engines.mjs`         | Engine registry (`engines/*.mjs`).                                                                        |
 | `lib/chrome.mjs` + `web/` | Optional Chromium step (write in a module Worker, memory via `measureUserAgentSpecificMemory`).           |
-| `engines/*.mjs`           | One adapter per engine, all exposing the same interface.                                                  |
+| `engines/*.mjs`           | One adapter per engine, all exposing the same interface (`_*.mjs` is shared adapter code, not an engine). |
 | `results/`                | Committed results, one folder per run: `results.json` (machine info, options, every cell) + `summary.md`. |
 | `../.generated/bench/`    | Gitignored scratch: read fixtures, write outputs, logs, browser bundle.                                   |
 
@@ -67,19 +72,22 @@ export async function readRaw(pathOrBytes) {
 }
 // export const readRaw = null;  -> op reported as "skipped"
 // export const skipReason = '...'; -> engine reported as "skipped"
-// export async function load() { return { ...interface } } -> resolve the interface lazily (see ours.mjs)
+// export async function load() { return { ...interface } } -> resolve the interface lazily (see simple-excel.mjs)
 ```
 
-| Engine             | Version notes                                                                                                                                                                                                                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sheetjs`          | Exactly Jetstream's calls: `aoa_to_sheet(aoa, { dense: true })`, `XLSX.write(wb, { bookType: 'xlsx', bookSST: false, type: 'array', compression: rows > 10_000 })`; reads `XLSX.read(buf, { cellText: false, cellDates: true, type: 'array' })` + `sheet_to_json` with Jetstream's `dateNF`/`defval`/`rawNumbers`. |
-| `exceljs`          | `stream.xlsx.WorkbookWriter` (`useStyles: false`, `useSharedStrings: false` → inline strings; dates still get the built-in `mm-dd-yy` style) and `WorkbookReader` (`styles: 'cache'` converts dates for read-typed).                                                                                               |
-| `office-kit`       | `createWriteOnlyWorkbook(toFile(path))` + `appendRow` per row, `loadWorkbookStream(fromFile(path))` + `iterRows`/`iterValues`. See the friction notes at the top of `engines/office-kit.mjs`.                                                                                                                      |
-| `write-excel-file` | Whole-array `writeXlsxFile(data, { filePath, dateFormat })`; reads via `read-excel-file/node` (typed only, no raw mode).                                                                                                                                                                                           |
-| `ours`             | Stub: set `XLSX_ENGINE_OURS=/path/to/module.mjs` (same interface) to benchmark the in-house engine; skipped otherwise.                                                                                                                                                                                             |
+| Engine              | Version notes                                                                                                                                                                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sheetjs`           | Exactly Jetstream's calls: `aoa_to_sheet(aoa, { dense: true })`, `XLSX.write(wb, { bookType: 'xlsx', bookSST: false, type: 'array', compression: rows > 10_000 })`; reads `XLSX.read(buf, { cellText: false, cellDates: true, type: 'array' })` + `sheet_to_json` with Jetstream's `dateNF`/`defval`/`rawNumbers`.             |
+| `exceljs`           | `stream.xlsx.WorkbookWriter` (`useStyles: false`, `useSharedStrings: false` → inline strings; dates still get the built-in `mm-dd-yy` style) and `WorkbookReader` (`styles: 'cache'` converts dates for read-typed).                                                                                                           |
+| `office-kit`        | `createWriteOnlyWorkbook(toFile(path))` + `appendRow` per row, `loadWorkbookStream(fromFile(path))` + `iterRows`/`iterValues`. See the friction notes at the top of `engines/office-kit.mjs`.                                                                                                                                  |
+| `write-excel-file`  | Whole-array `writeXlsxFile(data, { filePath, dateFormat })`; reads via `read-excel-file/node` (typed only, no raw mode).                                                                                                                                                                                                       |
+| `simple-excel`      | `@jetstreamapp/simple-excel` from `dist/esm/`: `createWorkbookWriter(toFile(path))` streaming through the platform `CompressionStream('deflate-raw')` (the browser path), `writeRows` over the row iterable, `header` and `rowCount` declared; reads `openWorkbook(bytes)` + `sheet(0).toObjects()` (typed) or `rows()` (raw). |
+| `simple-excel-zlib` | The same adapter with the node entry's `nodeDeflater(1)`. The pair isolates what the compressor costs.                                                                                                                                                                                                                         |
 
 Every writer applies `lib/excel-limits.mjs` truncation (`slice(0, 32_767 - '...(truncated)'.length) + '...(truncated)'`)
-so all engines write the same cell values.
+so all engines write the same cell values. `simple-excel` is the exception in form only: its writer applies the
+identical rule and suffix internally (`cellOverflow: 'truncate'`), so the adapter does not pre-scan rows and the
+bytes still match — the cost stays inside the engine, where a caller would actually pay it.
 
 To add an engine: create `engines/<name>.mjs` with the interface above, install its dependency in
 `package.json` (never the repo root), run a 1k smoke cell, then add a row to the table above.
@@ -139,15 +147,16 @@ the baseline + scale runs together.
 ## Browser step (`lib/chrome.mjs`)
 
 ```bash
-node bench/lib/chrome.mjs --engines office-kit,sheetjs --datasets mixed --sizes 100k,1m
+node bench/lib/chrome.mjs --engines simple-excel,sheetjs --datasets mixed --sizes 100k,1m
 ```
 
-Bundles `web/worker.js` (dataset generator + office-kit streaming + SheetJS) with esbuild into
-`.generated/bench/web/worker.bundle.js`, serves `web/` on 127.0.0.1 with COOP/COEP headers, launches
-Playwright's Chromium (`npx playwright install chromium` if missing) and runs each cell in a fresh
-page + module Worker. Rows stream from the seeded generator (office-kit consumes it row by row; SheetJS
-materialises the array-of-arrays itself, as part of its cost — a resident 1M-row mixed dataset is ~4.5 GB,
-more than a renderer can hold). Output goes to a counting null sink. Memory is sampled every `--sample-ms` (100):
+Bundles `web/worker.js` (dataset generator + simple-excel from `dist/esm/index.mjs` + office-kit streaming +
+SheetJS) with esbuild into `.generated/bench/web/worker.bundle.js`, serves `web/` on 127.0.0.1 with COOP/COEP
+headers, launches Playwright's Chromium (`npx playwright install chromium` if missing) and runs each cell in a
+fresh page + module Worker. Rows stream from the seeded generator (simple-excel and office-kit consume it row by
+row; SheetJS materialises the array-of-arrays itself, as part of its cost — a resident 1M-row mixed dataset is
+~4.5 GB, more than a renderer can hold). office-kit's output goes to a counting null sink; **simple-excel writes
+to `collectToBlob()`**, the real browser download path, so its numbers include keeping the finished file. Memory is sampled every `--sample-ms` (100):
 `performance.measureUserAgentSpecificMemory()` in the page (covers the worker; `worker peak` = the
 `DedicatedWorkerGlobalScope` attribution), renderer process RSS via `ps`, and CDP `Performance.getMetrics`
 JSHeapUsedSize (page isolate only). Renderer crashes (`page.on('crash')`) and worker `error` events are
@@ -160,21 +169,27 @@ concurrent chain with a grace period), so the `agent-cluster peak` / `worker pea
 `--js-flags=--expose-gc` with a forced GC, or attaching a CDP session to the worker target for its own
 `JSHeapUsedSize`.
 
-## Latest results (2026-09-11, Apple M4 / 32 GB / Node 24.18)
+## Latest results (2026-09-12, Apple M4 / 32 GB / Node v24.18.0)
 
-| Folder                                    | What                                                                                             |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `results/2026-09-11-macbook-air-baseline` | mixed 1k/10k/100k × sheetjs, exceljs, office-kit, write-excel-file × write, read-typed, read-raw |
-| `results/2026-09-11-macbook-air-scale`    | mixed 1m + 18m-cells writes (sheetjs, office-kit) — all four `RangeError: Invalid string length` |
-| `results/2026-09-11-macbook-air-ceiling`  | mixed 250k/500k writes: office-kit ok at 250k, fails at 500k; sheetjs fails at 250k              |
-| `results/2026-09-11-macbook-air-shapes`   | strings-unique / numeric / wide at 100k (sheetjs, office-kit; write + read-typed)                |
-| `results/2026-09-11-macbook-air-combined` | `--merge` of the four above: one summary, gates evaluated across all of them                     |
-| `results/2026-09-11-macbook-air-chrome`   | Chromium step (`chrome.md` / `chrome.json`): mixed 100k + 1m writes in a module Worker           |
+| Folder                                            | What                                                                                                     |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `results/2026-09-12-macbook-air-phase-d-baseline` | mixed 1k/10k/100k × all six engines × write, read-typed, read-raw                                        |
+| `results/2026-09-12-macbook-air-phase-d-scale`    | mixed 1m + 18m-cells writes (sheetjs, simple-excel, simple-excel-zlib) — sheetjs `RangeError` on both    |
+| `results/2026-09-12-macbook-air-phase-d-combined` | `--merge` of the two above: one summary, gates evaluated across both. This is what `research/06` renders |
+| `results/2026-09-12-macbook-air-phase-d-chrome`   | Chromium 153 module worker: simple-excel + sheetjs, mixed 100k and 1m                                    |
 
-Headline: office-kit at mixed 100k is 0.45× sheetjs write time with a 2.8 ms first byte and 0.40× the
-RSS footprint (gate asks ≤ 0.25×), read-typed at parity (1.01×) with 0.27× the memory; it survives
-`wide` 100k (10.7M cells) where sheetjs dies, but its shared-string table caps mixed data between 250k
-and 500k rows, so the 1M and 18M-cell gates fail. Verdict per engine is in `combined/summary.md`.
+Headline: simple-excel passes all seven gates on both deflate paths. At mixed 100k it writes in 4.56 s (0.48×
+sheetjs) with a 108 MB RSS footprint (0.04×) and a 0.4 ms first byte, and reads typed in 2.10 s (0.33×) at 881 MB
+(0.43×); `nodeDeflater(1)` takes the write to 3.32 s for a 20% larger file. It writes 1M × 20 in 45.8 s and the
+18M-cell shape in 40.8 s where sheetjs throws `RangeError: Invalid string length`, and completes 1M × 20 in a
+Chrome worker (51.7 s, +253 MB renderer RSS) where sheetjs crashes the renderer. The absolute wall-clock targets
+in `research/11-build-plan.md` §1 (100k written in 1.2 s, read in 1.5 s) are not met on this dataset; see
+`research/06-performance-baseline.md` for the profile and the remaining hot spot (`crc32`, 15-16% of both
+directions).
+
+Earlier runs, kept for continuity: `results/2026-09-11-macbook-air-{baseline,scale,ceiling,shapes,combined,chrome}`
+(the four candidate engines before simple-excel existed; the `ceiling` run is where office-kit's shared-string
+table gives out, between 250k and 500k rows).
 
 ## Caveats
 
@@ -185,12 +200,15 @@ and 500k rows, so the 1M and 18M-cell gates fail. Verdict per engine is in `comb
 - `--source materialized` (default) keeps the whole dataset resident in the baseline (≈ 450 MB per 100k
   mixed rows), which is the Jetstream situation but means 900k rows start from a ~4 GB baseline.
 - Timezones: SheetJS writes `Date` cells as **local wall-clock** serials; office-kit, exceljs and
-  write-excel-file write **UTC wall-clock**. The files differ by the machine's UTC offset. A replacement
-  engine needs Jetstream to shift dates (or the engine to accept a "local" epoch) to keep today's output.
+  write-excel-file write **UTC wall-clock**. The files differ by the machine's UTC offset. simple-excel
+  defaults to `dates: 'local'`, so it matches SheetJS byte for byte here and needs no shifting; `dates: 'utc'`
+  switches it to the other convention.
 - SheetJS output below 10k rows is uncompressed (Jetstream only enables compression above 10k), so its
   `output` size is ~5× the others at `1k`.
 - `read-raw` has no formatted-text mode outside SheetJS: exceljs/office-kit stringify values (dates stay
-  serial numbers).
+  serial numbers), and simple-excel streams typed array rows and counts them without stringifying. So
+  `read-raw` is only strictly comparable within a column pair, and the honest comparison is `read-typed`,
+  where every engine produces the same records.
 - office-kit's write-only workbook keeps its shared-string table resident until `finalize()` and then
   serialises it as **one JS string** (`serializeSharedStrings` → `Array.join`). With Jetstream-shaped rows
   (~1.7 KB of text each) that string passes V8's ~2^29-char limit somewhere below 1M rows, so `1m` and

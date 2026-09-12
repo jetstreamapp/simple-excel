@@ -6,9 +6,10 @@
  * write runs: in-page `measureUserAgentSpecificMemory` (covers the worker), CDP `Performance.getMetrics`
  * JSHeapUsedSize (page isolate only) and the renderer process RSS via `ps`.
  *
- *   node bench/lib/chrome.mjs --engines office-kit,sheetjs --datasets mixed --sizes 100k,1m
+ *   node bench/lib/chrome.mjs --engines simple-excel,sheetjs --datasets mixed --sizes 100k,1m
  *
- * Requires Playwright's Chromium: `npx playwright install chromium`.
+ * Requires Playwright's Chromium (`npx playwright install chromium`) and, for simple-excel, a built
+ * `dist/` (`npm run build`) because the worker imports the bundle.
  */
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -31,7 +32,7 @@ xlsx engine browser (Chromium) write benchmark
 Usage: node bench/lib/chrome.mjs [options]
 
 Options:
-  --engines <list>   office-kit,sheetjs (default: both; only these are bundled for the browser)
+  --engines <list>   simple-excel,office-kit,sheetjs (default: all three; only these are bundled for the browser)
   --datasets <list>  ${DATASET_NAMES.join(',')} (default: mixed)
   --sizes <list>     ${SIZE_NAMES.join(',')} (default: 100k,1m)
   --runs <n>         runs per cell, each in a fresh page + worker (default: 1)
@@ -45,7 +46,7 @@ Options:
 
 function parseArgs(argv) {
   const options = {
-    engines: ['office-kit', 'sheetjs'],
+    engines: ['simple-excel', 'office-kit', 'sheetjs'],
     datasets: ['mixed'],
     sizes: ['100k', '1m'],
     runs: 1,
@@ -263,7 +264,7 @@ function renderMarkdown(results) {
     `Generated ${results.createdAt}. Chromium ${results.browser.version} (Playwright ${results.browser.playwright}), ${results.browser.headless ? 'headless' : 'headed'}.`,
   );
   lines.push(
-    `${results.machine.cpuModel}, ${results.machine.totalMemGB} GB RAM. One fresh page + module Worker per run; output discarded through a counting sink.`,
+    `${results.machine.cpuModel}, ${results.machine.totalMemGB} GB RAM. One fresh page + module Worker per run. simple-excel writes to \`collectToBlob()\` (the real download path, so the finished file is held); office-kit discards bytes through a counting sink; SheetJS returns one ArrayBuffer.`,
     '',
   );
   lines.push(

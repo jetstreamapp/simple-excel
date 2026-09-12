@@ -20,7 +20,7 @@ the contract every module is built to, and is worth reading before changing anyt
 | `test/`             | Integration suites: corpus reads, golden bytes, round trips, hostile inputs, SheetJS parity, memory                                                                                    |
 | `fixtures/`         | The fixture corpus and `manifest.json` (sha256 and provenance for every file)                                                                                                          |
 | `oracle/`           | The compatibility oracle: SheetJS, office-kit, openpyxl, calamine, the Open XML SDK validator, LibreOffice, Excel                                                                      |
-| `bench/`            | The benchmark harness; this engine's adapter is `bench/engines/ours.mjs`                                                                                                               |
+| `bench/`            | The benchmark harness; this engine's adapters are `bench/engines/simple-excel.mjs` and `simple-excel-zlib.mjs`                                                                         |
 | `research/`         | Format primer, library landscape, edge-case catalog, compatibility matrix, performance baseline, reference architecture, ADRs, build plan                                              |
 | `docs/`             | This site — a Docusaurus project with its own `package-lock.json`                                                                                                                      |
 
@@ -37,7 +37,7 @@ npm run lint
 npm run format              # always run this after editing a source file
 npm run build               # esbuild bundles (esm + cjs, core + node entry) and declarations
 npm run fixtures:check      # fails on manifest sha256 drift
-npm run bench -- --engines sheetjs,ours --sizes 1k,10k,100k
+npm run build && npm run bench -- --engines sheetjs,simple-excel --sizes 1k,10k,100k
 npm run oracle -- --tag kind:golden --label <label>   # local only
 npm run research:regenerate # re-renders research 04, 05 and 06 from the committed JSON
 ```
@@ -119,7 +119,9 @@ reporting median wall time, peak RSS above baseline, output size and first-byte 
 and shaped like real exports: `mixed` (the Salesforce record shape), `wide` (107 columns), `strings-unique` (the
 shared-string worst case) and `numeric` (the XML-generation floor).
 
-Add an engine by writing an adapter in `bench/engines/`; this library's is `bench/engines/ours.mjs`.
+Add an engine by writing an adapter in `bench/engines/`; this library's are `bench/engines/simple-excel.mjs`
+(platform `CompressionStream`) and `bench/engines/simple-excel-zlib.mjs` (`nodeDeflater(1)`), which share
+`bench/engines/_simple-excel.mjs` and import `dist/`, so `npm run build` has to have run.
 
 ## Commits and releases
 

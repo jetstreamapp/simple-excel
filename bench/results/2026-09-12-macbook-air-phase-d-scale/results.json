@@ -1,0 +1,227 @@
+{
+  "label": "phase-d-scale",
+  "createdAt": "2026-09-12T18:48:09.831Z",
+  "resultsDir": "bench/results/2026-09-12-macbook-air-phase-d-scale",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "loadAvgStart": [4.49169921875, 4.72265625, 5.85009765625]
+  },
+  "engines": {
+    "sheetjs": {
+      "version": "0.20.3",
+      "supportsStreaming": false
+    },
+    "simple-excel": {
+      "version": "0.0.0",
+      "supportsStreaming": true
+    },
+    "simple-excel-zlib": {
+      "version": "0.0.0",
+      "supportsStreaming": true
+    }
+  },
+  "options": {
+    "engines": ["sheetjs", "simple-excel", "simple-excel-zlib"],
+    "ops": ["write"],
+    "datasets": ["mixed"],
+    "sizes": ["1m", "18m-cells"],
+    "runs": 1,
+    "warmup": 1,
+    "source": "materialized",
+    "label": "phase-d-scale",
+    "timeoutSeconds": 600,
+    "seed": 20260911,
+    "nodeFlags": ["--expose-gc", "--max-old-space-size=12288"],
+    "rebuildFixtures": false,
+    "merge": null,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27294:19)"
+      },
+      "durationMs": 47011.305250000005,
+      "exitCode": 0
+    },
+    {
+      "engine": "simple-excel",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 45786.970582999995,
+        "minMs": 45786.970582999995,
+        "maxMs": 45786.970582999995,
+        "runsMs": [45786.970582999995]
+      },
+      "memory": {
+        "preWarmupRssMB": 4247.3,
+        "baselineRssMB": 4556.2,
+        "peakRssMB": 4599.2,
+        "footprintMB": 352,
+        "peakRssDeltaMB": 43.1,
+        "sampledPeakRssMB": 4598.8,
+        "postRunRssMB": 3897.4,
+        "highWaterRssMB": 4599.2,
+        "highWaterBeforeWarmupMB": 4247.3,
+        "samples": 1815
+      },
+      "bytes": 447726993,
+      "firstByteMs": 0.43495800000528106,
+      "durationMs": 94599.486708,
+      "exitCode": 0
+    },
+    {
+      "engine": "simple-excel-zlib",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 32012.638708,
+        "minMs": 32012.638708,
+        "maxMs": 32012.638708,
+        "runsMs": [32012.638708]
+      },
+      "memory": {
+        "preWarmupRssMB": 4248.5,
+        "baselineRssMB": 3949.8,
+        "peakRssMB": 4430,
+        "footprintMB": 181.6,
+        "peakRssDeltaMB": 480.2,
+        "sampledPeakRssMB": 4027,
+        "postRunRssMB": 4017.9,
+        "highWaterRssMB": 4430,
+        "highWaterBeforeWarmupMB": 4248.5,
+        "samples": 1274
+      },
+      "bytes": 536142686,
+      "firstByteMs": 0.43699999999807915,
+      "durationMs": 68776.21483299999,
+      "exitCode": 0
+    },
+    {
+      "engine": "sheetjs",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "18m-cells",
+      "rows": 900000,
+      "columns": 20,
+      "cells": 18000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "error",
+      "phase": "warm-up",
+      "error": {
+        "name": "RangeError",
+        "message": "Invalid string length",
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27294:19)"
+      },
+      "durationMs": 37102.804125,
+      "exitCode": 0
+    },
+    {
+      "engine": "simple-excel",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "18m-cells",
+      "rows": 900000,
+      "columns": 20,
+      "cells": 18000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 40842.70783299999,
+        "minMs": 40842.70783299999,
+        "maxMs": 40842.70783299999,
+        "runsMs": [40842.70783299999]
+      },
+      "memory": {
+        "preWarmupRssMB": 3832,
+        "baselineRssMB": 4112.7,
+        "peakRssMB": 4156.8,
+        "footprintMB": 324.7,
+        "peakRssDeltaMB": 44,
+        "sampledPeakRssMB": 4156.5,
+        "postRunRssMB": 4128.1,
+        "highWaterRssMB": 4156.8,
+        "highWaterBeforeWarmupMB": 3832,
+        "samples": 1621
+      },
+      "bytes": 402485140,
+      "firstByteMs": 0.7053749999977299,
+      "durationMs": 84330.977292,
+      "exitCode": 0
+    },
+    {
+      "engine": "simple-excel-zlib",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "18m-cells",
+      "rows": 900000,
+      "columns": 20,
+      "cells": 18000000,
+      "runs": 1,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 29551.35475,
+        "minMs": 29551.35475,
+        "maxMs": 29551.35475,
+        "runsMs": [29551.35475]
+      },
+      "memory": {
+        "preWarmupRssMB": 3832.5,
+        "baselineRssMB": 3544.6,
+        "peakRssMB": 3958.7,
+        "footprintMB": 126.2,
+        "peakRssDeltaMB": 414.1,
+        "sampledPeakRssMB": 3636,
+        "postRunRssMB": 3625.7,
+        "highWaterRssMB": 3958.7,
+        "highWaterBeforeWarmupMB": 3832.5,
+        "samples": 1177
+      },
+      "bytes": 482013389,
+      "firstByteMs": 0.4885419999991427,
+      "durationMs": 62518.270708,
+      "exitCode": 0
+    }
+  ],
+  "loadAvgEnd": [3.32568359375, 4.0302734375, 5.1240234375],
+  "finishedAt": "2026-09-12T18:54:47.077Z"
+}

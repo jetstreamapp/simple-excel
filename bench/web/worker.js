@@ -9,13 +9,20 @@
  *                            { type: 'result', runId, ok: false, error: { name, message } }
  *
  * Rows are pulled lazily from the seeded generator (a materialised 1M-row mixed dataset is ~4.5 GB,
- * more than a renderer can hold, and would fail both engines before they run). office-kit streams the
- * generator; SheetJS has to materialise the array-of-arrays itself, which is part of its cost. Output
- * goes to a counting null sink (bytes discarded) so the numbers are the engine's own cost without a
- * Blob/OPFS destination on top. Same row mapping as the Node adapters (truncation, date style).
+ * more than a renderer can hold, and would fail every engine before it runs). simple-excel and
+ * office-kit stream the generator; SheetJS has to materialise the array-of-arrays itself, which is part
+ * of its cost. Same row mapping as the Node adapters (truncation, date style).
+ *
+ * The sinks differ deliberately. office-kit writes to a counting null sink (bytes discarded), which is
+ * the engine's cost with no destination on top; simple-excel writes to `collectToBlob()`, the real
+ * browser download path, where chunks are folded into sub-Blobs Chromium can page out to disk. Our
+ * numbers therefore include keeping the finished file, which is the pessimistic side of that comparison.
+ *
+ * Importing `../../dist/esm/index.mjs` means `npm run build` has to have run before the bundle step.
  */
 import { createWriteOnlyWorkbook } from '@office-kit/xlsx/streaming';
 import * as XLSX from 'xlsx';
+import { collectToBlob, createWorkbookWriter } from '../../dist/esm/index.mjs';
 import { createRowIterator, getDataset } from '../lib/dataset.mjs';
 import { DATE_NUMBER_FORMAT, truncateRow } from '../lib/excel-limits.mjs';
 
@@ -57,7 +64,50 @@ function toWriteOnlyRow(row) {
   return out;
 }
 
+/** Wraps a ByteSink so the harness sees when the first compressed chunk reaches the destination. */
+function probeSink(sink, onFirstByte) {
+  let sawFirstChunk = false;
+  return {
+    write(chunk) {
+      if (!sawFirstChunk) {
+        sawFirstChunk = true;
+        onFirstByte();
+      }
+      return sink.write(chunk);
+    },
+    close: () => sink.close(),
+    abort: reason => sink.abort(reason),
+  };
+}
+
+/** Feeds the generator through in `PROGRESS_EVERY_ROWS` batches so the page can report progress. */
+function* reportingRows(rowIterable, report) {
+  let rowIndex = 0;
+  for (const row of rowIterable) {
+    yield row;
+    if (++rowIndex % PROGRESS_EVERY_ROWS === 0) {
+      report(rowIndex);
+    }
+  }
+}
+
 const ENGINES = {
+  'simple-excel': async (rowIterable, columns, report, rowCount) => {
+    const startedAt = performance.now();
+    let firstByteMs = null;
+    const blobSink = collectToBlob();
+    const sink = probeSink(blobSink, () => {
+      firstByteMs = performance.now() - startedAt;
+    });
+    const workbook = createWorkbookWriter(sink);
+    const sheet = workbook.addSheet('Sheet1', { header: columns, rowCount });
+    await sheet.writeRows(reportingRows(rowIterable, report));
+    await sheet.close();
+    await workbook.close();
+    // resolving the Blob keeps the finished file alive to the end of the run, so its cost is measured
+    const blob = await blobSink.result();
+    return { bytes: blob.size, firstByteMs };
+  },
   'office-kit': async (rowIterable, columns, report) => {
     const startedAt = performance.now();
     let firstByteMs = null;

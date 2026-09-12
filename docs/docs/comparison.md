@@ -18,35 +18,46 @@ plus the benchmark runs in
 
 ## At a glance
 
-|                                             | simple-excel            | SheetJS CE                        | ExcelJS             | @office-kit/xlsx                   | write-excel-file / read-excel-file |
-| ------------------------------------------- | ----------------------- | --------------------------------- | ------------------- | ---------------------------------- | ---------------------------------- |
-| Streaming write (flat memory at 1M rows)    | yes                     | no                                | yes                 | no (buffers until `finalize()`)    | no                                 |
-| Streaming read                              | yes                     | no                                | yes                 | yes                                | no                                 |
-| Runtime dependencies                        | 0                       | 0                                 | 9                   | 3                                  | 3 each                             |
-| Bundle size (min+brotli)                    | _(measured in Phase D)_ | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
-| Maintained on npm                           | yes                     | no (fixes on the vendor CDN only) | inactive since 2023 | yes (pre-1.0)                      | yes                                |
-| Verified against Excel with a public corpus | yes                     | no                                | no                  | no (validator + fixtures in CI)    | no                                 |
-| Styles                                      | write                   | Pro only                          | yes                 | yes                                | basic, write only                  |
-| Formulas, charts, pivots, editing           | no                      | partial                           | partial             | yes                                | no                                 |
-| Legacy formats (.xls, .xlsb, .ods, CSV)     | no, detected and named  | yes, silently                     | CSV only            | no, every CFB reported "encrypted" | no                                 |
+|                                             | simple-excel           | SheetJS CE                        | ExcelJS             | @office-kit/xlsx                   | write-excel-file / read-excel-file |
+| ------------------------------------------- | ---------------------- | --------------------------------- | ------------------- | ---------------------------------- | ---------------------------------- |
+| Streaming write (flat memory at 1M rows)    | yes                    | no                                | yes                 | no (buffers until `finalize()`)    | no                                 |
+| Streaming read                              | yes                    | no                                | yes                 | yes                                | no                                 |
+| Runtime dependencies                        | 0                      | 0                                 | 9                   | 3                                  | 3 each                             |
+| Bundle size (min+brotli)                    | 24.3 KB                | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
+| Maintained on npm                           | yes                    | no (fixes on the vendor CDN only) | inactive since 2023 | yes (pre-1.0)                      | yes                                |
+| Verified against Excel with a public corpus | yes                    | no                                | no                  | no (validator + fixtures in CI)    | no                                 |
+| Styles                                      | write                  | Pro only                          | yes                 | yes                                | basic, write only                  |
+| Formulas, charts, pivots, editing           | no                     | partial                           | partial             | yes                                | no                                 |
+| Legacy formats (.xls, .xlsb, .ods, CSV)     | no, detected and named | yes, silently                     | CSV only            | no, every CFB reported "encrypted" | no                                 |
 
 ## Measured performance
 
 100k rows × 20 columns of Salesforce-shaped data (ids, unicode names, decimals, booleans, dates, long text with
-newlines, 10% nulls), Node 24 on an Apple M4. "Footprint" is the peak RSS above the pre-run baseline; "first
-byte" is how long until the sink receives anything.
+newlines, 10% nulls — about 1.7 KB of text per row), Node v24.18.0 on an Apple M4, median of three runs, each
+engine in a fresh process. "Footprint" is the peak RSS above the pre-run baseline; "first byte" is how long until
+the sink receives anything. Every number below is from one run,
+[`2026-09-12-macbook-air-phase-d-baseline`](https://github.com/jetstreamapp/simple-excel/tree/main/bench/results/2026-09-12-macbook-air-phase-d-baseline),
+plus its `phase-d-scale` companion for the 1M column.
 
-| Engine                  | Write time              | Write footprint         | Read time               | Read footprint          | 1M × 20 write           | First byte              |
-| ----------------------- | ----------------------- | ----------------------- | ----------------------- | ----------------------- | ----------------------- | ----------------------- |
-| SheetJS 0.20.3          | 10.36 s                 | 2,899 MB                | 6.50 s                  | 1,934 MB                | `RangeError`            | n/a                     |
-| ExcelJS 4.4.0           | 2.95 s                  | 349 MB                  | 9.94 s                  | 209 MB                  | not run                 | 1.90 s                  |
-| @office-kit/xlsx 0.11.0 | 4.62 s                  | 1,158 MB                | 6.55 s                  | 522 MB                  | `RangeError`            | 2.8 ms                  |
-| write-excel-file 2.3.10 | 3.68 s                  | 1,161 MB                | 8.93 s                  | 4,787 MB                | not run                 | n/a                     |
-| **simple-excel**        | _(measured in Phase D)_ | _(measured in Phase D)_ | _(measured in Phase D)_ | _(measured in Phase D)_ | _(measured in Phase D)_ | _(measured in Phase D)_ |
+| Engine                  | Write time | Write footprint | Read time  | Read footprint | 1M × 20 write | First byte |
+| ----------------------- | ---------- | --------------- | ---------- | -------------- | ------------- | ---------- |
+| SheetJS 0.20.3          | 9.43 s     | 2,896 MB        | 6.44 s     | 2,037 MB       | `RangeError`  | n/a        |
+| ExcelJS 4.4.0           | 2.52 s     | 317 MB          | 11.07 s    | 178 MB         | not run       | 1.62 s     |
+| @office-kit/xlsx 0.11.0 | 4.70 s     | 981 MB          | 6.70 s     | 452 MB         | `RangeError`  | 2.9 ms     |
+| write-excel-file 2.3.10 | 3.62 s     | 1,117 MB        | 9.04 s     | 4,484 MB       | not run       | n/a        |
+| **simple-excel**        | **4.56 s** | **108 MB**      | **2.10 s** | **881 MB**     | **45.8 s**    | **0.4 ms** |
+
+Two footnotes on that row, in both directions. simple-excel's 881 MB read footprint is the 100,000 materialized
+records the typed read returns, not the parser: streaming the same file with `sheet.rows()` costs 1.97 s and
+75 MB. And its write time is the platform `CompressionStream`; in Node, `nodeDeflater(1)` brings it to 3.32 s for
+a file about 20% larger. The 1M × 20 write grows the JS heap by 75 MB, and the 18M-cell shape (900,000 × 20)
+completes in 40.8 s for 78 MB.
 
 The `RangeError` is `Invalid string length`: V8 refuses to build a string past about 512 MiB, and both SheetJS and
 office-kit build one — the sheet XML in SheetJS's case, the joined shared-string table in office-kit's. It is not
-a tuning problem; it is the architecture.
+a tuning problem; it is the architecture. In a Chrome module worker the same split shows up as a crash: writing
+1,000,000 × 20 to a Blob costs simple-excel 51.7 s and +253 MB of renderer RSS, while SheetJS takes the renderer
+down with it.
 
 ## SheetJS CE
 
@@ -83,7 +94,7 @@ DOM API and genuinely streaming reader and writer classes.
 **Where it breaks.** The streaming façade sits over DOM code, and every intermediate string is not bounded:
 `Invalid string length` on write is reported even through the stream API
 ([#1868](https://github.com/exceljs/exceljs/issues/1868)), and stream reads have OOM'd on a 6M-row file
-([#355](https://github.com/exceljs/exceljs/issues/355)). Its measured first byte at 100k rows is 1.90 s, so the
+([#355](https://github.com/exceljs/exceljs/issues/355)). Its measured first byte at 100k rows is 1.62 s, so the
 "streaming" writer is doing a great deal before anything reaches the sink. Its shared-string reader once pushed
 each rich-text run as a separate entry, shifting every later index
 ([#1431](https://github.com/exceljs/exceljs/issues/1431)).
@@ -105,7 +116,7 @@ maintainer shipping same-day fixes.
 XML in memory and the zip entry is deflated and handed to the sink at `finalize()` — with `toFile()`, the output
 file is 0 bytes until the very end. Every string is interned in an unbounded shared-string table that
 `finalize()` serializes with one `Array.join`, which is the `RangeError` above. On the Salesforce-shaped dataset
-that means a 1,158 MB footprint for 100k rows.
+that means a 981 MB footprint for 100k rows.
 
 Two reader gaps also mattered here: it does not decode `_xHHHH_` escapes, so control characters and CRs come back
 as literal `_x000d_` text; and it cannot open Salesforce report exports at all, because Apache POI writes
@@ -122,8 +133,8 @@ A pair of small, focused, actively maintained libraries with a pleasant API. `re
 a schema-mapping feature that is genuinely nice.
 
 **Where they break.** Neither streams. `write-excel-file` builds XML from a fully materialized array of rows;
-`read-excel-file`'s own README scopes it to "small to medium" files, and it measured a 4,787 MB footprint reading
-100k × 20 — 2.5× SheetJS. `write-excel-file` also writes 1900-02-28 as serial 60, the leap-bug off-by-one.
+`read-excel-file`'s own README scopes it to "small to medium" files, and it measured a 4,484 MB footprint reading
+100k × 20 — 2.2× SheetJS. `write-excel-file` also writes 1900-02-28 as serial 60, the leap-bug off-by-one.
 
 **Use them** for reports of a known, modest size where the API and the schema mapping earn their place.
 

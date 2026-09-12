@@ -598,8 +598,10 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   const workbookRels = await readRels(zip, workbookPart);
   const workbookDirectory = directoryOf(workbookPart);
 
+  const sharedStringsPart = relationshipTarget(workbookRels, 'sharedStrings') ?? `${workbookDirectory}sharedStrings.xml`;
   const context: WorksheetReadContext = {
-    sharedStrings: sharedStringLoader(zip, workbookRels, workbookDirectory, limits),
+    sharedStrings: sharedStringLoader(zip, sharedStringsPart, limits),
+    hasSharedStrings: zip.has(sharedStringsPart),
     isDateByXf: await readDateStyles(zip, workbookRels, workbookDirectory),
     date1904: parsed.date1904,
     dates: options.dates ?? 'local',
@@ -637,13 +639,7 @@ async function readDateStyles(zip: ZipReader, workbookRels: readonly Relationshi
 }
 
 /** The shared-string table is parsed on the first `t="s"` cell of the first sheet that has one, then reused. */
-function sharedStringLoader(
-  zip: ZipReader,
-  workbookRels: readonly Relationship[],
-  workbookDirectory: string,
-  limits: ResolvedLimits,
-): () => Promise<readonly string[]> {
-  const partName = relationshipTarget(workbookRels, 'sharedStrings') ?? `${workbookDirectory}sharedStrings.xml`;
+function sharedStringLoader(zip: ZipReader, partName: string, limits: ResolvedLimits): () => Promise<readonly string[]> {
   let pending: Promise<readonly string[]> | undefined;
   return () => {
     pending ??= zip.has(partName)

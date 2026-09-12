@@ -25,6 +25,7 @@ if [[ "$WHAT" == "all" || "$WHAT" == "06" ]]; then
   if [[ -z "$latest" ]]; then
     latest=$(ls -d "$TOOLS"/bench/results/*/ 2>/dev/null | sort | tail -1 || true)
   fi
+  latest="${latest%/}"   # ls -d prints a trailing slash; keep the path single-slashed so the run name can be read off it
   if [[ -n "$latest" && -f "$latest/summary.md" ]]; then
     node - "$latest/summary.md" 06-performance-baseline.md <<'NODE'
 const fs = require('node:fs');

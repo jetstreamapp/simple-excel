@@ -20,6 +20,7 @@ const encoder = new TextEncoder();
 function context(overrides: Partial<WorksheetReadContext> = {}): WorksheetReadContext {
   return {
     sharedStrings: () => Promise.resolve([]),
+    hasSharedStrings: true,
     isDateByXf: new Uint8Array(0),
     date1904: false,
     dates: 'utc',
@@ -342,6 +343,24 @@ describe('shared strings', () => {
       ).toEqual([['one'], ['two']]);
       expect(loads, `chunk size ${chunkSize}`).toBe(1);
     }
+  });
+
+  it('skips the per-chunk pre-scan when the package has no shared-strings part, and still resolves the cell', async () => {
+    let loads = 0;
+    const cells = await readCells(
+      sheet('<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>1</v></c></row>'),
+      {},
+      {
+        hasSharedStrings: false,
+        sharedStrings: () => {
+          loads++;
+          return Promise.resolve([]);
+        },
+      },
+    );
+    // The deferred path still asks for the (empty) table once, and an unresolvable index reads as blank text.
+    expect(cells).toEqual([['', 1]]);
+    expect(loads).toBe(1);
   });
 
   it('still resolves t="s" when the pre-scan cannot see it (spaced attribute)', async () => {

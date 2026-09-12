@@ -13,29 +13,58 @@ all in the package, and compression is the platform's own `CompressionStream`.
 
 ## Why another xlsx library
 
-|                                             | simple-excel            | SheetJS CE                        | ExcelJS             | @office-kit/xlsx                   | write-excel-file / read-excel-file |
-| ------------------------------------------- | ----------------------- | --------------------------------- | ------------------- | ---------------------------------- | ---------------------------------- |
-| Streaming write (flat memory at 1M rows)    | yes                     | no                                | yes                 | no (buffers until `finalize()`)    | no                                 |
-| Streaming read                              | yes                     | no                                | yes                 | yes                                | no                                 |
-| Runtime dependencies                        | 0                       | 0                                 | 9                   | 3                                  | 3 each                             |
-| Bundle size (min+brotli)                    | _(measured in Phase D)_ | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
-| Maintained on npm                           | yes                     | no (fixes on the vendor CDN only) | inactive since 2023 | yes (pre-1.0)                      | yes                                |
-| Verified against Excel with a public corpus | yes                     | no                                | no                  | no (validator + fixtures in CI)    | no                                 |
-| Styles (fonts, fills, borders, number fmts) | write                   | Pro only                          | yes                 | yes                                | basic, write only                  |
-| Formulas, charts, pivots, editing workbooks | no                      | partial                           | partial             | yes                                | no                                 |
-| Legacy formats (.xls, .xlsb, .ods, CSV)     | no, detected and named  | yes, silently                     | CSV only            | no, every CFB reported "encrypted" | no                                 |
+|                                             | simple-excel           | SheetJS CE                        | ExcelJS             | @office-kit/xlsx                   | write-excel-file / read-excel-file |
+| ------------------------------------------- | ---------------------- | --------------------------------- | ------------------- | ---------------------------------- | ---------------------------------- |
+| Streaming write (flat memory at 1M rows)    | yes                    | no                                | yes                 | no (buffers until `finalize()`)    | no                                 |
+| Streaming read                              | yes                    | no                                | yes                 | yes                                | no                                 |
+| Runtime dependencies                        | 0                      | 0                                 | 9                   | 3                                  | 3 each                             |
+| Bundle size (min+brotli)                    | 24.3 KB                | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
+| Maintained on npm                           | yes                    | no (fixes on the vendor CDN only) | inactive since 2023 | yes (pre-1.0)                      | yes                                |
+| Verified against Excel with a public corpus | yes                    | no                                | no                  | no (validator + fixtures in CI)    | no                                 |
+| Styles (fonts, fills, borders, number fmts) | write                  | Pro only                          | yes                 | yes                                | basic, write only                  |
+| Formulas, charts, pivots, editing workbooks | no                     | partial                           | partial             | yes                                | no                                 |
+| Legacy formats (.xls, .xlsb, .ods, CSV)     | no, detected and named | yes, silently                     | CSV only            | no, every CFB reported "encrypted" | no                                 |
 
 Sources: dependency counts are each package's `dependencies` field at the versions pinned in `package.json`;
 maintenance and architecture come from [`research/03-library-landscape.md`](research/03-library-landscape.md); the
 office-kit column is [`research/10-office-kit-evaluation.md`](research/10-office-kit-evaluation.md), which found
 that its streaming writer buffers the worksheet and an unbounded shared-string table until `finalize()`
 (`RangeError: Invalid string length` at 1M × 20 — the same wall SheetJS hits). Only office-kit publishes a bundle
-figure; the other libraries have not been measured here, and ours is measured in Phase D. "Verified against Excel
-with a public corpus" means a committed fixture corpus plus an oracle that opens every written file in Excel and
-fails on a repair prompt — see [`research/05-compatibility-matrix.md`](research/05-compatibility-matrix.md).
+figure; the other libraries have not been measured here. Ours is `dist/esm/index.mjs` compressed at brotli
+quality 11, checked on every build by `npm run size`. "Verified against Excel with a public corpus" means a
+committed fixture corpus plus an oracle that opens every written file in Excel and fails on a repair prompt — see
+[`research/05-compatibility-matrix.md`](research/05-compatibility-matrix.md).
 
 Pick simple-excel when you export or import tabular data and it has to be large, fast and correct. Pick a
 full-featured library when you edit existing workbooks or need charts, pivots and formulas.
+
+## Measured
+
+100,000 rows × 20 columns of Salesforce-shaped data (ids, unicode names, decimals, booleans, dates, long text,
+JSON blobs, 10% nulls — about 1.7 KB of text per row), Apple M4, Node v24.18.0, median of three runs in a fresh
+process. Full tables and method: [`research/06-performance-baseline.md`](research/06-performance-baseline.md),
+run `bench/results/2026-09-12-macbook-air-phase-d-baseline`.
+
+|                             | simple-excel                 | SheetJS 0.20.3                      |
+| --------------------------- | ---------------------------- | ----------------------------------- |
+| Write                       | 4.56 s                       | 9.43 s                              |
+| Write peak memory over idle | 108 MB                       | 2,896 MB                            |
+| Read (typed records)        | 2.10 s                       | 6.44 s                              |
+| Read peak memory over idle  | 881 MB                       | 2,037 MB                            |
+| First byte at the sink      | 0.4 ms                       | n/a (nothing until the end)         |
+| 1,000,000 × 20 write        | 45.8 s, 75 MB of heap growth | `RangeError: Invalid string length` |
+| 18M cells (900,000 × 20)    | 40.8 s, 78 MB of heap growth | `RangeError: Invalid string length` |
+
+The 881 MB read figure is the 100,000 materialized records the typed read returns, not the parser: streaming the
+same file with `sheet.rows()` costs 1.97 s and 75 MB.
+
+In a Chrome module worker (Chromium 153, writing to `collectToBlob()`), simple-excel writes 100k × 20 in 4.48 s
+for +230 MB of renderer RSS and 1,000,000 × 20 in 51.7 s for +253 MB — flat across a 10× row increase. SheetJS
+takes 8.03 s and +2,691 MB at 100k and crashes the renderer at 1M
+(`bench/results/2026-09-12-macbook-air-phase-d-chrome`).
+
+In Node, passing the `/node` entry's `nodeDeflater(1)` instead of the platform `CompressionStream` cuts write time
+by about 27% (3.32 s at 100k, 32.0 s at 1M) for a file about 20% larger.
 
 ## Install
 

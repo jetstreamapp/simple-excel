@@ -4,8 +4,9 @@ import { pathToFileURL } from 'node:url';
 /**
  * Engine registry. Every `engines/<name>.mjs` exports the engine interface documented in the README
  * (`name`, `version`, `supportsStreaming`, `write`, `readTyped`, `readRaw`). An adapter may instead
- * export `load()` returning that interface (used by `ours.mjs`, which resolves its target at runtime)
- * and/or `skipReason` (string) when it cannot run in this environment.
+ * export `load()` returning that interface (used by `simple-excel.mjs`, which imports the built bundle
+ * lazily) and/or `skipReason` (string) when it cannot run in this environment. Files starting with `_`
+ * hold shared adapter code and are not engines.
  */
 const ENGINES_DIR = new URL('../engines/', import.meta.url);
 

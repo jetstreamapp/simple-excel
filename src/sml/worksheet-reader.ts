@@ -17,6 +17,12 @@ export interface WorksheetWarning {
 export interface WorksheetReadContext {
   /** Lazily loaded shared strings; called at most once per sheet read, only when a `t="s"` cell appears. */
   readonly sharedStrings: () => Promise<readonly string[]>;
+  /**
+   * Whether the package actually has a shared-strings part. When it does not, nothing can resolve through the
+   * table and the per-chunk `t="s"` pre-scan is pure cost, so it is skipped: a `t="s"` cell in such a file takes
+   * the deferred path instead and resolves against the same empty table.
+   */
+  readonly hasSharedStrings: boolean;
   readonly isDateByXf: Uint8Array;
   readonly date1904: boolean;
   readonly dates: NonNullable<OpenOptions['dates']>;
@@ -177,10 +183,12 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   /**
    * `</c>` is handled synchronously inside a tokenizer callback, so the shared-string table has to be in hand before
    * a chunk that needs it is pushed. One `indexOf` pass over the chunk decides, which keeps sheets that never
-   * reference the table (inline strings only) from loading it at all.
+   * reference the table (inline strings only) from loading it at all. A package with no shared-strings part at all
+   * skips even that pass: scanning every chunk of a large inline-string sheet for a table that does not exist cost
+   * about 16% of the read (`research/06-performance-baseline.md`).
    */
   async prepareSharedStrings(text: string): Promise<void> {
-    if (this.sharedStrings !== undefined) {
+    if (this.sharedStrings !== undefined || !this.context.hasSharedStrings) {
       return;
     }
     const boundary = this.sharedStringsScanTail;

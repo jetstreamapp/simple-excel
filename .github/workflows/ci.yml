@@ -31,9 +31,11 @@ jobs:
       - run: npm run build
       - run: npm test
       # simple-excel additions (not in soql-parser-js): the fixture corpus must match its manifest, the
-      # tooling must stay free of Jetstream imports, and the corpus suites run against the committed fixtures.
+      # tooling must stay free of Jetstream imports, the corpus suites run against the committed fixtures,
+      # and the browser entry has a bundle-size budget (research/11-build-plan.md section 1).
       - run: npm run fixtures:check
       - run: node scripts/check-purity.mjs
+      - run: npm run size
 
   docs-build:
     runs-on: ubuntu-latest

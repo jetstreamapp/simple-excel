@@ -1,16 +1,50 @@
 /**
  * Flat-memory guarantees, measured with `--expose-gc`. Opt-in (slow):
- *   RUN_PERF=1 node --expose-gc node_modules/vitest/vitest.mjs run --project corpus test/memory.test.ts
+ *   RUN_PERF=1 NODE_OPTIONS=--expose-gc npx vitest run --project corpus test/memory.test.ts
+ *
+ * `NODE_OPTIONS`, not a bare `node --expose-gc`: vitest runs the suite in a worker it spawns itself, and
+ * only `NODE_OPTIONS` reaches that worker. Without it `globalThis.gc` is undefined in the test, which is
+ * why asking for `RUN_PERF=1` without it fails loudly here instead of skipping in silence.
  */
 import { describe, expect, it } from 'vitest';
 import { collectToBytes, createWorkbookWriter, openWorkbook } from '../src/index';
 import { READER_READY, WRITER_READY } from './helpers/ready';
 
-const enabled = process.env.RUN_PERF === '1' && typeof globalThis.gc === 'function';
+const perfRequested = process.env.RUN_PERF === '1';
+const canCollectGarbage = typeof globalThis.gc === 'function';
+
+if (perfRequested && !canCollectGarbage) {
+  throw new Error(
+    'RUN_PERF=1 needs a garbage collector this test can call. Re-run with ' +
+      'RUN_PERF=1 NODE_OPTIONS=--expose-gc npx vitest run --project corpus test/memory.test.ts',
+  );
+}
+
+const enabled = perfRequested && canCollectGarbage;
+const MB = 1024 * 1024;
+const toMB = (bytes: number): string => `${(bytes / MB).toFixed(1)} MB`;
 
 function heapUsed(): number {
   globalThis.gc?.();
   return process.memoryUsage().heapUsed;
+}
+
+/**
+ * Peak `heapUsed` while an operation runs. The writer and reader both await their sink or their inflate
+ * stream every few chunks, so the event loop turns often enough for a 20 ms poller to see the shape.
+ */
+async function withHeapPeak<T>(operation: () => Promise<T>): Promise<{ result: T; peakBytes: number }> {
+  let peakBytes = process.memoryUsage().heapUsed;
+  const timer = setInterval(() => {
+    peakBytes = Math.max(peakBytes, process.memoryUsage().heapUsed);
+  }, 20);
+  timer.unref();
+  try {
+    const result = await operation();
+    return { result, peakBytes: Math.max(peakBytes, process.memoryUsage().heapUsed) };
+  } finally {
+    clearInterval(timer);
+  }
 }
 
 function* mixedRows(count: number): Iterable<(string | number | boolean | Date)[]> {
@@ -32,12 +66,19 @@ describe.skipIf(!enabled || !WRITER_READY || !READER_READY)('memory: writer and 
     const sink = collectToBytes();
     const workbook = createWorkbookWriter(sink);
     const sheet = workbook.addSheet('Data', { header: ['Id', 'Name', 'Amount', 'Flag', 'When', 'Note'] });
-    await sheet.writeRows(mixedRows(200_000));
-    await sheet.close();
-    const result = await workbook.close();
+    const { result, peakBytes } = await withHeapPeak(async () => {
+      await sheet.writeRows(mixedRows(200_000));
+      await sheet.close();
+      return workbook.close();
+    });
     const after = heapUsed();
+    const growth = after - before - sink.bytesWritten;
+    console.log(
+      `[memory] write 200k x 6: growth ${toMB(growth)} (heap ${toMB(before)} -> ${toMB(after)}, output ${toMB(sink.bytesWritten)}), ` +
+        `peak heap during write ${toMB(peakBytes)}, limit 64.0 MB`,
+    );
     expect(result.sheets[0]?.rows).toBe(200_001);
-    expect(after - before - sink.bytesWritten).toBeLessThan(64 * 1024 * 1024);
+    expect(growth).toBeLessThan(64 * MB);
   }, 120_000);
 
   it('streaming 200k rows without retaining them stays under 150 MB', async () => {
@@ -49,13 +90,21 @@ describe.skipIf(!enabled || !WRITER_READY || !READER_READY)('memory: writer and 
     await workbook.close();
     const bytes = sink.result();
     const before = heapUsed();
-    const opened = await openWorkbook(bytes);
-    let count = 0;
-    for await (const row of opened.sheet(0).rows()) {
-      count += row.length > 0 ? 1 : 0;
-    }
-    await opened.close();
+    const { result: count, peakBytes } = await withHeapPeak(async () => {
+      const opened = await openWorkbook(bytes);
+      let rowsSeen = 0;
+      for await (const row of opened.sheet(0).rows()) {
+        rowsSeen += row.length > 0 ? 1 : 0;
+      }
+      await opened.close();
+      return rowsSeen;
+    });
+    const growth = heapUsed() - before;
+    console.log(
+      `[memory] read 200k x 6 (${toMB(bytes.byteLength)} file, resident): growth ${toMB(growth)}, ` +
+        `peak heap during read ${toMB(peakBytes)} (baseline ${toMB(before)}), limit 150.0 MB`,
+    );
     expect(count).toBe(200_000);
-    expect(heapUsed() - before).toBeLessThan(150 * 1024 * 1024);
+    expect(growth).toBeLessThan(150 * MB);
   }, 120_000);
 });
