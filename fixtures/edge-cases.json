@@ -675,9 +675,17 @@
     "id": "EC-NUMBERS-INF-VALUE",
     "family": "Numbers",
     "symptom": "Numbers exports the max double as <v>inf</v>; openpyxl crashes (int('inf')) and Excel repairs the sheet ('Repaired Records: Cell information from /xl/worksheets/sheet1.xml part').",
-    "seenIn": "golden-canonical-numbers (Numbers 14.4 export of the ExcelJS golden).",
+    "seenIn": "golden-canonical-numbers (Numbers 14.4 export of the ExcelJS golden). Manual check of golden-canonical-simple-excel in Numbers (2026-09-12): a formula containing the literal 1.79769313486231E+308 is rejected ('there is a problem with this formula'), so the value cannot even be compared inside Numbers.",
     "expected": "Never emit inf/nan; readers should treat non-numeric <v> in a numeric cell as an error cell rather than crash.",
     "status": "verified (user golden + Excel recovery log)"
+  },
+  {
+    "id": "EC-NUMBERS-15-DIGIT-PRECISION",
+    "family": "Numbers",
+    "symptom": "Apple Numbers holds imported numbers at 15 significant digits: 9007199254740991 becomes 9007199254740990 and 12345678901234568 becomes 12345678901234600, both in formulas inside Numbers and in its xlsx export.",
+    "seenIn": "golden-canonical-numbers (the ExcelJS golden re-exported by Numbers 14.4 stores 9007199254740990 / 12345678901234600); manual check of golden-canonical-simple-excel in Numbers (2026-09-12): =I2-9007199254740990 evaluates to 0. Excel and Google Sheets keep the full double and only DISPLAY 15 digits.",
+    "expected": "Nothing for a writer to do; the file carries the exact double. Document that data round-tripped through Numbers loses digits beyond 15. The oracle comparator's 1e-15 relative tolerance treats this one-ulp difference as a match, so it does not surface as number-precision.",
+    "status": "verified (user golden + manual check)"
   },
   {
     "id": "EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS",
