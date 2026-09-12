@@ -122,6 +122,10 @@ for 1899 or earlier in the 1900 system. A `Date` before the epoch is therefore *
 (`1899-12-31T12:00:00`) rather than as a number that would display as garbage (`EC-DATE-PRE-1900`). The value
 stays readable and obviously not a date cell.
 
+On read, a **negative serial in a date-formatted cell comes back as the raw number**, exactly what Excel shows as
+`########`. SheetJS instead re-derives a time of day from it, which matters for files SheetJS itself wrote: its
+time-only cells are negative serials (`EC-DATE-TIME-ONLY-NEGATIVE-SERIAL`), and they read back here as numbers.
+
 `Date`s before roughly 1901 also carry local-mean-time offsets in JavaScript — Los Angeles is `-7:52:58`, not
 `-8:00` — so local-field conversions of such dates are off by minutes and seconds
 (`EC-DATE-HISTORICAL-TZ-OFFSET`). If you work with pre-1901 dates, use `dates: 'utc'` on both sides or carry them

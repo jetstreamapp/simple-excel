@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { FEATURES } from '../../../fixtures/canonical/canonical.mjs';
 import { isXlsxError } from '../../errors';
-import { columnIndexOf, columnIndexOfRef, columnLetters, formatRef, MAX_COLUMNS, MAX_ROWS, parseRange, parseRef } from '../cell-ref';
+import {
+  columnIndexOf,
+  columnIndexOfRef,
+  columnLetters,
+  formatRange,
+  formatRef,
+  MAX_COLUMNS,
+  MAX_ROWS,
+  parseRange,
+  parseRef,
+} from '../cell-ref';
 
 describe('columnLetters', () => {
   it('maps the boundaries of every letter width', () => {
@@ -138,5 +148,17 @@ describe('parseRange', () => {
     for (const invalid of ['', ':', 'A1:', ':C3', 'A1:C3:D4', 'A:C', 'A1:XFE3', 'A1 : C3']) {
       expect(parseRange(invalid), invalid).toBeNull();
     }
+  });
+});
+
+describe('formatRange', () => {
+  it('formats and normalizes 0-based corners', () => {
+    expect(formatRange(0, 0, 0, 2)).toBe('A1:C1');
+    expect(formatRange(4, 3, 1, 1)).toBe('B2:D5');
+    expect(formatRange(0, 0, 0, 0)).toBe('A1:A1');
+  });
+
+  it('rejects corners outside the sheet', () => {
+    expect(() => formatRange(0, 0, 1_048_576, 0)).toThrow();
   });
 });

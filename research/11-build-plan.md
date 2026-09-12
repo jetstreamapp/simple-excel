@@ -55,6 +55,15 @@ through its index. `src/index.ts` re-exports only the public surface.
 
 ## 3. Public API (target for 1.0)
 
+> **Shipped surface:** the authoritative API is `src/types.ts` + `src/index.ts` (and `src/node/index.ts`), documented
+> under `docs/docs/`. The sketch below was the target the modules were built to; where it differs, the code won:
+> `SheetWriter.close()` returns a `SheetWriteSummary`, `Workbook.close()` is async, `defval` lives on
+> `ObjectRowsOptions`, the empty-header option is `dropEmptyHeaders`, `ReadLimits` carries `maxXmlDepth` /
+> `maxTextLength` while `maxRows` / `maxColumns` are per-read `RowsOptions`, `openWorkbook` also accepts a
+> `RandomAccessSource`, `sniff` returns `'zip' | 'html' | 'empty'` too, and the error codes include
+> `ZIP_UNSUPPORTED`, `ZIP_CRC_MISMATCH`, `CELL_TOO_LONG`, `ABORTED` and `UNSUPPORTED_ENVIRONMENT`. Cell-ref and
+> sheet-name helpers are exported for callers that key data by sheet name or build ranges (08 §6).
+
 ```ts
 // values
 type CellValue = string | number | boolean | Date | null;
@@ -233,7 +242,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 
 ### E Integration and tooling
 
-- `bench/engines/ours.mjs` adapter; `oracle` reader `ours` (typed dump through the public API); `test/corpus.test.ts` (manifest-driven), `test/golden-bytes.test.ts`, `test/roundtrip.test.ts`, `test/hostile.test.ts`, `test/parity.test.ts`, `test/memory.test.ts` (Node, `--expose-gc`).
+- `bench/engines/simple-excel.mjs` + `simple-excel-zlib.mjs` adapters (shared body in `_simple-excel.mjs`); `oracle` reader `ours` (typed dump through the public API); `test/corpus.test.ts` (manifest-driven), `test/golden-bytes.test.ts`, `test/roundtrip.test.ts`, `test/hostile.test.ts`, `test/parity.test.ts`, `test/memory.test.ts` (Node, `--expose-gc`).
 
 ## 5. Phases and fan-out
 

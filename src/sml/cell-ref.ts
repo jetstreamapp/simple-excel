@@ -169,3 +169,12 @@ export function parseRange(range: string): CellRange | null {
     end: { row: Math.max(first.row, second.row), col: Math.max(first.col, second.col) },
   };
 }
+
+/** Format a range from 0-based corners (`formatRange(0, 0, 0, 2)` -> `'A1:C1'`); corners are normalized. */
+export function formatRange(startRow: number, startColumn: number, endRow: number, endColumn: number): string {
+  const top = Math.min(startRow, endRow);
+  const bottom = Math.max(startRow, endRow);
+  const left = Math.min(startColumn, endColumn);
+  const right = Math.max(startColumn, endColumn);
+  return `${formatRef(top, left)}:${formatRef(bottom, right)}`;
+}
