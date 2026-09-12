@@ -1,5 +1,6 @@
 import type { SharedStringBudget } from '../types';
 import { encodeCellText, needsSpacePreserve } from '../xml/escape';
+import { encodeXmlChunk } from '../xml/utf8';
 import type { ZipEntryWriter } from '../zip/zip-writer';
 
 const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -10,8 +11,6 @@ const FLUSH_THRESHOLD_CHARS = 64 * 1024;
 
 /** What `intern` returns for a string the caller has to write inline. */
 const WRITE_INLINE = -1;
-
-const ENCODER = new TextEncoder();
 
 export interface SharedStringStats {
   /** Total references (`count` attribute). */
@@ -87,7 +86,7 @@ export class SharedStringWriter {
       const text = pending.join('');
       pending.length = 0;
       pendingChars = 0;
-      await entry.write(ENCODER.encode(text));
+      await entry.write(encodeXmlChunk(text));
     };
 
     const append = (fragment: string): void => {

@@ -1,6 +1,5 @@
 const CHAR_TAB = 9;
 const CHAR_LINE_FEED = 10;
-const CHAR_CARRIAGE_RETURN = 13;
 const CHAR_SPACE = 32;
 const CHAR_AMPERSAND = 38;
 const CHAR_LESS_THAN = 60;
@@ -26,6 +25,20 @@ const ESCAPE_RUN_LENGTH = 7;
  * escape-shaped run, checked when the scan gets there). Everything else passes through on one comparison.
  */
 const ASCII_NEEDS_ENCODING: Uint8Array = buildAsciiEncodingTable();
+
+/**
+ * The same set as one pattern: the XML metacharacters, the control characters XML forbids (tab and LF excluded),
+ * surrogates, the two non-characters, and `_x`, the only shape a literal underscore ever has to be defused in.
+ * Scanning for it in the regexp engine clears a clean string several times faster than the char-code loop below.
+ * Global, because `mayNeedEncoding` resumes it past every surrogate pair it has cleared.
+ */
+// eslint-disable-next-line no-control-regex -- the control characters XML forbids are exactly what this looks for
+const NEEDS_ENCODING_PATTERN = /[\u0000-\u0008\u000B-\u001F&<>\uD800-\uDFFF\uFFFE\uFFFF]|_x/g;
+/** Below this length starting the regexp engine costs more than the char-code loop it saves. */
+const REGEX_SCAN_MIN_LENGTH = 24;
+
+/** Tab, LF and CR anywhere in the text: what `<t>` loses without `xml:space="preserve"`. */
+const PRESERVED_BREAK_PATTERN = /[\t\n\r]/;
 
 function buildAsciiEncodingTable(): Uint8Array {
   const table = new Uint8Array(128);
@@ -155,6 +168,27 @@ export function escapeAttr(text: string): string {
 }
 
 /**
+ * True when `text` holds anything `encodeCellText` has to act on. The pattern also matches the two code units of a
+ * well-formed surrogate pair, which the encoder passes through untouched (an emoji is legal XML), so a surrogate hit
+ * is confirmed against the code unit after it and the scan resumes past the pair. Only a *lone* surrogate is work.
+ */
+function mayNeedEncoding(text: string): boolean {
+  NEEDS_ENCODING_PATTERN.lastIndex = 0;
+  for (let match = NEEDS_ENCODING_PATTERN.exec(text); match !== null; match = NEEDS_ENCODING_PATTERN.exec(text)) {
+    const code = text.charCodeAt(match.index);
+    if (code < SURROGATE_FIRST || code > SURROGATE_HIGH_LAST) {
+      return true;
+    }
+    const nextCode = text.charCodeAt(match.index + 1);
+    if (!(nextCode >= SURROGATE_LOW_FIRST && nextCode <= SURROGATE_LAST)) {
+      return true;
+    }
+    NEEDS_ENCODING_PATTERN.lastIndex = match.index + 2;
+  }
+  return false;
+}
+
+/**
  * Encode cell text the way Excel expects inside `<t>`: XML-escaped, with characters XML 1.0 forbids (< 0x20 except
  * tab/LF, and 0xFFFE/0xFFFF) written as `_xHHHH_`, CR written as `_x000D_`, and any literal `_xHHHH_`-shaped run
  * protected by escaping its underscore as `_x005F_` (overlapping runs included, left to right). Lone surrogates
@@ -164,6 +198,9 @@ export function escapeAttr(text: string): string {
  * identical to escaping underscores first and XML entities second.
  */
 export function encodeCellText(text: string): string {
+  if (text.length >= REGEX_SCAN_MIN_LENGTH && !mayNeedEncoding(text)) {
+    return text;
+  }
   let out = '';
   let last = 0;
   for (let i = 0; i < text.length; i++) {
@@ -232,24 +269,19 @@ export function decodeCellText(text: string): string {
   return last === 0 ? text : out + text.slice(last);
 }
 
-function isPreservedWhitespace(code: number): boolean {
-  return code === CHAR_SPACE || code === CHAR_TAB || code === CHAR_LINE_FEED || code === CHAR_CARRIAGE_RETURN;
-}
-
-/** True when the text has leading/trailing whitespace, a tab, or a newline, so `<t>` needs `xml:space="preserve"`. */
+/**
+ * True when the text has leading/trailing whitespace, a tab, or a newline, so `<t>` needs `xml:space="preserve"`.
+ *
+ * A leading or trailing tab, LF or CR is caught by the break pattern like any other, so only a space has to be
+ * looked for at the ends.
+ */
 export function needsSpacePreserve(text: string): boolean {
   if (text.length === 0) {
     return false;
   }
-  if (isPreservedWhitespace(text.charCodeAt(0)) || isPreservedWhitespace(text.charCodeAt(text.length - 1))) {
+  if (text.charCodeAt(0) === CHAR_SPACE || text.charCodeAt(text.length - 1) === CHAR_SPACE) {
     return true;
   }
   // Interior tabs and line breaks matter too: Excel drops them from a <t> without xml:space="preserve".
-  for (let i = 1; i < text.length - 1; i++) {
-    const code = text.charCodeAt(i);
-    if (code === CHAR_TAB || code === CHAR_LINE_FEED || code === CHAR_CARRIAGE_RETURN) {
-      return true;
-    }
-  }
-  return false;
+  return PRESERVED_BREAK_PATTERN.test(text);
 }

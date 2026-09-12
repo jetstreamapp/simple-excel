@@ -23,7 +23,7 @@ plus the benchmark runs in
 | Streaming write (flat memory at 1M rows)    | yes                    | no                                | yes                 | no (buffers until `finalize()`)    | no                                 |
 | Streaming read                              | yes                    | no                                | yes                 | yes                                | no                                 |
 | Runtime dependencies                        | 0                      | 0                                 | 9                   | 3                                  | 3 each                             |
-| Bundle size (min+brotli)                    | 24.3 KB                | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
+| Bundle size (min+brotli)                    | 24.9 KB                | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
 | Maintained on npm                           | yes                    | no (fixes on the vendor CDN only) | inactive since 2023 | yes (pre-1.0)                      | yes                                |
 | Verified against Excel with a public corpus | yes                    | no                                | no                  | no (validator + fixtures in CI)    | no                                 |
 | Styles                                      | write                  | Pro only                          | yes                 | yes                                | basic, write only                  |
@@ -35,28 +35,28 @@ plus the benchmark runs in
 100k rows × 20 columns of Salesforce-shaped data (ids, unicode names, decimals, booleans, dates, long text with
 newlines, 10% nulls — about 1.7 KB of text per row), Node v24.18.0 on an Apple M4, median of three runs, each
 engine in a fresh process. "Footprint" is the peak RSS above the pre-run baseline; "first byte" is how long until
-the sink receives anything. Every number below is from one run,
-[`2026-09-12-macbook-air-phase-d-baseline`](https://github.com/jetstreamapp/simple-excel/tree/main/bench/results/2026-09-12-macbook-air-phase-d-baseline),
-plus its `phase-d-scale` companion for the 1M column.
+the sink receives anything. Every number below is from one merged run,
+[`2026-09-12-macbook-air-phase-e-combined`](https://github.com/jetstreamapp/simple-excel/tree/main/bench/results/2026-09-12-macbook-air-phase-e-combined),
+whose `phase-e-scale` part supplies the 1M column.
 
 | Engine                  | Write time | Write footprint | Read time  | Read footprint | 1M × 20 write | First byte |
 | ----------------------- | ---------- | --------------- | ---------- | -------------- | ------------- | ---------- |
-| SheetJS 0.20.3          | 9.43 s     | 2,896 MB        | 6.44 s     | 2,037 MB       | `RangeError`  | n/a        |
-| ExcelJS 4.4.0           | 2.52 s     | 317 MB          | 11.07 s    | 178 MB         | not run       | 1.62 s     |
-| @office-kit/xlsx 0.11.0 | 4.70 s     | 981 MB          | 6.70 s     | 452 MB         | `RangeError`  | 2.9 ms     |
-| write-excel-file 2.3.10 | 3.62 s     | 1,117 MB        | 9.04 s     | 4,484 MB       | not run       | n/a        |
-| **simple-excel**        | **4.56 s** | **108 MB**      | **2.10 s** | **881 MB**     | **45.8 s**    | **0.4 ms** |
+| SheetJS 0.20.3          | 9.75 s     | 3,313 MB        | 6.17 s     | 1,837 MB       | `RangeError`  | n/a        |
+| ExcelJS 4.4.0           | 2.49 s     | 328 MB          | 9.53 s     | 193 MB         | not run       | 1.61 s     |
+| @office-kit/xlsx 0.11.0 | 4.36 s     | 1,241 MB        | 6.57 s     | 449 MB         | `RangeError`  | 3.1 ms     |
+| write-excel-file 2.3.10 | 3.21 s     | 1,139 MB        | 6.80 s     | 5,290 MB       | not run       | n/a        |
+| **simple-excel**        | **2.77 s** | **107 MB**      | **1.62 s** | **882 MB**     | **31.9 s**    | **0.4 ms** |
 
-Two footnotes on that row, in both directions. simple-excel's 881 MB read footprint is the 100,000 materialized
-records the typed read returns, not the parser: streaming the same file with `sheet.rows()` costs 1.97 s and
-75 MB. And its write time is the platform `CompressionStream`; in Node, `nodeDeflater(1)` brings it to 3.32 s for
-a file about 20% larger. The 1M × 20 write grows the JS heap by 75 MB, and the 18M-cell shape (900,000 × 20)
-completes in 40.8 s for 78 MB.
+Two footnotes on that row, in both directions. simple-excel's 882 MB read footprint is the 100,000 materialized
+records the typed read returns, not the parser: streaming the same file with `sheet.rows()` costs 1.47 s and
+76 MB. And its write time is the platform `CompressionStream`; in Node, `nodeDeflater(1)` brings it to 1.71 s for
+a file about 20% larger. The 1M × 20 write grows the JS heap by 77 MB, and the 18M-cell shape (900,000 × 20)
+completes in 27.0 s for 76 MB.
 
 The `RangeError` is `Invalid string length`: V8 refuses to build a string past about 512 MiB, and both SheetJS and
 office-kit build one — the sheet XML in SheetJS's case, the joined shared-string table in office-kit's. It is not
 a tuning problem; it is the architecture. In a Chrome module worker the same split shows up as a crash: writing
-1,000,000 × 20 to a Blob costs simple-excel 51.7 s and +253 MB of renderer RSS, while SheetJS takes the renderer
+1,000,000 × 20 to a Blob costs simple-excel 39.6 s and +254 MB of renderer RSS, while SheetJS takes the renderer
 down with it.
 
 ## SheetJS CE

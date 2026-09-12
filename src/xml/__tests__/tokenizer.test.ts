@@ -272,6 +272,15 @@ describe('XmlTokenizer', () => {
     ]);
   });
 
+  it('reads an attribute past the span table it starts with', () => {
+    // The tag's attributes are parsed once into a fixed span table, which has to grow for an unusually wide tag.
+    const wide = Array.from({ length: 40 }, (_, index) => `a${index}="v${index}"`).join(' ');
+    expect(tokenize(`<row ${wide}/>`, { probes: ['a0', 'a15', 'a16', 'a39', 'a40'] })).toEqual([
+      'start:row a0="v0" a15="v15" a16="v16" a39="v39" depth=1',
+      'end:row',
+    ]);
+  });
+
   it('strips a leading byte order mark', () => {
     expect(tokenize('\ufeff<t>x</t>')).toEqual(['start:t depth=1', 'text:"x"', 'end:t']);
   });

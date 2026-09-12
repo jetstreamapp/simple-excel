@@ -12,8 +12,8 @@ description: A streaming, dependency-free xlsx reader and writer for browsers an
 It writes a workbook by pushing rows into a sink as they arrive and reads one by pulling rows through an async
 iterator. Nothing accumulates: there is no in-memory worksheet, no whole-sheet XML string and no unbounded shared
 string table. A one-million-row export costs about as much memory as a one-thousand-row export — measured, that is
-75 MB of JS heap growth to write 1,000,000 × 20 columns of Salesforce-shaped data, against 43 MB for 100,000 rows
-of the same, where SheetJS throws `RangeError: Invalid string length`. The whole browser entry is 24.3 KB brotli
+77 MB of JS heap growth to write 1,000,000 × 20 columns of Salesforce-shaped data, against 45 MB for 100,000 rows
+of the same, where SheetJS throws `RangeError: Invalid string length`. The whole browser entry is 24.9 KB brotli
 with no dependencies. [Streaming and memory](./streaming-and-memory.md) has the numbers and the method.
 
 :::info

@@ -42,6 +42,27 @@ describe('crc32', () => {
     }
   });
 
+  it('reads views that do not start at the beginning of their buffer', () => {
+    // The sliced loop reads four-byte words through a DataView, so it has to honour the view's own byteOffset;
+    // an inflate or file chunk is routinely a window into a larger pooled buffer.
+    const backing = randomBytes(1_024);
+    for (const offset of [1, 2, 3, 7, 15, 16, 17]) {
+      const view = new Uint8Array(backing.buffer, backing.byteOffset + offset, 512 - offset);
+      expect(crc32(view)).toBe(referenceCrc32(view));
+    }
+  });
+
+  it('handles every remainder past the sliced loop', () => {
+    const bytes = new Uint8Array(64);
+    for (let index = 0; index < bytes.length; index++) {
+      bytes[index] = (index * 37 + 11) & 0xff;
+    }
+    for (let length = 0; length <= bytes.length; length++) {
+      const slice = bytes.subarray(0, length);
+      expect(crc32(slice)).toBe(referenceCrc32(slice));
+    }
+  });
+
   it('returns unsigned values', () => {
     expect(crc32(encode('ÿÿÿÿ'))).toBeGreaterThanOrEqual(0);
   });

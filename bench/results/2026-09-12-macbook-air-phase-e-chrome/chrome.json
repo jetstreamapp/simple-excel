@@ -1,0 +1,173 @@
+{
+  "label": "phase-e-chrome",
+  "createdAt": "2026-09-12T20:40:55.590Z",
+  "resultsDir": "bench/results/2026-09-12-macbook-air-phase-e-chrome",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "loadAvgStart": [2.6845703125, 3.11279296875, 3.626953125]
+  },
+  "browser": {
+    "version": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "headless": true
+  },
+  "options": {
+    "engines": ["simple-excel", "sheetjs"],
+    "datasets": ["mixed"],
+    "sizes": ["100k", "1m"],
+    "runs": 1,
+    "sampleMs": 100,
+    "timeoutSeconds": 600,
+    "label": "phase-e-chrome",
+    "headed": false,
+    "skipBundle": false,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "simple-excel",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "run": 1,
+      "seed": 20260911,
+      "runId": "simple-excel-mixed-100000-1789245655972",
+      "type": "result",
+      "ok": true,
+      "ms": 3880.274999976158,
+      "bytes": 44492679,
+      "firstByteMs": 4.524999976158142,
+      "wallMs": 5454,
+      "phases": {
+        "write-start": 18.700000047683716
+      },
+      "memory": {
+        "method": "performance.measureUserAgentSpecificMemory",
+        "sampleMs": 100,
+        "samples": 39,
+        "measurements": 0,
+        "baselineBytes": null,
+        "peakBytes": null,
+        "peakWorkerBytes": null,
+        "peakBytesOverall": null,
+        "pageHeapPeak": 1426449
+      },
+      "status": "ok",
+      "process": {
+        "peakPageHeapBytes": 1423196,
+        "peakRendererRssBytes": 429064192,
+        "baselineRendererRssBytes": 182140928,
+        "rendererRssDeltaBytes": 246923264
+      }
+    },
+    {
+      "engine": "sheetjs",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "run": 1,
+      "seed": 20260911,
+      "runId": "sheetjs-mixed-100000-1789245661609",
+      "type": "result",
+      "ok": true,
+      "ms": 7644.439999938011,
+      "bytes": 99829672,
+      "firstByteMs": null,
+      "wallMs": 9222,
+      "phases": {
+        "write-start": 14.379999995231628
+      },
+      "memory": {
+        "method": "performance.measureUserAgentSpecificMemory",
+        "sampleMs": 100,
+        "samples": 76,
+        "measurements": 0,
+        "baselineBytes": null,
+        "peakBytes": null,
+        "peakWorkerBytes": null,
+        "peakBytesOverall": null,
+        "pageHeapPeak": 1429233
+      },
+      "status": "ok",
+      "process": {
+        "peakPageHeapBytes": 1425972,
+        "peakRendererRssBytes": 3368943616,
+        "baselineRendererRssBytes": 182730752,
+        "rendererRssDeltaBytes": 3186212864
+      }
+    },
+    {
+      "engine": "simple-excel",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "run": 1,
+      "seed": 20260911,
+      "runId": "simple-excel-mixed-1000000-1789245671010",
+      "type": "result",
+      "ok": true,
+      "ms": 39643.450000047684,
+      "bytes": 447726992,
+      "firstByteMs": 0.9350000619888306,
+      "wallMs": 41206,
+      "phases": {
+        "write-start": 14.549999952316284
+      },
+      "memory": {
+        "method": "performance.measureUserAgentSpecificMemory",
+        "sampleMs": 100,
+        "samples": 397,
+        "measurements": 1,
+        "baselineBytes": null,
+        "peakBytes": 1034467,
+        "peakWorkerBytes": null,
+        "peakBytesOverall": 1034467,
+        "pageHeapPeak": 1440924
+      },
+      "status": "ok",
+      "process": {
+        "peakPageHeapBytes": 1433556,
+        "peakRendererRssBytes": 449839104,
+        "baselineRendererRssBytes": 183812096,
+        "rendererRssDeltaBytes": 266027008
+      }
+    },
+    {
+      "engine": "sheetjs",
+      "dataset": "mixed",
+      "size": "1m",
+      "rows": 1000000,
+      "columns": 20,
+      "cells": 20000000,
+      "run": 1,
+      "ok": false,
+      "error": {
+        "name": "RendererCrash",
+        "message": "page crashed (renderer out of memory or killed)"
+      },
+      "status": "error",
+      "wallMs": 13881,
+      "process": {
+        "peakPageHeapBytes": 1439948,
+        "peakRendererRssBytes": 3421683712,
+        "baselineRendererRssBytes": 184205312,
+        "rendererRssDeltaBytes": 3237478400
+      }
+    }
+  ],
+  "loadAvgEnd": [3.18017578125, 3.19873046875, 3.619140625]
+}

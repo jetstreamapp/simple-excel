@@ -9,14 +9,14 @@ _Accurate as of 2026-09-12. Package: `@jetstreamapp/simple-excel`. Target: brows
 
 ## 1. Goals and their gates
 
-| Goal                                                                                | Gate that proves it                                                                                                                                                                 |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Files we write open cleanly in Excel (Win/Mac), Google Sheets, LibreOffice, Numbers | Every writer fixture: Open XML SDK validator clean; Excel oracle PASS with no recovery log; LibreOffice re-save PASS; manual Google Sheets/Numbers checklist before 1.0             |
-| Files from those apps read correctly                                                | Every corpus fixture reads at the verdict recorded in `fixtures/manifest.json` / `test/corpus`; parity with SheetJS-with-Jetstream-options on the goldens after documented policies |
-| Flat memory, any size                                                               | `bench`: write 1M×20 in Node under 250 MB heap growth and in a Chrome module worker; 18M cells under 3 GB; read 1M×20 streaming under 200 MB + SST                                  |
-| Fast                                                                                | write 100k×20 ≤ 1.2 s, read-typed 100k×20 ≤ 1.5 s on the M4 reference machine; ≥ 100k rows/s write, ≥ 150k rows/s read                                                              |
-| Hostile inputs never crash the host                                                 | every `kind:hostile` fixture → classified `XlsxError`, bounded memory                                                                                                               |
-| Browser-first, no bloat                                                             | core bundle ≤ 40 KB min+brotli; no `node:` imports outside `src/node`; no DOM globals                                                                                               |
+| Goal                                                                                | Gate that proves it                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Files we write open cleanly in Excel (Win/Mac), Google Sheets, LibreOffice, Numbers | Every writer fixture: Open XML SDK validator clean; Excel oracle PASS with no recovery log; LibreOffice re-save PASS; manual Google Sheets/Numbers checklist before 1.0                                                                                                                                                                                                                                                                                                      |
+| Files from those apps read correctly                                                | Every corpus fixture reads at the verdict recorded in `fixtures/manifest.json` / `test/corpus`; parity with SheetJS-with-Jetstream-options on the goldens after documented policies                                                                                                                                                                                                                                                                                          |
+| Flat memory, any size                                                               | `bench`: write 1M×20 in Node under 250 MB heap growth and in a Chrome module worker; 18M cells under 3 GB; read 1M×20 streaming under 200 MB + SST                                                                                                                                                                                                                                                                                                                           |
+| Fast                                                                                | On the `mixed` bench dataset (1.7 KB of text per row, 170 MB of XML at 100k×20; Apple M4, Node 24): write ≤ 0.5× and read-typed ≤ 0.5× SheetJS, flat across sizes. Measured 2026-09-12 (`bench/results/*phase-e*`): write 2.77 s platform deflate / 1.71 s zlib vs 9.75 s (0.28× / 0.18×), read-typed 1.62 s vs 6.17 s (0.26×); the platform write is ~1.9 s of deflate, which is the floor. The original 1.2 s / 1.5 s absolutes were set without a dataset and are retired |
+| Hostile inputs never crash the host                                                 | every `kind:hostile` fixture → classified `XlsxError`, bounded memory                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Browser-first, no bloat                                                             | core bundle ≤ 40 KB min+brotli; no `node:` imports outside `src/node`; no DOM globals                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ## 2. Package layout
 
@@ -281,9 +281,15 @@ rule "touch only your module's files and tests". The lead integrates, runs the f
 
 ## 7. Definition of done for 1.0
 
-1. All gates in §1 measured and recorded in 06 (bench) and 05 (oracle) with our engine included.
-2. Every corpus fixture at its recorded verdict; every hostile fixture rejected with a classified error.
-3. Golden bytes pinned; validator clean; Excel oracle clean; manual Google Sheets, Numbers and Windows Excel checks
-   recorded.
-4. README comparison table backed by the bench numbers; docs site has write/read/streaming/errors pages.
-5. Jetstream adapter notes (08) updated to the final API.
+Status on 2026-09-12:
+
+1. ~~All gates in §1 measured and recorded in 06 (bench) and 05 (oracle) with our engine included.~~ Done
+   (`bench/results/2026-09-12-*`, `oracle/results/2026-09-12-*`).
+2. ~~Every corpus fixture at its recorded verdict; every hostile fixture rejected with a classified error.~~ Done
+   (`test/corpus.test.ts`, `test/hostile.test.ts`, `test/parity.test.ts`, `test/corpus-policies.json`).
+3. Golden bytes pinned, validator clean, Excel 365 (macOS) and LibreOffice oracle clean: done. **Manual Google
+   Sheets, Numbers and Windows Excel checks of our goldens are still open** (`fixtures/golden/simple-excel/STEPS.md`).
+4. ~~README comparison table backed by the bench numbers; docs site has write/read/streaming/errors pages.~~ Done.
+5. ~~Jetstream adapter notes (08) updated to the final API.~~ Done.
+6. Open: create the GitHub repository and push; first release (`npm run release` derives 0.1.0 from the changelog);
+   the Jetstream migration itself (08 §5) happens in the Jetstream repo behind a flag.

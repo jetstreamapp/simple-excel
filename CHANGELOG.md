@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 - Sinks for browsers and Node: `collectToBlob`, `collectToBytes`, `fromWritableStream`, `toWritableStream`, and the
   `/node` entry with `fromFile`, `toFile`, `toWritable` and a zlib-backed `nodeDeflater`.
 - `npm run size`: a bundle-size gate on the browser entry (`dist/esm/index.mjs`), which fails above 40 KB brotli.
-  It currently measures 24.3 KB.
+  It currently measures 24.9 KB.
 - The research corpus (goldens from Excel 365, Google Sheets, Numbers, LibreOffice, Salesforce reports, SheetJS,
   ExcelJS, openpyxl, XlsxWriter, office-kit, write-excel-file, plus edge and hostile fixtures), the compatibility
   oracle (Excel, LibreOffice, Open XML SDK validator, SheetJS, openpyxl, calamine, office-kit) and the benchmark
@@ -30,3 +30,9 @@ All notable changes to this project will be documented in this file.
 - Reading a workbook that has no shared-strings part (SheetJS writes one for every export Jetstream makes) no
   longer scans every chunk of every sheet for `t="s"` cells that cannot exist. Typed reads of a 100,000-row
   Salesforce-shaped export went from 2.48 s to 2.10 s.
+- Faster hot paths, with byte-identical output: CRC-32 is slicing-by-16 (560 MB/s to 2.8 GB/s), cell text finds
+  the "nothing to escape" case with one precompiled pattern instead of a per-character walk (and no longer treats
+  an emoji as work), each flush encodes through a reused buffer with `encodeInto`, and the XML tokenizer parses a
+  tag's attributes once instead of once per lookup. Writing 100,000 Salesforce-shaped rows went from 4.56 s to
+  2.77 s (1.71 s with `nodeDeflater(1)`), 1,000,000 rows from 45.8 s to 31.9 s, and typed reads of the same
+  100,000 rows from 2.10 s to 1.62 s.

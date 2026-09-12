@@ -171,23 +171,25 @@ concurrent chain with a grace period), so the `agent-cluster peak` / `worker pea
 
 ## Latest results (2026-09-12, Apple M4 / 32 GB / Node v24.18.0)
 
-| Folder                                            | What                                                                                                     |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `results/2026-09-12-macbook-air-phase-d-baseline` | mixed 1k/10k/100k × all six engines × write, read-typed, read-raw                                        |
-| `results/2026-09-12-macbook-air-phase-d-scale`    | mixed 1m + 18m-cells writes (sheetjs, simple-excel, simple-excel-zlib) — sheetjs `RangeError` on both    |
-| `results/2026-09-12-macbook-air-phase-d-combined` | `--merge` of the two above: one summary, gates evaluated across both. This is what `research/06` renders |
-| `results/2026-09-12-macbook-air-phase-d-chrome`   | Chromium 153 module worker: simple-excel + sheetjs, mixed 100k and 1m                                    |
+| Folder                                             | What                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `results/2026-09-12-macbook-air-phase-e-optimized` | mixed 1k/10k/100k × simple-excel, simple-excel-zlib, sheetjs × write, read-typed, read-raw              |
+| `results/2026-09-12-macbook-air-phase-e-others`    | mixed 100k × exceljs, office-kit, write-excel-file, re-measured in the same session                     |
+| `results/2026-09-12-macbook-air-phase-e-scale`     | mixed 1m + 18m-cells writes (sheetjs, simple-excel, simple-excel-zlib) — sheetjs `RangeError` on both   |
+| `results/2026-09-12-macbook-air-phase-e-combined`  | `--merge` of the three above: one summary, gates across all of them. This is what `research/06` renders |
+| `results/2026-09-12-macbook-air-phase-e-chrome`    | Chromium 153 module worker: simple-excel + sheetjs, mixed 100k and 1m                                   |
 
-Headline: simple-excel passes all seven gates on both deflate paths. At mixed 100k it writes in 4.56 s (0.48×
-sheetjs) with a 108 MB RSS footprint (0.04×) and a 0.4 ms first byte, and reads typed in 2.10 s (0.33×) at 881 MB
-(0.43×); `nodeDeflater(1)` takes the write to 3.32 s for a 20% larger file. It writes 1M × 20 in 45.8 s and the
-18M-cell shape in 40.8 s where sheetjs throws `RangeError: Invalid string length`, and completes 1M × 20 in a
-Chrome worker (51.7 s, +253 MB renderer RSS) where sheetjs crashes the renderer. The absolute wall-clock targets
-in `research/11-build-plan.md` §1 (100k written in 1.2 s, read in 1.5 s) are not met on this dataset; see
-`research/06-performance-baseline.md` for the profile and the remaining hot spot (`crc32`, 15-16% of both
-directions).
+Headline: simple-excel passes all seven gates on both deflate paths. At mixed 100k it writes in 2.77 s (0.28×
+sheetjs) with a 107 MB RSS footprint (0.03×) and a 0.4 ms first byte, and reads typed in 1.62 s (0.26×) at 882 MB
+(0.48×); `nodeDeflater(1)` takes the write to 1.71 s for a 20% larger file. It writes 1M × 20 in 31.9 s and the
+18M-cell shape in 27.0 s where sheetjs throws `RangeError: Invalid string length`, and completes 1M × 20 in a
+Chrome worker (39.6 s, +254 MB renderer RSS) where sheetjs crashes the renderer. The absolute wall-clock targets
+in `research/11-build-plan.md` §1 (100k written in 1.2 s, read in 1.5 s) are still not met on this dataset; see
+`research/06-performance-baseline.md` for what the Phase E optimisation pass bought (write 1.65×, read 1.30×) and
+where the rest of the time goes (the platform compressor on write, the XML tokenizer on read).
 
-Earlier runs, kept for continuity: `results/2026-09-11-macbook-air-{baseline,scale,ceiling,shapes,combined,chrome}`
+Earlier runs, kept for continuity: the Phase D set `results/2026-09-12-macbook-air-phase-d-*` (the same shapes
+before the optimisation pass) and `results/2026-09-11-macbook-air-{baseline,scale,ceiling,shapes,combined,chrome}`
 (the four candidate engines before simple-excel existed; the `ceiling` run is where office-kit's shared-string
 table gives out, between 250k and 500k rows).
 

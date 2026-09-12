@@ -31,6 +31,13 @@ const CHAR_QUESTION = 63;
 const CHAR_EXCLAMATION = 33;
 const CHAR_HYPHEN = 45;
 const CHAR_OPEN_BRACKET = 91;
+const CHAR_LOWERCASE_C = 99;
+const CHAR_LOWERCASE_F = 102;
+const CHAR_LOWERCASE_I = 105;
+const CHAR_LOWERCASE_R = 114;
+const CHAR_LOWERCASE_S = 115;
+const CHAR_LOWERCASE_T = 116;
+const CHAR_LOWERCASE_V = 118;
 const CHAR_LOWERCASE_X = 120;
 const CHAR_BYTE_ORDER_MARK = 0xfeff;
 
@@ -47,6 +54,11 @@ const PROCESSING_INSTRUCTION_CLOSE = '?>';
 
 /** A carriage return, alone or leading a line feed: what XML line-end normalization collapses. */
 const CARRIAGE_RETURN_PATTERN = /\r\n?/g;
+
+/** Entries an attribute takes in the span array: name start, name end, value start, value end. */
+const SPAN_WIDTH = 4;
+/** Attributes a tag can hold before the span array grows; more than this is a `<row>` with every optional set. */
+const INITIAL_ATTRIBUTE_CAPACITY = 16;
 
 const DEFAULT_MAX_DEPTH = 256;
 const DEFAULT_MAX_TEXT_LENGTH = 64 * 1024 * 1024;
@@ -111,6 +123,47 @@ function localNameStart(text: string, start: number, end: number): number {
     }
   }
   return start;
+}
+
+/**
+ * The element names a spreadsheet part is almost entirely made of, as canonical strings. Recognizing them by their
+ * code units saves a `slice` per tag - eight million of them in a 100k-row sheet - and lets the handlers compare
+ * names by identity. Any other name falls back to a substring.
+ */
+function internedName(text: string, start: number, end: number): string | undefined {
+  const firstCode = text.charCodeAt(start);
+  const length = end - start;
+  if (length === 1) {
+    switch (firstCode) {
+      case CHAR_LOWERCASE_C:
+        return 'c';
+      case CHAR_LOWERCASE_V:
+        return 'v';
+      case CHAR_LOWERCASE_T:
+        return 't';
+      case CHAR_LOWERCASE_F:
+        return 'f';
+      default:
+        return undefined;
+    }
+  }
+  if (length === 2) {
+    const secondCode = text.charCodeAt(start + 1);
+    if (firstCode === CHAR_LOWERCASE_I && secondCode === CHAR_LOWERCASE_S) {
+      return 'is';
+    }
+    return firstCode === CHAR_LOWERCASE_S && secondCode === CHAR_LOWERCASE_I ? 'si' : undefined;
+  }
+  if (length === 3 && firstCode === CHAR_LOWERCASE_R && text.startsWith('row', start)) {
+    return 'row';
+  }
+  return undefined;
+}
+
+/** The element name within `[start, end)`, prefix stripped and interned when it is one of the common ones. */
+function elementName(text: string, start: number, end: number): string {
+  const localStart = localNameStart(text, start, end);
+  return internedName(text, localStart, end) ?? text.slice(localStart, end);
 }
 
 /** The text a character reference between `&` and `;` stands for, or undefined when it is not one we decode. */
@@ -238,8 +291,9 @@ export class XmlTokenizer {
   private sawTrailingCarriageReturn = false;
   /** The chunk the running `start` callback's tag came from, with the bounds of that tag's attribute list. */
   private attributeSource = '';
-  private attributeStart = 0;
-  private attributeEnd = 0;
+  /** Name and value bounds of the running tag's attributes, four entries each; grown only by a very wide tag. */
+  private attributeSpans = new Int32Array(SPAN_WIDTH * INITIAL_ATTRIBUTE_CAPACITY);
+  private attributeCount = 0;
 
   constructor(handler: XmlTokenizerHandler, limits?: XmlTokenizerLimits) {
     this.handler = handler;
@@ -295,17 +349,42 @@ export class XmlTokenizer {
     }
   }
 
-  /** Attribute value by local name for the element whose `start` callback is running; entities decoded. */
+  /**
+   * Attribute value by local name for the element whose `start` callback is running; entities decoded.
+   *
+   * The list was parsed into spans when the tag was read, so a lookup is a name comparison per attribute: the three
+   * `attr` calls a cell makes used to re-parse the same text three times over.
+   */
   attr(name: string): string | undefined {
     const source = this.attributeSource;
-    const limit = this.attributeEnd;
-    let index = this.attributeStart;
-    while (index < limit) {
-      while (index < limit && isWhitespaceCode(source.charCodeAt(index))) {
+    const spans = this.attributeSpans;
+    const recorded = this.attributeCount * SPAN_WIDTH;
+    for (let index = 0; index < recorded; index += SPAN_WIDTH) {
+      const nameStart = spans[index] as number;
+      const nameEnd = spans[index + 1] as number;
+      const localStart = localNameStart(source, nameStart, nameEnd);
+      if (nameEnd - localStart === name.length && source.startsWith(name, localStart)) {
+        const value = source.slice(spans[index + 2] as number, spans[index + 3] as number);
+        return value.indexOf('&') < 0 ? value : decodeEntities(value);
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Record the name and value bounds of every attribute in `[start, end)`, skipping namespace declarations, which
+   * declare no data (and whose prefix would otherwise turn `xmlns:r` into an attribute named `r`). Parsing stops at
+   * the first thing that is not `name="value"`, so a malformed tail simply has no attributes.
+   */
+  private parseAttributes(source: string, start: number, end: number): void {
+    this.attributeCount = 0;
+    let index = start;
+    while (index < end) {
+      while (index < end && isWhitespaceCode(source.charCodeAt(index))) {
         index++;
       }
       const nameStart = index;
-      while (index < limit) {
+      while (index < end) {
         const code = source.charCodeAt(index);
         if (code === CHAR_EQUALS || isWhitespaceCode(code)) {
           break;
@@ -313,36 +392,45 @@ export class XmlTokenizer {
         index++;
       }
       const nameEnd = index;
-      while (index < limit && isWhitespaceCode(source.charCodeAt(index))) {
+      while (index < end && isWhitespaceCode(source.charCodeAt(index))) {
         index++;
       }
-      if (nameEnd === nameStart || index >= limit || source.charCodeAt(index) !== CHAR_EQUALS) {
-        return undefined;
+      if (nameEnd === nameStart || index >= end || source.charCodeAt(index) !== CHAR_EQUALS) {
+        return;
       }
       index++;
-      while (index < limit && isWhitespaceCode(source.charCodeAt(index))) {
+      while (index < end && isWhitespaceCode(source.charCodeAt(index))) {
         index++;
       }
       const quoteCode = source.charCodeAt(index);
       if (quoteCode !== CHAR_DOUBLE_QUOTE && quoteCode !== CHAR_SINGLE_QUOTE) {
-        return undefined;
+        return;
       }
       const valueStart = index + 1;
       const valueEnd = source.indexOf(quoteCode === CHAR_DOUBLE_QUOTE ? '"' : "'", valueStart);
-      if (valueEnd < 0 || valueEnd >= limit) {
-        return undefined;
+      if (valueEnd < 0 || valueEnd >= end) {
+        return;
       }
       index = valueEnd + 1;
       if (isNamespaceDeclaration(source, nameStart, nameEnd)) {
         continue;
       }
-      const localStart = localNameStart(source, nameStart, nameEnd);
-      if (nameEnd - localStart === name.length && source.startsWith(name, localStart)) {
-        const value = source.slice(valueStart, valueEnd);
-        return value.indexOf('&') < 0 ? value : decodeEntities(value);
-      }
+      this.recordAttribute(nameStart, nameEnd, valueStart, valueEnd);
     }
-    return undefined;
+  }
+
+  private recordAttribute(nameStart: number, nameEnd: number, valueStart: number, valueEnd: number): void {
+    const offset = this.attributeCount * SPAN_WIDTH;
+    if (offset === this.attributeSpans.length) {
+      const grown = new Int32Array(this.attributeSpans.length * 2);
+      grown.set(this.attributeSpans);
+      this.attributeSpans = grown;
+    }
+    this.attributeSpans[offset] = nameStart;
+    this.attributeSpans[offset + 1] = nameEnd;
+    this.attributeSpans[offset + 2] = valueStart;
+    this.attributeSpans[offset + 3] = valueEnd;
+    this.attributeCount++;
   }
 
   /** Current nesting depth (elements opened and not yet closed). */
@@ -484,7 +572,7 @@ export class XmlTokenizer {
     if (nameEnd === nameStart) {
       throw malformed('a tag with no element name');
     }
-    const name = buffer.slice(localNameStart(buffer, nameStart, nameEnd), nameEnd);
+    const name = elementName(buffer, nameStart, nameEnd);
 
     this.openElements.push(name);
     if (this.openElements.length > this.maxDepth) {
@@ -496,13 +584,11 @@ export class XmlTokenizer {
     }
 
     this.attributeSource = buffer;
-    this.attributeStart = nameEnd;
-    this.attributeEnd = contentEnd;
+    this.parseAttributes(buffer, nameEnd, contentEnd);
     this.handler.start(name);
     // Attributes are only readable during the callback, and holding the chunk here would pin it in memory.
     this.attributeSource = '';
-    this.attributeStart = 0;
-    this.attributeEnd = 0;
+    this.attributeCount = 0;
 
     if (selfClosing) {
       this.openElements.pop();
@@ -515,7 +601,7 @@ export class XmlTokenizer {
     while (nameEnd < tagEnd && !isWhitespaceCode(buffer.charCodeAt(nameEnd))) {
       nameEnd++;
     }
-    const name = buffer.slice(localNameStart(buffer, nameStart, nameEnd), nameEnd);
+    const name = elementName(buffer, nameStart, nameEnd);
     const open = this.openElements.pop();
     if (open === undefined) {
       throw malformed(`</${name}> with no matching open element`);

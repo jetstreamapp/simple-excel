@@ -242,6 +242,8 @@ function rejectForeignMainPart(mainPart: string, contentTypes: ContentTypes | un
 // ---------------------------------------------------------------------------------------------------------------------
 
 const EMPTY_HEADER_BASE = '__EMPTY';
+/** Stands in for "this call names no columns from a header row", so widening a row allocates nothing. */
+const NO_HEADER_CELLS: readonly ReadValue[] = [];
 
 /**
  * SheetJS names a blank header `__EMPTY`, then `__EMPTY_1`, `__EMPTY_2`, and disambiguates a repeated header with
@@ -346,14 +348,14 @@ class ObjectRowBuilder {
   accept(rowIndex: number, cells: readonly ReadValue[]): Record<string, ReadValue> | null {
     if (!this.headersReady && rowIndex >= this.headerRow) {
       this.headersReady = true;
-      this.nameColumns(Math.max(this.declaredColumns, cells.length), rowIndex === this.headerRow ? cells : []);
+      this.nameColumns(Math.max(this.declaredColumns, cells.length), rowIndex === this.headerRow ? cells : NO_HEADER_CELLS);
     }
     if (rowIndex < this.firstDataRow) {
       return null;
     }
     // A row wider than both the header row and the declared dimension still has to keep its values; those columns
     // have no header cell of their own, so they are named as the blanks they are.
-    this.nameColumns(cells.length, []);
+    this.nameColumns(cells.length, NO_HEADER_CELLS);
     const record: Record<string, ReadValue> = {};
     for (const { name, column } of this.columns) {
       const value = cells[column];

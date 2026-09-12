@@ -1,6 +1,7 @@
 import { XlsxError } from '../errors';
 import type { CellError, CellInput, SheetOptions, StyleId } from '../types';
 import { encodeCellText, needsSpacePreserve } from '../xml/escape';
+import { encodeXmlChunk } from '../xml/utf8';
 import type { ZipEntryWriter } from '../zip/zip-writer';
 import { columnLetters, formatRef, MAX_COLUMNS, MAX_ROWS, parseRange } from './cell-ref';
 import { componentsFromDate, type DateComponents, serialFromComponents } from './date';
@@ -21,7 +22,6 @@ const MAX_EXACT_BIGINT = 9_007_199_254_740_992n;
 /** Excel's own defaults, in inches. All six attributes are required by the schema. */
 const PAGE_MARGINS = '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
 
-const ENCODER = new TextEncoder();
 /** Handed back by `writeRow` when nothing had to be flushed, so a row costs no promise allocation. */
 const NOTHING_TO_FLUSH: Promise<void> = Promise.resolve();
 
@@ -342,7 +342,7 @@ export class WorksheetWriter {
     this.pending.length = 0;
     this.pendingChars = 0;
     try {
-      await this.entry.write(ENCODER.encode(text));
+      await this.entry.write(encodeXmlChunk(text));
     } catch (reason) {
       this.failure = reason;
       throw reason;
