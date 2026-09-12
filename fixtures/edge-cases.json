@@ -474,10 +474,10 @@
   {
     "id": "EC-ZIP64-SMALL",
     "family": "Container",
-    "symptom": "A small archive written with zip64 headers throughout (version-needed 45, zip64 extra fields, zip64 EOCD): SheetJS 0.20.3 refuses it ('Unsupported ZIP file'); Excel, LibreOffice, openpyxl and calamine read it.",
-    "seenIn": "golden-canonical-simple-excel-zip64.",
-    "expected": "Readers should accept zip64 regardless of size. Writers should not emit zip64 unless a part can plausibly pass 4 GiB (simple-excel's zip64: 'auto' only does so for sheets whose announced size exceeds ~40M cells).",
-    "status": "verified (oracle)"
+    "symptom": "A small archive written with zip64 headers throughout (version-needed 45, zip64 extra fields, zip64 EOCD): SheetJS 0.20.3 refuses it ('Unsupported ZIP file') and Google Drive fails to convert it to a Google Sheet ('failed conversion' on upload); Excel, LibreOffice, openpyxl and calamine read it.",
+    "seenIn": "golden-canonical-simple-excel-zip64 (oracle run phase-b-writer; Google Drive upload by hand, 2026-09-12).",
+    "expected": "Readers should accept zip64 regardless of size, but two important ones do not, so writers must not emit zip64 unless a part can plausibly pass 4 GiB (simple-excel's zip64: 'auto' only does so for sheets announcing ~40M+ cells). Google Sheets caps a spreadsheet at 10M cells, so no file that genuinely needs zip64 could be imported there anyway.",
+    "status": "verified (oracle + Google Drive)"
   },
   {
     "id": "EC-INPUT-ODS-RENAMED",

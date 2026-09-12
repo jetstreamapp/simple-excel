@@ -101,8 +101,9 @@ since it is stricter about some parts than the Mac one.
 
 ## Results
 
-| Date | Application       | Version | Verdict     | Notes |
-| ---- | ----------------- | ------- | ----------- | ----- |
-|      | Google Sheets     |         | _(pending)_ |       |
-|      | Numbers           |         | _(pending)_ |       |
-|      | Excel for Windows |         | _(pending)_ |       |
+| Date       | Application                   | Version | Verdict     | Notes                                                                                                                                                         |
+| ---------- | ----------------------------- | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-12 | Google Sheets (zip64 variant) | web     | FAIL        | Drive upload of `canonical.zip64.xlsx` reports "failed conversion" (EC-ZIP64-SMALL); expected, `zip64: 'auto'` never produces this shape for importable sizes |
+|            | Google Sheets                 |         | _(pending)_ | `canonical.xlsx` and `canonical.inline.xlsx`                                                                                                                  |
+|            | Numbers                       |         | _(pending)_ |                                                                                                                                                               |
+|            | Excel for Windows             |         | _(pending)_ |                                                                                                                                                               |

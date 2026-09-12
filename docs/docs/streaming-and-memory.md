@@ -181,11 +181,14 @@ file header_, before the entry's first byte. So the decision is made up front, f
 (ADR-002).
 
 :::caution
-**SheetJS 0.20.3 cannot open a zip64 archive at all** — "Unsupported ZIP file", even for a small one
-(`EC-ZIP64-SMALL`). Excel, LibreOffice, openpyxl and calamine all read them. That is why `zip64: 'auto'` only
-turns it on for a sheet whose declared size makes a > 4 GiB part plausible (about 40M cells). If any consumer of
-your files is SheetJS, leave it on `'auto'` and do not set `zip64: true`.
-:::
+**SheetJS 0.20.3 cannot open a zip64 archive at all** — "Unsupported ZIP file", even for a small one — and
+**Google Drive fails to convert one to a Google Sheet** on upload (`EC-ZIP64-SMALL`). Excel, LibreOffice, openpyxl
+and calamine all read them. That is why `zip64: 'auto'` only turns it on for a sheet whose declared size makes a
+
+> 4 GiB part plausible (about 40M cells; Google Sheets tops out at 10M cells, so such a file could not be imported
+> there regardless). If any consumer of your files is SheetJS or Google Sheets, leave it on `'auto'` and do not set
+> `zip64: true`.
+> :::
 
 A sheet written with an unknown row count stays 32-bit, and a part that does pass 4 GiB fails with
 `ENTRY_TOO_LARGE` naming `zip64: true` as the fix. Excel's own 1,048,576-row limit means such a sheet would need

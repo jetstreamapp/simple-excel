@@ -45,7 +45,9 @@ shared-string and zip64 variants) is:
   does not decode `_xHHHH_` escapes the way Excel does. Those are catalogued in
   [`research/04-edge-case-catalog.md`](https://github.com/jetstreamapp/simple-excel/blob/main/research/04-edge-case-catalog.md)
   and allowed per fixture, not silently ignored.
-- **SheetJS on the zip64 variant: cannot open it** — see [the zip64 caveat](./streaming-and-memory.md#the-zip64-caveat).
+- **SheetJS on the zip64 variant: cannot open it**, and **Google Drive fails to convert it** to a Google Sheet — see
+  [the zip64 caveat](./streaming-and-memory.md#the-zip64-caveat). Neither affects files written with the default
+  `zip64: 'auto'`.
 - **office-kit**: reads all three at 94% of the ground-truth cells (`phase-d-office-kit-on-ours`). The gap is its
   own date handling — it puts a time-only value on 1899-12-31 rather than 1899-12-30 — plus the two writer
   conventions below. Its _streaming_ API additionally leaves `_xHHHH_` escapes undecoded when the strings are

@@ -279,9 +279,10 @@ So the decision has to be made up front (ADR-002).
 | `false`            | Never emitted                                                                                                                                   |
 
 :::caution
-`'auto'` is deliberately conservative because **SheetJS 0.20.3 cannot open a zip64 archive at all** — it reports
-"Unsupported ZIP file" even for a small one (`EC-ZIP64-SMALL`). Excel, LibreOffice, openpyxl and calamine all
-read them. Only turn `zip64: true` on when you know your consumers can handle it.
+`'auto'` is deliberately conservative because **SheetJS 0.20.3 cannot open a zip64 archive at all** ("Unsupported
+ZIP file" even for a small one) and **Google Drive fails to convert one to a Google Sheet** (`EC-ZIP64-SMALL`).
+Excel, LibreOffice, openpyxl and calamine all read them. Only turn `zip64: true` on when you know your consumers
+can handle it.
 :::
 
 A sheet written without a `rowCount` stays 32-bit, and if a part does pass 4 GiB the writer fails with
