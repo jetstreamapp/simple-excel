@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "date": "2026-09-12T22:07:06.097Z",
+    "host": "MacBook-Air.local",
+    "label": "gsheets-on-ours",
+    "node": "v24.18.0",
+    "readers": [
+      "simple-excel",
+      "sheetjs",
+      "validator",
+      "calamine"
+    ],
+    "fixtures": [
+      "golden-canonical-gsheets-resave-simple-excel",
+      "golden-canonical-gsheets-resave-simple-excel-inline"
+    ]
+  },
+  "results": [
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel",
+      "reader": "simple-excel",
+      "file": "golden/gsheets/canonical.from-simple-excel.xlsx",
+      "status": "DIFF",
+      "ms": 105,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 656,
+      "matches": 631,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "crlf-normalized": 3,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel",
+      "reader": "sheetjs",
+      "file": "golden/gsheets/canonical.from-simple-excel.xlsx",
+      "status": "DIFF",
+      "ms": 108,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 656,
+      "matches": 597,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6,
+        "crlf-normalized": 3,
+        "string-mismatch": 4,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got $A$1:$C$12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel",
+      "reader": "validator",
+      "file": "golden/gsheets/canonical.from-simple-excel.xlsx",
+      "status": "PASS",
+      "ms": 718,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/gsheets/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel",
+      "reader": "calamine",
+      "file": "golden/gsheets/canonical.from-simple-excel.xlsx",
+      "status": "DIFF",
+      "ms": 223,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 660,
+      "matches": 613,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "crlf-normalized": 3,
+        "error-mismatch": 3,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel-inline",
+      "reader": "simple-excel",
+      "file": "golden/gsheets/canonical.inline.from-simple-excel.xlsx",
+      "status": "DIFF",
+      "ms": 72,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 656,
+      "matches": 631,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "crlf-normalized": 3,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel-inline",
+      "reader": "sheetjs",
+      "file": "golden/gsheets/canonical.inline.from-simple-excel.xlsx",
+      "status": "DIFF",
+      "ms": 99,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 656,
+      "matches": 597,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6,
+        "crlf-normalized": 3,
+        "string-mismatch": 4,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got $A$1:$C$12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel-inline",
+      "reader": "validator",
+      "file": "golden/gsheets/canonical.inline.from-simple-excel.xlsx",
+      "status": "PASS",
+      "ms": 403,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/gsheets/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave-simple-excel-inline",
+      "reader": "calamine",
+      "file": "golden/gsheets/canonical.inline.from-simple-excel.xlsx",
+      "status": "DIFF",
+      "ms": 74,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 660,
+      "matches": 613,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "crlf-normalized": 3,
+        "error-mismatch": 3,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    }
+  ]
+}

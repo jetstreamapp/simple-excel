@@ -86,6 +86,15 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | `libreoffice-from-csv` | `a\u0001b` | `_x0041_` | `_x0041_` | `_X0041_` | `0`        | `9.0072E+15` | `1.7977E+308` | `MonJanuary 1, 1900 12:00:00 AM` | `ThursMarch 1, 1900 12:00:00 AM` | `ThursMarch 1, 1900 12:00:00 AM` | `12:34:56.789`    | `SunMarch 10, 2024 3:30:00 AM` | `TuesJanuary 2, 1900 12:00:00 P` |
 | `office-kit`           | `a\u0001b` | `_x0041_` | `_x005FA` | `_X0041_` | `=SUM(A1)` | `9.01E+15`   | `1.8E+308`    | `SunDecember 31, 1899 7:00:00 A` | `WednesFebruary 28, 1900 7:00:0` | `ThursMarch 1, 1900 7:00:00 AM`  | `-0.18406494213`  | `SunMarch 10, 2024 9:30:00 AM` | `MonJanuary 1, 1900 7:00:00 PM`  |
 
+### Run `gsheets-on-ours` (2026-09-12-gsheets-on-ours)
+
+2026-09-12T22:07:06.097Z, MacBook-Air.local, Node v24.18.0.
+
+| fixture (generator)                                                    | simple-excel                                         | sheetjs                                                      | validator | calamine                                                   |
+| ---------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ | --------- | ---------------------------------------------------------- |
+| `golden-canonical-gsheets-resave-simple-excel`<br>Google Sheets        | 96% (escape-sequence-mangled 14, dst-gap-shift-1h 5) | 91% (time-only-has-date-part 24, escape-sequence-mangled 14) | PASS      | 93% (blank-vs-empty-string 19, escape-sequence-mangled 14) |
+| `golden-canonical-gsheets-resave-simple-excel-inline`<br>Google Sheets | 96% (escape-sequence-mangled 14, dst-gap-shift-1h 5) | 91% (time-only-has-date-part 24, escape-sequence-mangled 14) | PASS      | 93% (blank-vs-empty-string 19, escape-sequence-mangled 14) |
+
 ### Run `hostile` (2026-09-12-hostile)
 
 2026-09-12T15:42:31.907Z, MacBook-Air.local, Node v24.18.0.
@@ -193,7 +202,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | --------------------------------------------------------------------------------------------------- | ------------ |
 | `jetstream-multi-object-template-gsheets`<br>Google Sheets xlsx export, workbook created 2021-07-10 | OPENED       |
 | `jetstream-records-product2-sheetjs`<br>SheetJS unknown                                             | OPENED       |
-| `jetstream-records-product2-csv`<br>hand-authored CSV                                               | ERROR        |
+| `jetstream-records-product2-csv`<br>hand-authored CSV<br>expect `NOT_XLSX`                          | ERROR        |
 
 ### Run `user-goldens` (2026-09-12-user-goldens)
 
