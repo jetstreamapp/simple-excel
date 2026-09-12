@@ -4,17 +4,8 @@
     "host": "MacBook-Air.local",
     "label": "excel-web-on-ours",
     "node": "v24.18.0",
-    "readers": [
-      "simple-excel",
-      "sheetjs",
-      "validator",
-      "calamine",
-      "excel"
-    ],
-    "fixtures": [
-      "golden-canonical-excel-web-resave-simple-excel",
-      "golden-canonical-excel-web-resave-simple-excel-inline"
-    ]
+    "readers": ["simple-excel", "sheetjs", "validator", "calamine", "excel"],
+    "fixtures": ["golden-canonical-excel-web-resave-simple-excel", "golden-canonical-excel-web-resave-simple-excel-inline"]
   },
   "results": [
     {
@@ -102,12 +93,7 @@
       "status": "PASS",
       "ms": 3807,
       "workbookName": "canonical.from-simple-excel.xlsx",
-      "sheets": [
-        "Data",
-        "Features",
-        "It's a very long sheet name 001",
-        "Hidden"
-      ],
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
       "cells": [
         {
           "ref": "A2",
@@ -291,12 +277,7 @@
       "status": "PASS",
       "ms": 2414,
       "workbookName": "canonical.inline.from-simple-excel.xlsx",
-      "sheets": [
-        "Data",
-        "Features",
-        "It's a very long sheet name 001",
-        "Hidden"
-      ],
+      "sheets": ["Data", "Features", "It's a very long sheet name 001", "Hidden"],
       "cells": [
         {
           "ref": "A2",

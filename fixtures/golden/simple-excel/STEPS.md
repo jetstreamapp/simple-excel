@@ -18,6 +18,29 @@ Automated verdicts (Open XML SDK validator, Excel via AppleScript, LibreOffice, 
 office-kit, and our own reader) are in `research/05-compatibility-matrix.md`, runs `phase-b-writer`,
 `phase-d-office-kit-on-ours` and `phase-d-simple-excel-golden`. What is _not_ automated is below.
 
+## Browsers
+
+The applications above read the _files_. A separate check covers the _library_ in a browser, because the browser
+is its primary target and every reader in the oracle is a Node or Python process.
+
+`npm run smoke:browsers` runs one page in Playwright's Chromium, Firefox and WebKit: it writes 20,000 mixed rows
+to `collectToBlob()` on the main thread and again in a module worker, reads both back, reads an Excel-authored and
+a Google-Sheets-authored golden, checks that a password-protected file and a zip bomb are rejected with
+`ENCRYPTED` and `ZIP_BOMB`, and compares a `fromWritableStream` run byte for byte with a `collectToBytes` run.
+Firefox and WebKit need `npx playwright install firefox webkit` once. The verdicts and the engine differences
+worth knowing (each engine's `CompressionStream` produces a different compressed size; the memory measurement is
+Chromium-only) are in the "Browsers" section of `research/05-compatibility-matrix.md`.
+
+**Manual: Safari.** Playwright's WebKit is not the shipping browser, and Safari cannot be automated here. Run
+
+```
+node test/browser/run.mjs --serve
+```
+
+and open the printed URL in Safari. The page renders the same pass/fail table the runner prints, and
+`window.__smokeResults` in the Web Inspector console holds the full object. Record the Safari version and the
+verdict in `research/05-compatibility-matrix.md`, next to the automated three.
+
 ## Manual: the three applications that cannot be driven from here
 
 Google Sheets is a web app, the Numbers AppleScript import produces empty documents on 14.4

@@ -59,6 +59,17 @@
         "vitest/no-conditional-tests": "off",
         "vitest/no-disabled-tests": "off"
       }
+    },
+    {
+      // The browser smoke test is page code served over HTTP rather than bundled modules: `/dist/esm/index.mjs`
+      // is a URL, not a file path; a DedicatedWorkerGlobalScope `postMessage` takes no target origin; and the
+      // Node runner prints the results table. Listed after `test/**` so it is the last override that matches.
+      "files": ["test/browser/**"],
+      "rules": {
+        "import/no-absolute-path": "off",
+        "unicorn/require-post-message-target-origin": "off",
+        "no-console": "off"
+      }
     }
   ],
   "ignorePatterns": [

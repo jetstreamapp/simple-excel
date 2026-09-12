@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>simple-excel browser smoke test</title>
+    <style>
+      body {
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+        margin: 1.5rem;
+        max-width: 72rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+      }
+      #summary {
+        font-weight: 600;
+        font-size: 1rem;
+      }
+      #agent {
+        color: #555;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        word-break: break-all;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #e3e3e3;
+        padding: 0.3rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+      th {
+        background: #f4f4f4;
+        font-family: inherit;
+      }
+      tr.step td {
+        background: #fafafa;
+        font-family: inherit;
+        padding-top: 0.6rem;
+      }
+      .pass {
+        color: #0a6b2d;
+      }
+      .fail {
+        color: #a30f0f;
+      }
+      tr.fail td {
+        background: #fff4f4;
+      }
+      td:nth-child(2) {
+        width: 22rem;
+      }
+      td:nth-child(3) {
+        width: 5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>simple-excel browser smoke test</h1>
+    <p id="summary">running…</p>
+    <p id="agent"></p>
+    <p>
+      Driven by <code>node test/browser/run.mjs</code> in Chromium, Firefox and WebKit; open this page by hand in Safari with
+      <code>node test/browser/run.mjs --serve</code>. The full results object is <code>window.__smokeResults</code>.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>check</th>
+          <th>result</th>
+          <th>detail</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <script type="module" src="./smoke.js"></script>
+  </body>
+</html>

@@ -37,6 +37,7 @@ npm run lint
 npm run format              # always run this after editing a source file
 npm run build               # esbuild bundles (esm + cjs, core + node entry) and declarations
 npm run fixtures:check      # fails on manifest sha256 drift
+npm run smoke:browsers      # the same page in Chromium, Firefox and WebKit
 npm run build && npm run bench -- --engines sheetjs,simple-excel --sizes 1k,10k,100k
 npm run oracle -- --tag kind:golden --label <label>   # local only
 npm run research:regenerate # re-renders research 04, 05 and 06 from the committed JSON
@@ -111,6 +112,56 @@ If the fixture demonstrates a behaviour that is not already in the catalog, add 
 `fixtures/edge-cases.json` and run `npm run research:regenerate` — `research/04` is rendered from that file, not
 edited by hand. The same goes for `research/05` (rendered from the newest oracle run) and `research/06`
 (rendered from the newest benchmark run).
+
+## Browser smoke test
+
+Node covers the format rules; it cannot tell you whether the library works in the browsers the package claims to
+support. `npm run smoke:browsers` builds `dist/`, serves the repository root cross-origin isolated, and runs one
+page — `test/browser/smoke.html` — in Playwright's Chromium, Firefox and WebKit builds, printing a table per
+browser and exiting non-zero on any failed check.
+
+```bash
+npm run smoke:browsers                               # build + all three browsers
+node test/browser/run.mjs --browsers firefox,webkit  # a subset, against the dist/ that is already built
+node test/browser/run.mjs --serve                    # keep serving; open the URL by hand
+npx playwright install firefox webkit                # Firefox and WebKit are not installed by default
+```
+
+The page runs eight steps and evaluates every expectation in the page, against the values it wrote itself, so the
+runner only ever sees pass/fail plus a readable detail:
+
+| Step                 | What it proves                                                                                                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Feature detection    | `hasNativeDeflate()`, `CompressionStream`, `DecompressionStream`, `WritableStream`, `Blob`                                                                                                    |
+| Write (main thread)  | 20,000 mixed rows to `collectToBlob()` — bold header, frozen row, autofilter, a date number format, a hidden second sheet, `deterministic: true`                                              |
+| Read back            | `openWorkbook(blob)` (the `slice().arrayBuffer()` source path), then every sentinel cell: unicode, CRLF, a control character, an `_x0041_` literal, `-0`, `1e21`, dates, truncation at 32,767 |
+| Module worker        | the same write in a `type: 'module'` worker, the Blob transferred back and read on the page, plus one read of an `ArrayBuffer` transferred in                                                 |
+| Real fixtures        | an Excel-authored and a Google-Sheets-authored golden, fetched and read                                                                                                                       |
+| Hostile input        | `ENCRYPTED` for the password-protected file, `ZIP_BOMB` for the 30 MB sheet against an 8 MiB inflate cap                                                                                      |
+| `fromWritableStream` | bytes streamed into a `WritableStream` equal a `collectToBytes()` run of the same workbook                                                                                                    |
+| Memory               | 200,000 rows written in the worker while the page samples `performance.measureUserAgentSpecificMemory()` (Chromium only; recorded, never asserted)                                            |
+
+The files are `test/browser/smoke.html`, `smoke.js` (the page), `smoke.worker.js`, `smoke-workbook.js` (the
+dataset and the read-back checks, shared by both threads) and `run.mjs` (the static server and the Playwright
+driver). They are plain ESM served over HTTP and import `/dist/esm/index.mjs` by URL, so there is no bundler in
+the loop and the page is exactly what a browser would load.
+
+Two things the runner has to do deliberately: Chromium is launched with `channel: 'chromium'` because
+Playwright's default headless shell rejects `measureUserAgentSpecificMemory()` with a `SecurityError`, and the
+server sends `Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy` so the page is cross-origin isolated
+(the same reason `bench/lib/chrome.mjs` does).
+
+### Checking real Safari
+
+Playwright's WebKit is not Safari. For the real thing:
+
+```bash
+node test/browser/run.mjs --serve
+```
+
+then open the printed URL in Safari. The page renders the same table it hands the runner, and
+`window.__smokeResults` in the Web Inspector console holds the full object. Record the Safari version and the
+outcome in the "Browsers" section of `research/05-compatibility-matrix.md`.
 
 ## Benchmarks
 

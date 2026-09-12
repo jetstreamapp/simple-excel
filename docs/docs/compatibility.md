@@ -114,6 +114,42 @@ has to produce a _classified error_ — never a crash, never unbounded memory. S
 Several well-known readers fail these. SheetJS happily parses the renamed `.xls` and `.xlsb` as if nothing were
 wrong; the Open XML SDK validator crashes with a stack overflow on the deeply nested rich text.
 
+## Which browsers it has been run in
+
+The browser is the primary target, so the whole surface is exercised in a real browser rather than only in Node.
+`npm run smoke:browsers` runs one page — write 20,000 mixed rows to `collectToBlob()`, read them back, do the
+same in a module worker, read an Excel- and a Sheets-authored file, reject a password-protected file and a zip
+bomb, stream into a `WritableStream` — and fails on any difference. It is described in
+[Contributing](./contributing.md#browser-smoke-test).
+
+| Browser                         | Version               | Result                                                           |
+| ------------------------------- | --------------------- | ---------------------------------------------------------------- |
+| Chromium (Playwright, headless) | 153.0.8010.12         | 72/72 checks                                                     |
+| Firefox (Playwright, headless)  | 155.0                 | 72/72 checks                                                     |
+| WebKit (Playwright, headless)   | 26.6 (Safari 26.6 UA) | 72/72 checks                                                     |
+| Safari (macOS, by hand)         | —                     | run `node test/browser/run.mjs --serve` and open the printed URL |
+
+Run 2026-09-12 on macOS 15 (Apple silicon). Every check passed in all three: `CompressionStream('deflate-raw')`,
+`DecompressionStream`, `WritableStream` and `Blob` are present everywhere, module workers load the library
+unchanged, a `Blob` written in a worker transfers to the page by reference, and the reader returns the same
+values for every trap cell — unicode, a CRLF kept as `\r\n`, a control character, an `_x0041_` literal, `-0`
+(written and read as a plain zero, since Excel has no negative zero), `1e21`, `0.1 + 0.2`, `9007199254740991`,
+a time-only `Date`, and a 40,000-character cell truncated to 32,767 with the `...(truncated)` suffix.
+
+Two engine differences show up, neither of them a defect:
+
+- **The compressed size differs per engine.** The same deterministic workbook is 1,654,492 bytes in Chromium,
+  1,712,097 in Firefox and 1,686,065 in WebKit, because the bytes come from each engine's own
+  `CompressionStream('deflate-raw')` tuning. The XML inside is identical. See
+  [the deterministic-output caveat](./writing.md#deterministic-output).
+- **`performance.measureUserAgentSpecificMemory()` is Chromium-only**, and only in a document (it is not exposed
+  in a dedicated worker). Where it exists, writing 200,000 rows (a 15.7 MB file) in a worker leaves an
+  agent-cluster peak of about 4 MB, 1.7 MB of it the worker — the flat-memory claim, measured in a browser
+  rather than in Node.
+
+To check real Safari, which cannot be automated here, run `node test/browser/run.mjs --serve` and open the
+printed URL: the page shows the same table.
+
 ## How the checking works
 
 ### The fixture corpus

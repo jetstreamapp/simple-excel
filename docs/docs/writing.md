@@ -330,6 +330,14 @@ Fixes the zip entry timestamps and the `docProps` dates, so the same rows produc
 repository's golden-bytes suite depends on this; it is also what you want for content-addressed caching or for
 diffing two exports.
 
+:::caution
+Determinism holds for one deflate implementation, not across engines. The compressed stream comes from the
+platform's `CompressionStream('deflate-raw')`, and each engine tunes zlib differently: the same 20,000-row
+workbook is 1,654,492 bytes in Chromium, 1,712,097 in Firefox and 1,686,065 in WebKit
+(`npm run smoke:browsers`). The XML inside is identical everywhere — only the compressed container differs — so
+compare hashes between runs on the same engine, or write with `compression: 'store'`.
+:::
+
 ## Progress, abort and cancellation
 
 ```ts

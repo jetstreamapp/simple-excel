@@ -29,6 +29,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:corpus": "vitest run --project corpus",
+    "smoke:browsers": "npm run build && node test/browser/run.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "format": "oxfmt",
     "format:check": "oxfmt --check",

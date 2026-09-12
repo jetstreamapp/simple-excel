@@ -316,3 +316,61 @@ document API reads all three at 94%: our two writer conventions plus 30 cells of
 midnight included). The streaming API matches it on the shared-string and zip64 variants and drops to 88% on the
 inline-string variant, where it does not decode `_xHHHH_` in inline strings (`a_x0001_b`, `_x005F_x0041_`) - the
 office-kit reader gap 04 already records, visible here only because that variant puts every string inline.
+
+## Browsers (`npm run smoke:browsers`)
+
+Everything above is the file format: which application writes what, and which reader gets it back. This section is
+the other axis - whether the library itself runs in the browsers the package claims, which the oracle cannot
+answer because every reader in it is a Node or Python process.
+
+`test/browser/run.mjs` serves the repository root cross-origin isolated and drives one page,
+`test/browser/smoke.html`, through Playwright's Chromium, Firefox and WebKit builds. The page writes 20,000 mixed
+rows to `collectToBlob()` on the main thread and again in a `type: 'module'` worker, reads both back, reads an
+Excel-authored and a Google-Sheets-authored golden over `fetch`, checks that the password-protected file and the
+zip bomb are rejected with `ENCRYPTED` and `ZIP_BOMB`, and compares a `fromWritableStream` run byte for byte with
+a `collectToBytes` run. Every expectation is evaluated in the page against the values the page itself wrote, so a
+browser difference shows up as a named failing check rather than as a diff the runner has to interpret.
+
+**2026-09-12, macOS 15, Apple silicon. 72 of 72 checks in all three:**
+
+| Browser  | Version               | Checks | Write 20k rows (main / worker) | Read back (main / worker Blob) | Output    |
+| -------- | --------------------- | ------ | ------------------------------ | ------------------------------ | --------- |
+| Chromium | 153.0.8010.12         | 72/72  | 141 ms / 130 ms                | 176 ms / 151 ms                | 1,654,492 |
+| Firefox  | 155.0                 | 72/72  | 144 ms / 135 ms                | 277 ms / 267 ms                | 1,712,097 |
+| WebKit   | 26.6 (Safari 26.6 UA) | 72/72  | 160 ms / 199 ms                | 167 ms / 125 ms                | 1,686,065 |
+
+No library change was needed for any of them. `CompressionStream('deflate-raw')`, `DecompressionStream`,
+`WritableStream` and `Blob` are present in all three (`hasNativeDeflate()` is true everywhere, so no browser falls
+back to stored parts); module workers import `dist/esm/index.mjs` unchanged; a `Blob` produced by
+`collectToBlob()` inside a worker reaches the page by reference and reads back identically to the one the page
+wrote; an `ArrayBuffer` transferred into the worker reads there. Every trap cell matches on every engine -
+unicode, an LF and a CRLF (the CRLF preserved as `\r\n`, not collapsed), a U+0001 control character, the literal
+`_x0041_`, `-0` (stored and read as a plain zero, since Excel has no negative zero), `1e21`, `0.1 + 0.2`,
+`9007199254740991`, a local-wall-clock `Date`, a time-only `Date` on 1899-12-30, a blank, and a 40,000-character
+cell truncated to 32,767 ending `...(truncated)`.
+
+Two engine differences, both expected and neither a defect:
+
+- **Compressed size is engine-specific.** The three output sizes above are the same workbook written with
+  `deterministic: true`; the XML inside is byte-identical and only the deflate stream differs, because each engine
+  tunes zlib its own way. `deterministic: true` means reproducible on one engine, not across them - which matters
+  only for the golden-bytes suite, and that runs in Node.
+- **`performance.measureUserAgentSpecificMemory()` is Chromium-only, and document-only.** It is not exposed in a
+  dedicated worker (it is simply `undefined` there, even in a cross-origin-isolated one), and Playwright's
+  headless _shell_ rejects it in the page with `SecurityError: performance.measureUserAgentSpecificMemory is not
+available` - which is why the runner launches Chromium with `channel: 'chromium'`. Where it works, writing
+  200,000 rows in the worker - a 15.7 MB file - measured an agent-cluster peak of 4.35 MB with 1.72 MB attributed
+  to `DedicatedWorkerGlobalScope`. That is the flat-memory design measured in a browser rather than in Node, and
+  it is recorded rather than asserted: the number depends on when the engine happened to run a garbage collection.
+
+**Safari itself is not automated.** Playwright's WebKit is the same engine family but not the shipping browser.
+Run `node test/browser/run.mjs --serve`, open the printed URL in Safari, and the page renders the same table
+(`window.__smokeResults` in the Web Inspector holds the full object). Record the Safari version and the outcome
+here when it is done.
+
+| Date       | Browser           | Version | Verdict         | Notes                                                                    |
+| ---------- | ----------------- | ------- | --------------- | ------------------------------------------------------------------------ |
+| 2026-09-12 | Chromium          | 153     | PASS            | 72/72; the only browser where the memory measurement is available        |
+| 2026-09-12 | Firefox           | 155     | PASS            | 72/72; slowest read (about 1.6x Chromium), largest output                |
+| 2026-09-12 | WebKit            | 26.6    | PASS            | 72/72; slowest worker write, fastest read of the worker's Blob           |
+|            | Safari (shipping) |         | _(not yet run)_ | `node test/browser/run.mjs --serve`, then open the printed URL in Safari |

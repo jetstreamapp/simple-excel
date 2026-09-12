@@ -43,6 +43,7 @@ npm run test:corpus         # corpus, golden-bytes, hostile and parity suites on
 npm run typecheck && npm run lint && npm run format:check
 npm run build               # esbuild bundles (esm + cjs, core + node entry) and declarations
 npm run fixtures:check      # manifest sha256 drift
+npm run smoke:browsers      # the same page in Chromium, Firefox and WebKit (npx playwright install firefox webkit)
 npm run oracle -- --tag kind:golden --label <label>    # local only: Excel, LibreOffice, python venv
 npm run build && npm run bench -- --engines sheetjs,simple-excel --sizes 1k,10k,100k
 npm run size               # bundle-size gate: dist/esm/index.mjs <= 40 KB brotli
