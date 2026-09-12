@@ -83,7 +83,7 @@
     "id": "EC-NUM-15-SIGNIFICANT-DIGITS",
     "family": "Numbers",
     "symptom": "Excel displays/rounds to 15 significant digits: 9007199254740991 shows as 9.007199254741E+15.",
-    "seenIn": "Excel oracle I2. Files may still carry 17 digits; readers return the stored double.",
+    "seenIn": "Excel oracle I2. Files may still carry 17 digits; readers return the stored double, and Excel keeps it too (its re-save goldens hold 9007199254740991). Excel for Mac manual check (2026-09-12): =I2-9007199254740990 evaluates to 0 even though the cell holds ...991, because Excel zeroes an addition/subtraction result that is below the 15-digit precision of its operands; use =I2=2^53-1 (TRUE) to check a stored value instead.",
     "expected": "Store shortest round-trip; document that Excel UI shows 15 digits.",
     "status": "verified"
   },
@@ -91,7 +91,7 @@
     "id": "EC-NUM-MAX-DOUBLE",
     "family": "Numbers",
     "symptom": "1.7976931348623157e308 round-trips as Infinity or is dropped.",
-    "seenIn": "openpyxl reads its own output as inf; office-kit drops the cell (null) from openpyxl/XlsxWriter files.",
+    "seenIn": "openpyxl reads its own output as inf; office-kit drops the cell (null) from openpyxl/XlsxWriter files. Excel stores and re-saves 1.7976931348623157e308 exactly (golden-canonical-excel-365-*), displays it as 1.79769313486231E+308, and rejects any formula literal above its 9.99999999999999E+307 cap ('there is a problem with this formula'), so the value cannot be compared with a typed literal inside Excel.",
     "expected": "Parse xsd:double exactly; treat overflow as an error cell rather than dropping the cell.",
     "status": "observed"
   },
@@ -403,7 +403,7 @@
     "id": "EC-HIDDEN-SHEETS",
     "family": "Structure",
     "symptom": "state=\"hidden\" and state=\"veryHidden\" worksheets.",
-    "seenIn": "All readers list them; Jetstream's picker shows every sheet name today.",
+    "seenIn": "All readers list them; Jetstream's picker shows every sheet name today. Numbers 14.4 makes hidden sheets visible on import and says so in a banner ('hidden sheets were made visible'); its export has no state=\"hidden\" (golden-canonical-numbers, manual check of golden-canonical-simple-excel 2026-09-12).",
     "expected": "Expose the state so the UI can hide or mark them.",
     "status": "verified"
   },
@@ -675,7 +675,7 @@
     "id": "EC-NUMBERS-INF-VALUE",
     "family": "Numbers",
     "symptom": "Numbers exports the max double as <v>inf</v>; openpyxl crashes (int('inf')) and Excel repairs the sheet ('Repaired Records: Cell information from /xl/worksheets/sheet1.xml part').",
-    "seenIn": "golden-canonical-numbers (Numbers 14.4 export of the ExcelJS golden). Manual check of golden-canonical-simple-excel in Numbers (2026-09-12): a formula containing the literal 1.79769313486231E+308 is rejected ('there is a problem with this formula'), so the value cannot even be compared inside Numbers.",
+    "seenIn": "golden-canonical-numbers (Numbers 14.4 export of the ExcelJS golden). Manual check of golden-canonical-simple-excel (2026-09-12): the three max-double cells copied out of Numbers and pasted into Google Sheets arrive as something Sheets cannot parse (J11/J21/J31 comparisons error), every other cell pastes cleanly.",
     "expected": "Never emit inf/nan; readers should treat non-numeric <v> in a numeric cell as an error cell rather than crash.",
     "status": "verified (user golden + Excel recovery log)"
   },
@@ -683,7 +683,7 @@
     "id": "EC-NUMBERS-15-DIGIT-PRECISION",
     "family": "Numbers",
     "symptom": "Apple Numbers holds imported numbers at 15 significant digits: 9007199254740991 becomes 9007199254740990 and 12345678901234568 becomes 12345678901234600, both in formulas inside Numbers and in its xlsx export.",
-    "seenIn": "golden-canonical-numbers (the ExcelJS golden re-exported by Numbers 14.4 stores 9007199254740990 / 12345678901234600); manual check of golden-canonical-simple-excel in Numbers (2026-09-12): =I2-9007199254740990 evaluates to 0. Excel and Google Sheets keep the full double and only DISPLAY 15 digits.",
+    "seenIn": "golden-canonical-numbers: the ExcelJS golden re-exported by Numbers 14.4 stores 9007199254740990 / 12345678901234600 where the source held 9007199254740991 / 12345678901234568. Excel and Google Sheets keep the full double and only DISPLAY 15 digits (Excel's own re-saves, golden-canonical-excel-365-*, carry the exact values).",
     "expected": "Nothing for a writer to do; the file carries the exact double. Document that data round-tripped through Numbers loses digits beyond 15. The oracle comparator's 1e-15 relative tolerance treats this one-ulp difference as a match, so it does not surface as number-precision.",
     "status": "verified (user golden + manual check)"
   },

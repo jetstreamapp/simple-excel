@@ -60,9 +60,12 @@ shared-string and zip64 variants) is:
 own behaviour — 15-significant-digit display of large numbers, its one-day offset for Excel serials below 61
 (`EC-DATE-1900-LEAP-BUG`), seconds rounding under `hh:mm:ss` — with the stored values intact. The zip64 variant is
 the exception: Drive refuses to convert it (`EC-ZIP64-SMALL`), which the default `zip64: 'auto'` never produces.
-**Apple Numbers 14.4** opened `canonical.xlsx` without a notice (manual check, 2026-09-12); its own limits showed —
-15-significant-digit precision (`EC-NUMBERS-15-DIGIT-PRECISION`), no representation of the max double, control
-characters drawn as `[?]` — and every date was right. **Excel for Windows** has not yet been recorded for this
+**Excel for Mac (365)** was also opened by hand (2026-09-12) with no repair prompt; its 15-digit display, its
+zeroing of sub-precision subtractions and its `9.99999999999999E+307` formula cap all showed, with the stored values
+intact in its re-save. **Apple Numbers 14.4** opened `canonical.xlsx` with one banner, "hidden sheets were made
+visible" (Numbers has no hidden sheets); dates were right, time-only values sit on its 1899-12-31 marker day, and its
+own limits apply — 15-significant-digit precision (`EC-NUMBERS-15-DIGIT-PRECISION`) and no representation of the max
+double (`EC-NUMBERS-INF-VALUE`). **Excel for Windows** has not yet been recorded for this
 engine's output; the procedure and results log live in
 [`fixtures/golden/simple-excel/STEPS.md`](https://github.com/jetstreamapp/simple-excel/blob/main/fixtures/golden/simple-excel/STEPS.md).
 
