@@ -288,7 +288,7 @@ Status on 2026-09-12:
 2. ~~Every corpus fixture at its recorded verdict; every hostile fixture rejected with a classified error.~~ Done
    (`test/corpus.test.ts`, `test/hostile.test.ts`, `test/parity.test.ts`, `test/corpus-policies.json`).
 3. Golden bytes pinned, validator clean, Excel 365 (macOS) and LibreOffice oracle clean: done. Google Sheets manual
-   check of `canonical.xlsx`: PASS (2026-09-12, application-side display quirks only; the zip64 variant is refused
+   check of `canonical.xlsx` and `canonical.inline.xlsx`: PASS (2026-09-12, application-side display quirks only; the zip64 variant is refused
    by Drive, as expected). **Numbers and Windows Excel checks are still open** (`fixtures/golden/simple-excel/STEPS.md`).
 4. ~~README comparison table backed by the bench numbers; docs site has write/read/streaming/errors pages.~~ Done.
 5. ~~Jetstream adapter notes (08) updated to the final API.~~ Done.
