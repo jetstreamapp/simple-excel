@@ -56,8 +56,12 @@ shared-string and zip64 variants) is:
   ISO text rather than a serial ([ADR-003](https://github.com/jetstreamapp/simple-excel/blob/main/research/adr/ADR-003-date-semantics.md)),
   and a `Date` that falls in a DST gap serializes an hour later, because that instant does not exist locally.
 
-Google Sheets, Numbers and Excel for Windows have **not** yet been recorded for this engine's output; they are
-manual checks scheduled before 1.0. The procedure is written down in
+**Google Sheets** imported `canonical.xlsx` cleanly (manual check, 2026-09-12): every difference on screen was Sheets'
+own behaviour — 15-significant-digit display of large numbers, its one-day offset for Excel serials below 61
+(`EC-DATE-1900-LEAP-BUG`), seconds rounding under `hh:mm:ss` — with the stored values intact. The zip64 variant is
+the exception: Drive refuses to convert it (`EC-ZIP64-SMALL`), which the default `zip64: 'auto'` never produces.
+**Numbers and Excel for Windows** have not yet been recorded for this engine's output; the procedure and results log
+live in
 [`fixtures/golden/simple-excel/STEPS.md`](https://github.com/jetstreamapp/simple-excel/blob/main/fixtures/golden/simple-excel/STEPS.md).
 
 ## What the reader has passed
