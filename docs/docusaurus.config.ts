@@ -85,21 +85,16 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: '/playground',
-          label: 'Playground',
-          position: 'left',
-        },
-        {
           type: 'dropdown',
           label: 'LLM Docs',
           position: 'right',
           items: [
             {
-              href: 'https://simple-excel.getjetstream.app/llms.txt',
+              href: 'https://simple-excel.dev/llms.txt',
               label: 'llms.txt (summary)',
             },
             {
-              href: 'https://simple-excel.getjetstream.app/llms-full.txt',
+              href: 'https://simple-excel.dev/llms-full.txt',
               label: 'llms-full.txt (complete)',
             },
           ],
@@ -110,7 +105,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://www.npmjs.com/package/simple-excel',
+          href: 'https://www.npmjs.com/package/@jetstreamapp/simple-excel',
           label: 'npm',
           position: 'right',
         },
@@ -123,33 +118,33 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Getting Started',
-              to: '/docs/getting-started',
+              label: 'Introduction',
+              to: '/docs/intro',
             },
             {
-              label: 'API Reference',
-              to: '/docs/api-reference',
+              label: 'Writing',
+              to: '/docs/writing',
             },
             {
-              label: 'Functions',
-              to: '/docs/functions/logical',
+              label: 'Reading',
+              to: '/docs/reading',
             },
           ],
         },
         {
-          title: 'Tools',
+          title: 'Reference',
           items: [
             {
-              label: 'Playground',
-              to: '/playground',
+              label: 'Errors',
+              to: '/docs/errors',
             },
             {
               label: 'LLM Docs (llms.txt)',
-              href: 'https://simple-excel.getjetstream.app/llms.txt',
+              href: 'https://simple-excel.dev/llms.txt',
             },
             {
               label: 'LLM Docs (full)',
-              href: 'https://simple-excel.getjetstream.app/llms-full.txt',
+              href: 'https://simple-excel.dev/llms-full.txt',
             },
           ],
         },
@@ -162,7 +157,7 @@ const config: Config = {
             },
             {
               label: 'npm',
-              href: 'https://www.npmjs.com/package/simple-excel',
+              href: 'https://www.npmjs.com/package/@jetstreamapp/simple-excel',
             },
           ],
         },

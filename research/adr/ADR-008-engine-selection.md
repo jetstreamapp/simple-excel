@@ -1,6 +1,6 @@
 # ADR-008: Engine selection
 
-_Status: Accepted (2026-09-12) - dual track, time-boxed._
+_Status: Superseded by the addendum below (2026-09-12): HAND-ROLL chosen; this library is that implementation._
 
 ## Context
 
@@ -34,3 +34,12 @@ gaps; fork only as a last resort. Doc 07 is the rubric; docs 04/05/06/10 hold th
 
 The corpus, oracle and benchmark in this repository are the acceptance suite for whichever path wins;
 Jetstream's adapter contracts (dates, escapes, sniffing, `password-protected`, object mode) are engine-neutral.
+
+## Addendum (2026-09-12): decision taken
+
+After the goldens from Excel 365, Google Sheets, Numbers and Salesforce were added (05), office-kit also failed
+to open Apache POI output (`<u val="none"/>`, R11) and parsed `.xlsb` as XML. With the blocking writer findings
+above, the user chose to **build the library** rather than wait on the upstream time-box. This repository
+(`@jetstreamapp/simple-excel`) is the result; `11-build-plan.md` is its contract and the corpus, oracle and
+benchmark here are its acceptance suite. Upstream issues for office-kit remain worth filing as a courtesy but
+no longer gate anything.

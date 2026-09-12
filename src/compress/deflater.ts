@@ -2,9 +2,27 @@ import { XlsxError } from '../errors';
 import type { ChunkHandler, Deflater, DeflaterFactory, DeflaterOptions } from '../types';
 
 /** True when `CompressionStream('deflate-raw')` is available in this environment. */
+let nativeDeflateProbe: boolean | undefined;
+
+/**
+ * True when this environment can compress with `CompressionStream('deflate-raw')`. The class existing is not enough
+ * (Node 20 has `CompressionStream` but only learned `deflate-raw` in 21.2), so the probe constructs one once and
+ * remembers the answer; it never throws.
+ */
 export function hasNativeDeflate(): boolean {
-  // `typeof` on an undeclared global is the one probe that cannot throw, which is what callers rely on.
-  return typeof CompressionStream === 'function';
+  if (nativeDeflateProbe === undefined) {
+    try {
+      if (typeof CompressionStream === 'function') {
+        void new CompressionStream('deflate-raw');
+        nativeDeflateProbe = true;
+      } else {
+        nativeDeflateProbe = false;
+      }
+    } catch {
+      nativeDeflateProbe = false;
+    }
+  }
+  return nativeDeflateProbe;
 }
 
 /**

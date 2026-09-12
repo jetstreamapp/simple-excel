@@ -78,7 +78,6 @@ function sheetXmlChunk(firstRow: number, targetBytes: number): Uint8Array {
 
 describe('hasNativeDeflate', () => {
   it('detects CompressionStream without throwing', () => {
-    expect(hasNativeDeflate()).toBe(typeof CompressionStream === 'function');
     expect(hasNativeDeflate()).toBe(true);
   });
 });

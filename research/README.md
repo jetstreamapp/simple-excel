@@ -25,4 +25,5 @@ SheetJS in Jetstream. Tooling (fixtures, oracle, benchmark) lives in ``.
 | 08  | `08-migration-plan.md`            | written (hardening candidates documented only) |
 | 09  | `09-risks-open-questions.md`      | written                                        |
 | 10  | `10-office-kit-evaluation.md`     | written (decision in ADR-008)                  |
+| 11  | `11-build-plan.md`                | written (module contracts, phases, gates)      |
 | adr | `adr/ADR-001` … `ADR-008`         | accepted                                       |
