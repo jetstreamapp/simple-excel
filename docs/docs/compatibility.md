@@ -17,6 +17,7 @@ which is regenerated from the newest oracle run rather than hand-maintained.
 
 | Reader              | What it stands for                                                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `simple-excel`      | This library through its public API — the same typed dump the test suite builds, so the two cannot disagree                        |
 | `excel`             | Microsoft Excel 16 (read-only licence) driven by AppleScript: opens the file, and fails on a repair prompt or a recovery-log entry |
 | `libreoffice`       | LibreOffice 26.2 headless — a re-save has to succeed                                                                               |
 | `validator`         | Open XML SDK schema validation (`@xarsh/ooxml-validator`, Microsoft 365 profile)                                                   |
@@ -45,9 +46,35 @@ shared-string and zip64 variants) is:
   [`research/04-edge-case-catalog.md`](https://github.com/jetstreamapp/simple-excel/blob/main/research/04-edge-case-catalog.md)
   and allowed per fixture, not silently ignored.
 - **SheetJS on the zip64 variant: cannot open it** — see [the zip64 caveat](./streaming-and-memory.md#the-zip64-caveat).
+- **office-kit**: reads all three at 94% of the ground-truth cells (`phase-d-office-kit-on-ours`). The gap is its
+  own date handling — it puts a time-only value on 1899-12-31 rather than 1899-12-30 — plus the two writer
+  conventions below. Its _streaming_ API additionally leaves `_xHHHH_` escapes undecoded when the strings are
+  inline, so the inline variant reads at 88% there.
+- **Two conventions of ours show up in every reader's dump**, and are deliberate: a pre-1900 date is written as
+  ISO text rather than a serial ([ADR-003](https://github.com/jetstreamapp/simple-excel/blob/main/research/adr/ADR-003-date-semantics.md)),
+  and a `Date` that falls in a DST gap serializes an hour later, because that instant does not exist locally.
 
 Google Sheets, Numbers and Excel for Windows have **not** yet been recorded for this engine's output; they are
-manual checks scheduled before 1.0.
+manual checks scheduled before 1.0. The procedure is written down in
+[`fixtures/golden/simple-excel/STEPS.md`](https://github.com/jetstreamapp/simple-excel/blob/main/fixtures/golden/simple-excel/STEPS.md).
+
+## What the reader has passed
+
+As of the `phase-d-simple-excel-*` oracle runs, this library reads every fixture in the corpus:
+
+| Set                      | Result                                                                                                                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12 hostile files         | **12 of 12 rejected** with the classified error the manifest asks for — nothing crashed, hung or was accepted (the zip bomb is rejected against the read limits you configure; the default cap is a generous 1 GiB per part) |
+| 15 structural edge cases | **13 PASS**; the two that differ are fixtures whose point is that a reader has to choose (a shared-string index out of range, which we read blank like Excel, and a 1904-epoch workbook)                                     |
+| 22 goldens               | every remaining difference is a deviation the generator wrote into the file, each one allowed for that fixture by name in `test/corpus-policies.json`                                                                        |
+| our own 3 goldens        | 650 of 658 cells; the 8 are the two writer conventions above                                                                                                                                                                 |
+| 3 Jetstream assets       | both workbooks stream; the CSV asset is refused with `NOT_XLSX`, which is the designed behaviour for non-xlsx bytes                                                                                                          |
+
+Two examples of what "the generator wrote it that way" means: a file from ExcelJS (and anything re-saved from it,
+including by Excel itself) carries dates built from UTC fields, so 68 cells in it mean something other than the
+ground truth in every reader; openpyxl refuses control characters at write time, so those cells are empty in the
+file for everybody. The per-category breakdown for each fixture is in
+[`research/05-compatibility-matrix.md`](https://github.com/jetstreamapp/simple-excel/blob/main/research/05-compatibility-matrix.md).
 
 ## What the reader has been checked against
 

@@ -39,6 +39,10 @@ function cell(record) {
   }
   switch (record.status) {
     case 'PASS':
+      if (record.expectedError) {
+        // hostile fixture: rejected with the classified code the manifest asks for
+        return `PASS: ${record.errorCode ?? 'rejected'}`;
+      }
       return record.reader === 'excel' ? `PASS${record.repairLogs ? ' (repair log)' : ''}` : 'PASS';
     case 'DIFF': {
       const pct = record.cells ? Math.round((record.matches / record.cells) * 100) : 0;

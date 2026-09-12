@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "date": "2026-09-12T18:26:30.992Z",
+    "host": "MacBook-Air.local",
+    "label": "phase-d-simple-excel-jetstream",
+    "node": "v24.18.0",
+    "readers": ["simple-excel"],
+    "fixtures": ["jetstream-multi-object-template-gsheets", "jetstream-records-product2-sheetjs", "jetstream-records-product2-csv"]
+  },
+  "results": [
+    {
+      "fixture": "jetstream-multi-object-template-gsheets",
+      "reader": "simple-excel",
+      "file": "jetstream/multi-object-template.gsheets.xlsx",
+      "status": "OPENED",
+      "ms": 62,
+      "readerVersion": "simple-excel 0.0.0",
+      "sheets": [
+        {
+          "name": "Instructions",
+          "rows": 70
+        },
+        {
+          "name": "Create Accounts",
+          "rows": 8
+        },
+        {
+          "name": "Create Contacts",
+          "rows": 8
+        }
+      ]
+    },
+    {
+      "fixture": "jetstream-records-product2-sheetjs",
+      "reader": "simple-excel",
+      "file": "jetstream/records-product2.sheetjs.xlsx",
+      "status": "OPENED",
+      "ms": 36,
+      "readerVersion": "simple-excel 0.0.0",
+      "sheets": [
+        {
+          "name": "records",
+          "rows": 18
+        }
+      ]
+    },
+    {
+      "fixture": "jetstream-records-product2-csv",
+      "reader": "simple-excel",
+      "file": "jetstream/records-product2.csv",
+      "status": "ERROR",
+      "ms": 30,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "NOT_XLSX",
+      "error": "NOT_XLSX: This is not an .xlsx workbook (it looks like csv/text). Save it as .xlsx or import it as CSV."
+    }
+  ]
+}

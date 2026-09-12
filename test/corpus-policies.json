@@ -1,8 +1,5 @@
 {
   "$comment": "Per-fixture allowances for the corpus and parity suites. Every entry needs a reason; the goal is an empty file. `allowedCategories` are mismatch categories against the fixture's expected dump that the file itself carries (cross-checked against the sheetjs and office-kit oracle dumps of the same bytes); `parityExemptions` are cells (`Sheet!A1`) or whole probe columns (`Sheet!A`) where SheetJS reports something Excel does not.",
-  "jetstream-records-product2-csv": {
-    "skip": "not a workbook: csv bytes are papaparse's input, and openWorkbook rejects them with NOT_XLSX by design (ADR-007)"
-  },
   "golden-canonical-sheetjs": {
     "allowedCategories": ["date-as-serial", "dst-gap-shift-1h", "escape-sequence-mangled", "temporal-mismatch"],
     "parityExemptions": [

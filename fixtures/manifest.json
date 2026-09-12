@@ -57,7 +57,8 @@
       "tags": ["kind:jetstream", "EC-INPUT-CSV-BYTES"],
       "expected": null,
       "generated": false,
-      "notes": "CSV twin of the xlsx fixture; also the 'CSV bytes reach the xlsx parser' case (Electron open-with / Drive alt=media)."
+      "notes": "CSV twin of the xlsx fixture; also the 'CSV bytes reach the xlsx parser' case (Electron open-with / Drive alt=media). Not a workbook: openWorkbook rejects it with NOT_XLSX (ADR-007) and the application routes CSV bytes to papaparse.",
+      "expectedError": "NOT_XLSX"
     },
     {
       "id": "golden-canonical-sheetjs",

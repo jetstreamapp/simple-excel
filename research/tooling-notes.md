@@ -7,11 +7,11 @@ This tooling was built inside the Jetstream monorepo and lifted here unchanged: 
 `@jetstream/*`** (`node scripts/check-purity.mjs` enforces this). The comparison libraries (`exceljs`,
 `@office-kit/xlsx`, `write-excel-file`, `read-excel-file`, `xlsx`, `@xarsh/ooxml-validator`) are devDependencies.
 
-| Folder      | What                                                                                                   | Entry point                              |
-| ----------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `fixtures/` | Canonical dataset, goldens per generator, edge/hostile files, `manifest.json` (single source of truth) | `npm run fixtures:check`                 |
-| `oracle/`   | "Does it open / do the values match" across Excel, Numbers, LibreOffice, validator, Python, SheetJS    | `npm run oracle -- <fixture-id or path>` |
-| `bench/`    | Engine benchmark (sheetjs, exceljs, @office-kit/xlsx, write-excel-file, ours)                          | `npm run bench -- --help`                |
+| Folder      | What                                                                                                                 | Entry point                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `fixtures/` | Canonical dataset, goldens per generator, edge/hostile files, `manifest.json` (single source of truth)               | `npm run fixtures:check`                 |
+| `oracle/`   | "Does it open / do the values match" across simple-excel, Excel, LibreOffice, validator, Python, SheetJS, office-kit | `npm run oracle -- <fixture-id or path>` |
+| `bench/`    | Engine benchmark (sheetjs, exceljs, @office-kit/xlsx, write-excel-file, simple-excel)                                | `npm run bench -- --help`                |
 
 ## Rules
 
@@ -25,6 +25,8 @@ This tooling was built inside the Jetstream monorepo and lifted here unchanged: 
 
 ## Prerequisites (local oracle)
 
+- `npm run build` first: the `simple-excel` reader (`oracle/simple-excel/read-dump.mjs`) reads through
+  `dist/esm/index.mjs`, so an unbuilt or stale `dist/` silently grades the wrong code.
 - macOS with Microsoft Excel (a read-only license is enough: the oracle opens and inspects, never saves),
   Numbers, and LibreOffice.app. The first run prompts for Automation/Accessibility permissions.
 - Python 3: `python3 -m venv .generated/venv && .generated/venv/bin/pip install -r oracle/python/requirements.txt`

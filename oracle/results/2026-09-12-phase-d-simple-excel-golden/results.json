@@ -1,0 +1,505 @@
+{
+  "meta": {
+    "date": "2026-09-12T18:23:58.527Z",
+    "host": "MacBook-Air.local",
+    "label": "phase-d-simple-excel-golden",
+    "node": "v24.18.0",
+    "readers": ["simple-excel"],
+    "fixtures": [
+      "golden-canonical-sheetjs",
+      "golden-canonical-exceljs",
+      "golden-canonical-write-excel-file",
+      "golden-canonical-openpyxl",
+      "golden-canonical-xlsxwriter",
+      "golden-canonical-libreoffice-resave",
+      "golden-canonical-libreoffice-from-csv",
+      "golden-canonical-office-kit",
+      "golden-canonical-excel-365-from-csv",
+      "golden-canonical-excel-365-resave",
+      "golden-canonical-excel-365-strict",
+      "golden-canonical-excel-365-resave-office-kit",
+      "golden-canonical-gsheets-resave",
+      "golden-canonical-numbers",
+      "golden-sfdc-report-details",
+      "golden-sfdc-report-formatted",
+      "golden-canonical-gsheets-from-csv",
+      "golden-canonical-excel-365-resave-sheetjs",
+      "golden-canonical-excel-365-1904",
+      "golden-canonical-simple-excel",
+      "golden-canonical-simple-excel-inline",
+      "golden-canonical-simple-excel-zip64"
+    ]
+  },
+  "results": [
+    {
+      "fixture": "golden-canonical-sheetjs",
+      "reader": "simple-excel",
+      "file": "golden/sheetjs/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 69,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 603,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 6,
+        "date-as-serial": 30,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-exceljs",
+      "reader": "simple-excel",
+      "file": "golden/exceljs/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 525,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 68,
+        "date-tz-offset-shift": 22,
+        "string-mismatch": 4,
+        "crlf-normalized": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-write-excel-file",
+      "reader": "simple-excel",
+      "file": "golden/write-excel-file/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 655,
+      "matches": 503,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 68,
+        "empty-string-vs-blank": 15,
+        "date-tz-offset-shift": 22,
+        "string-mismatch": 5,
+        "crlf-normalized": 3,
+        "error-mismatch": 2,
+        "error-as-text": 1,
+        "sheet-missing": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-openpyxl",
+      "reader": "simple-excel",
+      "file": "golden/openpyxl/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 62,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 585,
+      "byCategory": {
+        "cell-missing": 32,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 3,
+        "empty-string-vs-blank": 15,
+        "crlf-normalized": 3,
+        "type-mismatch": 3,
+        "formula-dropped": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-xlsxwriter",
+      "reader": "simple-excel",
+      "file": "golden/xlsxwriter/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 67,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 626,
+      "byCategory": {
+        "temporal-mismatch": 8,
+        "escape-sequence-mangled": 5,
+        "empty-string-vs-blank": 15,
+        "type-mismatch": 3,
+        "error-as-text": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-libreoffice-resave",
+      "reader": "simple-excel",
+      "file": "golden/libreoffice/canonical.from-exceljs.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 505,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 68,
+        "empty-string-vs-blank": 15,
+        "number-precision": 4,
+        "date-tz-offset-shift": 22,
+        "string-mismatch": 4,
+        "crlf-normalized": 3,
+        "truncated-differently": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-libreoffice-from-csv",
+      "reader": "simple-excel",
+      "file": "golden/libreoffice/canonical.from-csv.xlsx",
+      "status": "DIFF",
+      "ms": 65,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 620,
+      "matches": 470,
+      "byCategory": {
+        "text-as-number": 42,
+        "temporal-mismatch": 13,
+        "date-as-text": 30,
+        "boolean-as-text-or-number": 30,
+        "escape-sequence-mangled": 5,
+        "empty-string-vs-blank": 15,
+        "number-precision": 4,
+        "crlf-normalized": 3,
+        "control-chars-stripped": 4,
+        "error-mismatch": 3,
+        "truncated-differently": 1
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-office-kit",
+      "reader": "simple-excel",
+      "file": "golden/office-kit/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 63,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 561,
+      "byCategory": {
+        "temporal-mismatch": 39,
+        "date-as-serial": 24,
+        "escape-sequence-mangled": 5,
+        "date-tz-offset-shift": 27,
+        "formula-dropped": 2
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-excel-365-from-csv",
+      "reader": "simple-excel",
+      "file": "golden/excel-365/canonical.from-csv.xlsx",
+      "status": "DIFF",
+      "ms": 65,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 641,
+      "matches": 448,
+      "byCategory": {
+        "string-mismatch": 54,
+        "text-as-number": 43,
+        "date-as-text": 32,
+        "empty-string-vs-blank": 15,
+        "number-precision": 4,
+        "control-chars-stripped": 4,
+        "number-as-text": 2,
+        "truncated-differently": 1,
+        "cell-missing": 18,
+        "unexpected-cell": 20
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-excel-365-resave",
+      "reader": "simple-excel",
+      "file": "golden/excel-365/canonical.from-exceljs.xlsx",
+      "status": "DIFF",
+      "ms": 65,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 525,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 68,
+        "date-tz-offset-shift": 22,
+        "string-mismatch": 4,
+        "crlf-normalized": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-excel-365-strict",
+      "reader": "simple-excel",
+      "file": "golden/excel-365/canonical.from-exceljs.strict.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 525,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "date-tz-offset-shift": 30,
+        "temporal-mismatch": 60,
+        "string-mismatch": 4,
+        "crlf-normalized": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-excel-365-resave-office-kit",
+      "reader": "simple-excel",
+      "file": "golden/excel-365/canonical.from-office-kit.xlsx",
+      "status": "DIFF",
+      "ms": 68,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 563,
+      "byCategory": {
+        "temporal-mismatch": 39,
+        "date-as-serial": 24,
+        "escape-sequence-mangled": 5,
+        "date-tz-offset-shift": 27
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-gsheets-resave",
+      "reader": "simple-excel",
+      "file": "golden/gsheets/canonical.from-exceljs.xlsx",
+      "status": "DIFF",
+      "ms": 73,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 656,
+      "matches": 521,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 68,
+        "date-tz-offset-shift": 22,
+        "string-mismatch": 4,
+        "crlf-normalized": 3,
+        "error-as-text": 2,
+        "sheet-missing": 1,
+        "sheet-unexpected": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-numbers",
+      "reader": "simple-excel",
+      "file": "golden/numbers/canonical.from-exceljs.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 500,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 68,
+        "empty-string-vs-blank": 15,
+        "number-precision": 4,
+        "date-tz-offset-shift": 22,
+        "string-mismatch": 4,
+        "crlf-normalized": 3,
+        "type-mismatch": 3,
+        "formula-dropped": 2,
+        "cell-missing": 1
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-sfdc-report-details",
+      "reader": "simple-excel",
+      "file": "golden/sfdc-report/canonical.details.xlsx",
+      "status": "OPENED",
+      "ms": 34,
+      "readerVersion": "simple-excel 0.0.0",
+      "sheets": [
+        {
+          "name": "xlsx-engine canonical",
+          "rows": 35
+        }
+      ]
+    },
+    {
+      "fixture": "golden-sfdc-report-formatted",
+      "reader": "simple-excel",
+      "file": "golden/sfdc-report/canonical.formatted.xlsx",
+      "status": "OPENED",
+      "ms": 35,
+      "readerVersion": "simple-excel 0.0.0",
+      "sheets": [
+        {
+          "name": "xlsx-engine canonical",
+          "rows": 48
+        }
+      ]
+    },
+    {
+      "fixture": "golden-canonical-gsheets-from-csv",
+      "reader": "simple-excel",
+      "file": "golden/gsheets/canonical.from-csv.xlsx",
+      "status": "DIFF",
+      "ms": 64,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 620,
+      "matches": 497,
+      "byCategory": {
+        "whitespace-trimmed": 12,
+        "escape-sequence-mangled": 14,
+        "text-as-number": 38,
+        "number-as-text": 16,
+        "temporal-mismatch": 13,
+        "empty-string-vs-blank": 15,
+        "string-mismatch": 6,
+        "crlf-normalized": 3,
+        "cell-missing": 3,
+        "number-precision": 3
+      },
+      "structural": {},
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-excel-365-resave-sheetjs",
+      "reader": "simple-excel",
+      "file": "golden/excel-365/canonical.from-sheetjs.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 603,
+      "byCategory": {
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 6,
+        "date-as-serial": 30,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-excel-365-1904",
+      "reader": "simple-excel",
+      "file": "golden/excel-365/canonical.from-exceljs.1904.xlsx",
+      "status": "DIFF",
+      "ms": 64,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 525,
+      "byCategory": {
+        "control-chars-stripped": 22,
+        "escape-sequence-mangled": 14,
+        "temporal-mismatch": 90,
+        "string-mismatch": 4,
+        "crlf-normalized": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "simple-excel",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 63,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 650,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "simple-excel",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 65,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 650,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "simple-excel",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 64,
+      "readerVersion": "simple-excel 0.0.0",
+      "cells": 658,
+      "matches": 650,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    }
+  ]
+}

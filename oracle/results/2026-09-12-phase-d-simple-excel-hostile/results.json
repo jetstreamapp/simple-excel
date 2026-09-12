@@ -1,0 +1,169 @@
+{
+  "meta": {
+    "date": "2026-09-12T18:26:24.594Z",
+    "host": "MacBook-Air.local",
+    "label": "phase-d-simple-excel-hostile",
+    "node": "v24.18.0",
+    "readers": ["simple-excel"],
+    "fixtures": [
+      "hostile-xxe-doctype-in-sharedstrings",
+      "hostile-truncated-central-directory",
+      "hostile-crc-mismatch",
+      "hostile-duplicate-sheet-entries",
+      "hostile-deeply-nested-rich-text",
+      "hostile-csv-bytes-renamed",
+      "hostile-ods-renamed",
+      "hostile-biff8-xls-renamed",
+      "hostile-encrypted-password-test",
+      "hostile-not-a-zip",
+      "hostile-zip-bomb-30mb-sheet",
+      "hostile-xlsb-renamed"
+    ]
+  },
+  "results": [
+    {
+      "fixture": "hostile-xxe-doctype-in-sharedstrings",
+      "reader": "simple-excel",
+      "file": "hostile/xxe-doctype-in-sharedstrings.xlsx",
+      "status": "PASS",
+      "ms": 37,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "XML_DOCTYPE",
+      "expectedError": "XML_DOCTYPE",
+      "error": "XML_DOCTYPE: This file contains an XML document type or entity declaration, which spreadsheet files never use. It was not opened because such declarations can be used to attack the reader.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-truncated-central-directory",
+      "reader": "simple-excel",
+      "file": "hostile/truncated-central-directory.xlsx",
+      "status": "PASS",
+      "ms": 28,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "ZIP_TRUNCATED",
+      "expectedError": "TRUNCATED",
+      "error": "ZIP_TRUNCATED: This file is not a readable zip archive (no end-of-central-directory record was found); it is probably damaged or incomplete.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-crc-mismatch",
+      "reader": "simple-excel",
+      "file": "hostile/crc-mismatch.xlsx",
+      "status": "PASS",
+      "ms": 32,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "ZIP_CRC_MISMATCH",
+      "expectedError": "CRC_MISMATCH",
+      "error": "ZIP_CRC_MISMATCH: The part [Content_Types].xml does not match its checksum; the file is damaged.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-duplicate-sheet-entries",
+      "reader": "simple-excel",
+      "file": "hostile/duplicate-sheet-entries.xlsx",
+      "status": "PASS",
+      "ms": 27,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "ZIP_DUPLICATE_ENTRY",
+      "expectedError": "DUPLICATE_ENTRY",
+      "error": "ZIP_DUPLICATE_ENTRY: This file contains two parts named xl/worksheets/sheet1.xml, which is not valid.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-deeply-nested-rich-text",
+      "reader": "simple-excel",
+      "file": "hostile/deeply-nested-rich-text.xlsx",
+      "status": "PASS",
+      "ms": 35,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "LIMIT_EXCEEDED",
+      "expectedError": "LIMIT_EXCEEDED",
+      "error": "LIMIT_EXCEEDED: This file nests XML elements more than 256 levels deep, which no spreadsheet needs, so it was not read further.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-csv-bytes-renamed",
+      "reader": "simple-excel",
+      "file": "hostile/csv-bytes-renamed.xlsx",
+      "status": "PASS",
+      "ms": 29,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "NOT_XLSX",
+      "expectedError": "NOT_XLSX",
+      "error": "NOT_XLSX: This is not an .xlsx workbook (it looks like csv/text). Save it as .xlsx or import it as CSV.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-ods-renamed",
+      "reader": "simple-excel",
+      "file": "hostile/ods-renamed.xlsx",
+      "status": "PASS",
+      "ms": 29,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "ODS",
+      "expectedError": "NOT_XLSX",
+      "error": "ODS: This is an OpenDocument (.ods) spreadsheet. Open it in Excel or LibreOffice and save it as .xlsx.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-biff8-xls-renamed",
+      "reader": "simple-excel",
+      "file": "hostile/biff8-xls-renamed.xlsx",
+      "status": "PASS",
+      "ms": 29,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "LEGACY_XLS",
+      "expectedError": "NOT_XLSX",
+      "error": "LEGACY_XLS: This is a legacy Excel 97-2003 (.xls) workbook. Open it in Excel and save it as .xlsx.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-encrypted-password-test",
+      "reader": "simple-excel",
+      "file": "hostile/encrypted-password-test.xlsx",
+      "status": "PASS",
+      "ms": 27,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "ENCRYPTED",
+      "expectedError": "ENCRYPTED",
+      "error": "ENCRYPTED: This workbook is password-protected. Remove the password in Excel (File > Info > Protect Workbook) and save it again as .xlsx.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-not-a-zip",
+      "reader": "simple-excel",
+      "file": "hostile/not-a-zip.xlsx",
+      "status": "PASS",
+      "ms": 27,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "NOT_XLSX",
+      "expectedError": "NOT_XLSX",
+      "error": "NOT_XLSX: This is not an .xlsx workbook (it looks like an XML document). Open it in Excel and save it as .xlsx.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-zip-bomb-30mb-sheet",
+      "reader": "simple-excel",
+      "file": "hostile/zip-bomb-30mb-sheet.xlsx",
+      "status": "PASS",
+      "ms": 37,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "ZIP_BOMB",
+      "expectedError": "ZIP_BOMB",
+      "error": "ZIP_BOMB: The part xl/worksheets/sheet1.xml declares 28559061 bytes, more than the 8388608 byte limit.",
+      "sheets": []
+    },
+    {
+      "fixture": "hostile-xlsb-renamed",
+      "reader": "simple-excel",
+      "file": "hostile/xlsb-renamed.xlsx",
+      "status": "PASS",
+      "ms": 34,
+      "readerVersion": "simple-excel 0.0.0",
+      "errorCode": "XLSB",
+      "expectedError": "NOT_XLSX",
+      "error": "XLSB: This is an Excel Binary Workbook (.xlsb). Open it in Excel and save it as .xlsx.",
+      "sheets": []
+    }
+  ]
+}

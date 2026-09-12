@@ -191,6 +191,8 @@ for (const expSheet of expected.sheets) {
   }
   if (expSheet.hidden !== undefined && actSheet.hidden !== null && actSheet.hidden !== undefined && expSheet.hidden !== actSheet.hidden) {
     sheetReport.mismatches.push({ category: 'hidden-state', expected: expSheet.hidden, actual: actSheet.hidden });
+    report.byCategory['hidden-state'] = (report.byCategory['hidden-state'] ?? 0) + 1;
+    report.totals.mismatches++;
   }
   const expRows = normalizeRows(expSheet.rows);
   const actRows = normalizeRows(actSheet.rows);

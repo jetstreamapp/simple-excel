@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "date": "2026-09-12T18:26:43.444Z",
+    "host": "MacBook-Air.local",
+    "label": "phase-d-office-kit-on-ours",
+    "node": "v24.18.0",
+    "readers": ["office-kit", "office-kit-stream"],
+    "fixtures": ["golden-canonical-simple-excel", "golden-canonical-simple-excel-inline", "golden-canonical-simple-excel-zip64"]
+  },
+  "results": [
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "office-kit",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 130,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "office-kit-stream",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 95,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "office-kit",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 101,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "office-kit-stream",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 100,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 658,
+      "matches": 581,
+      "byCategory": {
+        "escape-sequence-mangled": 39,
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "office-kit",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 108,
+      "readerVersion": "office-kit 0.11.0 (document, utc clock)",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "office-kit-stream",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 100,
+      "readerVersion": "office-kit 0.11.0 (stream, utc clock)",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    }
+  ]
+}

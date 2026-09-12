@@ -3,12 +3,14 @@
 // fixture's expected dump, and write per-(fixture, reader) result JSON plus a summary table under
 // oracle/results/<YYYY-MM-DD>-<label>/.
 //
-//   node run.mjs [--fixtures id1,id2 | --tag kind:golden] [--readers sheetjs,office-kit,office-kit-stream,openpyxl,calamine,validator,libreoffice]
+//   node run.mjs [--fixtures id1,id2 | --tag kind:golden]
+//                [--readers simple-excel,sheetjs,office-kit,office-kit-stream,openpyxl,calamine,validator,libreoffice,excel]
 //                [--label baseline] [--python .generated/venv/bin/python]
 //
 // Readers without an expected dump (validator, libreoffice) record open/convert success only.
+// `simple-excel` is this package itself, read through `dist/esm` - run `npm run build` before the oracle.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -16,7 +18,33 @@ import { parseArgs } from 'node:util';
 const HERE = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 const ROOT = join(HERE, '..');
 const FIXTURES = join(ROOT, 'fixtures');
-const ALL_READERS = ['sheetjs', 'office-kit', 'office-kit-stream', 'openpyxl', 'calamine', 'validator', 'libreoffice', 'excel'];
+const ALL_READERS = [
+  'simple-excel',
+  'sheetjs',
+  'office-kit',
+  'office-kit-stream',
+  'openpyxl',
+  'calamine',
+  'validator',
+  'libreoffice',
+  'excel',
+];
+
+/**
+ * The manifest records reader-agnostic error names for the hostile fixtures. A reader that classifies its own
+ * rejections (ours reports `dump.error.code`) PASSes one when the code it threw is listed here; readers that only
+ * crash still record REJECTED. Same table as `test/hostile.test.ts`.
+ */
+const EXPECTED_ERROR_CODES = {
+  XML_DOCTYPE: ['XML_DOCTYPE'],
+  TRUNCATED: ['ZIP_TRUNCATED'],
+  CRC_MISMATCH: ['ZIP_CRC_MISMATCH'],
+  DUPLICATE_ENTRY: ['ZIP_DUPLICATE_ENTRY'],
+  LIMIT_EXCEEDED: ['LIMIT_EXCEEDED'],
+  NOT_XLSX: ['NOT_XLSX', 'ODS', 'LEGACY_XLS', 'XLSB'],
+  ENCRYPTED: ['ENCRYPTED'],
+  ZIP_BOMB: ['ZIP_BOMB'],
+};
 
 const { values: options } = parseArgs({
   options: {
@@ -51,8 +79,26 @@ function run(command, args, timeoutMs = 180000) {
   return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '', signal: result.signal };
 }
 
-function dumpCommand(reader, file, dumpPath) {
+/**
+ * Read limits for the hostile fixtures, matching `test/hostile.test.ts`. Our library's defaults (1 GiB per part)
+ * are deliberately generous - a 30 MB sheet is a legitimate export - so the zip bomb is only a bomb against the
+ * kind of budget a host application sets.
+ */
+const HOSTILE_LIMITS = ['--max-inflated-bytes', String(8 * 1024 * 1024), '--max-shared-string-chars', String(4 * 1024 * 1024)];
+
+function dumpCommand(reader, file, dumpPath, fixture) {
   switch (reader) {
+    case 'simple-excel':
+      return [
+        'node',
+        [
+          join(HERE, 'simple-excel/read-dump.mjs'),
+          file,
+          '--out',
+          dumpPath,
+          ...(fixture.tags.includes('kind:hostile') ? HOSTILE_LIMITS : []),
+        ],
+      ];
     case 'sheetjs':
       return ['node', [join(HERE, 'sheetjs/read-dump.mjs'), file, '--out', dumpPath]];
     case 'office-kit':
@@ -64,6 +110,26 @@ function dumpCommand(reader, file, dumpPath) {
       return [options.python, [join(HERE, 'python/read_dump.py'), file, '--reader', reader, '--out', dumpPath]];
     default:
       throw new Error(`no dump command for ${reader}`);
+  }
+}
+
+/** A hostile fixture is only PASSed by a reader that names the classified code the manifest asks for. */
+function rejectionMatches(expectedError, code) {
+  if (!code) {
+    return false;
+  }
+  return (EXPECTED_ERROR_CODES[expectedError] ?? [expectedError]).includes(code);
+}
+
+/** The dump a reader wrote, or null when it wrote nothing usable (a crash rather than a reported failure). */
+function readDump(dumpPath) {
+  if (!existsSync(dumpPath)) {
+    return null;
+  }
+  try {
+    return JSON.parse(readFileSync(dumpPath, 'utf8'));
+  } catch {
+    return null;
   }
 }
 
@@ -175,26 +241,37 @@ for (const fixture of fixtures) {
         }
       } else {
         const dumpPath = join(scratch, `${fixture.id}.${reader}.json`);
-        const [command, args] = dumpCommand(reader, file, dumpPath);
+        const [command, args] = dumpCommand(reader, file, dumpPath, fixture);
+        rmSync(dumpPath, { force: true }); // a crash this time must never read the previous run's dump
         const dumped = run(command, args);
-        if (dumped.status !== 0 || !existsSync(dumpPath)) {
+        // A written dump counts even when the reader exited non-zero: that is how a reader reports a classified
+        // rejection (ours does, with `error.code`) as opposed to crashing without saying anything.
+        const dump = readDump(dumpPath);
+        if (!dump) {
           record.status = fixture.expectedError ? 'REJECTED' : 'ERROR';
           record.expectedError = fixture.expectedError;
           record.error =
             summarizeError(dumped.stderr || dumped.stdout) ||
             (dumped.signal ? `killed by ${dumped.signal} (timeout?)` : `exit ${dumped.status}`);
         } else {
-          const dump = JSON.parse(readFileSync(dumpPath, 'utf8'));
           record.readerVersion = dump.reader;
+          // `error` is a message string from the python readers and { code, message } from ours
+          const readerError = dump.error ?? null;
+          record.errorCode = readerError?.code;
+          const errorText = readerError
+            ? readerError.code
+              ? `${readerError.code}: ${readerError.message}`
+              : String(readerError)
+            : undefined;
           if (fixture.expectedError) {
-            // hostile fixture: a classified rejection is the desired outcome
+            // hostile fixture: a classified rejection is the desired outcome, the right code is a pass
             record.expectedError = fixture.expectedError;
-            record.status = dump.error ? 'REJECTED' : 'ACCEPTED';
-            record.error = dump.error;
+            record.status = !readerError ? 'ACCEPTED' : rejectionMatches(fixture.expectedError, readerError.code) ? 'PASS' : 'REJECTED';
+            record.error = errorText;
             record.sheets = dump.sheets?.map(sheet => ({ name: sheet.name, rows: sheet.rows.length }));
-          } else if (dump.error) {
+          } else if (readerError) {
             record.status = 'ERROR';
-            record.error = dump.error;
+            record.error = errorText;
           } else if (!expectedPath) {
             record.status = 'OPENED';
             record.sheets = dump.sheets.map(sheet => ({ name: sheet.name, rows: sheet.rows.length }));
@@ -260,6 +337,9 @@ const rows = fixtures.map(fixture => {
     const record = results.find(entry => entry.fixture === fixture.id && entry.reader === reader);
     if (!record) {
       return '';
+    }
+    if (record.expectedError) {
+      return record.status === 'PASS' ? `PASS (${record.errorCode})` : record.status;
     }
     if (record.status === 'PASS' || record.status === 'DIFF') {
       const pct = record.cells ? Math.round((record.matches / record.cells) * 100) : 100;
