@@ -10,7 +10,6 @@ import { addWorksheet, createWorkbook } from '@office-kit/xlsx/workbook';
 import {
   addConditionalFormatting,
   addDataValidation,
-  freezePanes,
   getCell,
   hideColumn,
   hideRow,
@@ -23,6 +22,7 @@ import {
   setCell,
   setColumnWidth,
   setComment,
+  setFreezePanes,
   setHyperlink,
 } from '@office-kit/xlsx/worksheet';
 import { toLocalDate } from '../canonical/canonical.mjs';
@@ -64,18 +64,13 @@ export default async function generate(outPath) {
           return;
         }
         if (isTyped(value, '$formula')) {
+          // setCellFormula is declared in worksheet.d.ts but not exported from the subpath (0.23.0); the
+          // cell-level setFormula works. An error result needs cachedValueType: 'error' (added after 0.11.0).
           const cached = value.cached;
-          if (isTyped(cached, '$error')) {
-            // setCellFormula/setCellRichText are declared in worksheet.d.ts but not exported from the subpath (0.11.0);
-            // the cell-level setFormula works. cachedValue only accepts number | string | boolean.
-            tracker.skipped.push({
-              feature: `formula cached error at r${rowNumber}c${colNumber}`,
-              reason: 'setFormula cachedValue cannot be an error value',
-            });
-            setFormula(setCell(worksheet, rowNumber, colNumber), value.$formula);
-          } else {
-            setFormula(setCell(worksheet, rowNumber, colNumber), value.$formula, { cachedValue: cached });
-          }
+          const formulaOptions = isTyped(cached, '$error')
+            ? { cachedValue: cached.$error, cachedValueType: 'error' }
+            : { cachedValue: cached };
+          setFormula(setCell(worksheet, rowNumber, colNumber), value.$formula, formulaOptions);
           return;
         }
         if (isTyped(value, '$error')) {
@@ -105,12 +100,12 @@ export default async function generate(outPath) {
           mergeCells(worksheet, `${String.fromCharCode(65 + s.c)}${s.r + 1}:${String.fromCharCode(65 + e.c)}${e.r + 1}`);
         }
       });
-      await attempt(tracker, 'freeze', () => freezePanes(worksheet, features.freeze.rows, features.freeze.cols));
+      await attempt(tracker, 'freeze', () => setFreezePanes(worksheet, features.freeze));
       await attempt(tracker, 'autoFilter', () => setAutoFilter(worksheet, makeAutoFilter({ ref: features.autoFilter })));
       await attempt(tracker, 'hyperlink', () =>
         setHyperlink(worksheet, features.hyperlink.cell, { target: features.hyperlink.url, display: 'Jetstream' }),
       );
-      // setCellRichText is declared but not exported in 0.11.0. The loaded value shape is
+      // setCellRichText is declared but not exported (0.23.0). The loaded value shape is
       // { kind: 'rich-text', runs }, and setCell accepts that object (a bare runs array is rejected at save).
       await attempt(tracker, 'richText', () =>
         setCell(worksheet, 8, 2, {

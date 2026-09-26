@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { statSync } from 'node:fs';
-import readXlsxFile from 'read-excel-file/node';
+import { readSheet } from 'read-excel-file/node';
 import writeXlsxFile from 'write-excel-file/node';
 import { DATE_NUMBER_FORMAT, truncateCell } from '../lib/excel-limits.mjs';
 
@@ -37,13 +37,13 @@ export async function write(rowIterable, { columns, outPath }) {
   for (const row of rowIterable) {
     data.push(row.map(toCell));
   }
-  await writeXlsxFile(data, { filePath: outPath, dateFormat: DATE_NUMBER_FORMAT });
+  await writeXlsxFile(data, { dateFormat: DATE_NUMBER_FORMAT }).toFile(outPath);
   return { bytes: statSync(outPath).size };
 }
 
 /** Built-in date formats come back as Date objects; custom ones would need the `dateFormat` option. */
 export async function readTyped(path) {
-  const rows = await readXlsxFile(path);
+  const rows = await readSheet(path);
   const columnCount = rows.length > 0 ? rows[0].length : 0;
   const dataRows = Math.max(0, rows.length - 1);
   return { rows: dataRows, cells: dataRows * columnCount };
