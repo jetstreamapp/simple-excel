@@ -17,7 +17,7 @@ all in the package, and compression is the platform's own `CompressionStream`.
 | ------------------------------------------- | ---------------------- | --------------------------------- | ------------------- | ---------------------------------- | ---------------------------------- |
 | Streaming write (flat memory at 1M rows)    | yes                    | no                                | yes                 | no (buffers until `finalize()`)    | no                                 |
 | Streaming read                              | yes                    | no                                | yes                 | yes                                | no                                 |
-| Runtime dependencies                        | 0                      | 0                                 | 9                   | 3                                  | 3 each                             |
+| Runtime dependencies                        | 0                      | 0                                 | 9                   | 3                                  | 1 / 4                              |
 | Bundle size (min+brotli)                    | 24.9 KB                | not measured                      | not measured        | ≤ 120 KB (its README)              | not measured                       |
 | Maintained on npm                           | yes                    | no (fixes on the vendor CDN only) | inactive since 2023 | yes (pre-1.0)                      | yes                                |
 | Verified against Excel with a public corpus | yes                    | no                                | no                  | no (validator + fixtures in CI)    | no                                 |

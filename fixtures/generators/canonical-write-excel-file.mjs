@@ -45,20 +45,21 @@ export default async function generate(outPath) {
   tracker.skipped.push({ feature: 'hiddenSheet', reason: 'write-excel-file has no sheet state option' });
   tracker.skipped.push({ feature: 'features', reason: 'write-excel-file writes values and cell formats only' });
 
-  const data = visibleSheets.map(sheet => {
+  const workbookSheets = visibleSheets.map(sheet => {
     const rows = truncateRows(sheet.rows);
     const header = sheet.rows[0];
-    return rows.map((row, r) =>
+    const data = rows.map((row, r) =>
       row.map((value, c) => {
         const format = r > 0 && sheet.numFmts ? sheet.numFmts[header[c]] : undefined;
         const cell = toCell(value, format);
         return r === 0 ? { ...cell, fontWeight: 'bold' } : cell;
       }),
     );
+    return { data, sheet: sheet.name };
   });
 
   ensureDir(outPath);
-  await writeXlsxFile(data, { sheets: visibleSheets.map(sheet => sheet.name), filePath: outPath });
+  await writeXlsxFile(workbookSheets).toFile(outPath);
   writeFeatureSidecar(outPath, `write-excel-file ${version}`, tracker.applied, tracker.skipped);
   return { version };
 }
