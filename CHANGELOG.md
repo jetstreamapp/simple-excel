@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the development toolchain (vitest 5, oxfmt 0.70, oxlint 1.85, and the office-kit, read-excel-file and
+  write-excel-file versions the corpus and benchmarks compare against). There are no runtime dependency changes, and
+  the published bundles are byte-identical to 0.1.0.
+
 ## [0.1.0] - 2026-09-12
 
 ### Added
