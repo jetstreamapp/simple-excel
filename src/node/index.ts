@@ -27,7 +27,10 @@ export interface FileSource extends RandomAccessSource {
   close(): Promise<void>;
 }
 
-/** Random-access source over a file (positional reads on a `FileHandle`); `close()` releases the handle. */
+/**
+ * Random-access source over a file (positional reads on a `FileHandle`); `close()` releases the handle, and a read
+ * after it throws `XlsxError('ABORTED')` rather than the handle's bare `EBADF`.
+ */
 export async function fromFile(path: string): Promise<FileSource> {
   const handle = await openFile(path, 'r');
   const { size } = await handle.stat();
@@ -37,6 +40,9 @@ export async function fromFile(path: string): Promise<FileSource> {
     size,
     /** Positional reads share no cursor, so reads may overlap; short reads only happen at end of file. */
     async read(offset: number, length: number): Promise<Uint8Array> {
+      if (closed) {
+        throw new XlsxError('ABORTED', `The file ${path} was closed. Open it again to read from it.`, { path });
+      }
       const buffer = new Uint8Array(length);
       let filled = 0;
       while (filled < length) {

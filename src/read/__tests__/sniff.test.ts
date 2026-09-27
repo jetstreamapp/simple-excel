@@ -79,6 +79,71 @@ describe('sniff', () => {
     expect(sniff(ascii('名前,住所\n田中 太郎,東京都\n佐藤 花子,大阪府\n'))).toBe('text');
   });
 
+  it('EC-SNIFF-LEGACY-TEXT: a Windows-1252 csv with accented letters is text', () => {
+    // `Name;City\nCafé Müller;Zürich\n` in Windows-1252: é is 0xE9 and ü is 0xFC, which is not UTF-8.
+    const windows1252 = new Uint8Array([
+      78, 97, 109, 101, 59, 67, 105, 116, 121, 10, 67, 97, 102, 233, 32, 77, 252, 108, 108, 101, 114, 59, 90, 252, 114, 105, 99, 104, 10,
+    ]);
+    expect(sniff(windows1252)).toBe('text');
+    // Windows-1252's printable 0x80-0x9F range (smart quotes, the euro sign) is text too.
+    expect(sniff(bytes(0x93, 0x51, 0x94, 0x2c, 0x80, 0x31, 0x30, 0x0d, 0x0a))).toBe('text');
+  });
+
+  it('EC-SNIFF-LEGACY-TEXT: a Shift-JIS csv is text', () => {
+    // `名前,住所\r\n田中 太郎,東京都\r\n` in Shift-JIS.
+    const shiftJis = new Uint8Array([
+      150, 188, 145, 79, 44, 143, 90, 143, 138, 13, 10, 147, 99, 146, 134, 32, 145, 190, 152, 89, 44, 147, 140, 139, 158, 147, 115, 13, 10,
+    ]);
+    expect(sniff(shiftJis)).toBe('text');
+  });
+
+  it('EC-SNIFF-LEGACY-TEXT: UTF-16 with a byte-order mark is text, or xml/html when it says so', () => {
+    const utf16 = (text: string, littleEndian: boolean): Uint8Array => {
+      const out = new Uint8Array(2 + text.length * 2);
+      out.set(littleEndian ? [0xff, 0xfe] : [0xfe, 0xff], 0);
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        out[2 + i * 2] = littleEndian ? code & 0xff : code >>> 8;
+        out[3 + i * 2] = littleEndian ? code >>> 8 : code & 0xff;
+      }
+      return out;
+    };
+    // Excel's "Unicode Text" save: tab-separated UTF-16LE.
+    expect(sniff(utf16('Id\tName\r\n1\tZoë Ångström 😀\r\n2\t田中 太郎\r\n', true))).toBe('text');
+    expect(sniff(utf16('Id,Name\n1,Zoë\n', false))).toBe('text');
+    expect(sniff(utf16(' <?xml version="1.0"?><Workbook/>', true))).toBe('xml');
+    expect(sniff(utf16('<HTML><table></table></HTML>', false))).toBe('html');
+    expect(sniff(bytes(0xff, 0xfe))).toBe('empty');
+    // A byte-order mark in front of binary does not make it text.
+    const binary = new Uint8Array(512);
+    binary.set([0xff, 0xfe], 0);
+    for (let i = 2; i < binary.length; i++) {
+      binary[i] = (i * 31) % 32;
+    }
+    expect(sniff(binary)).toBe('unknown');
+    const random = new Uint8Array(512);
+    random.set([0xfe, 0xff], 0);
+    for (let i = 2; i < random.length; i++) {
+      random[i] = (i * 151 + 7) % 256;
+    }
+    expect(sniff(random)).toBe('unknown');
+  });
+
+  it('EC-SNIFF-LEGACY-TEXT: binary with no NUL byte but many control bytes stays unknown', () => {
+    const noNul = new Uint8Array(512);
+    for (let i = 0; i < noNul.length; i++) {
+      noNul[i] = ((i * 97) % 255) + 1;
+    }
+    expect(noNul.includes(0)).toBe(false);
+    expect(sniff(noNul)).toBe('unknown');
+    // High bytes with a sprinkling of control bytes past the tolerance are binary too.
+    const sparse = new Uint8Array(200).fill(0xe9);
+    for (let i = 0; i < sparse.length; i += 20) {
+      sparse[i] = 0x01;
+    }
+    expect(sniff(sparse)).toBe('unknown');
+  });
+
   it('reports no bytes at all as empty', () => {
     expect(sniff(new Uint8Array(0))).toBe('empty');
     expect(sniff(bytes(0xef, 0xbb, 0xbf))).toBe('empty');
@@ -90,8 +155,8 @@ describe('sniff', () => {
       random[i] = (i * 97) % 256;
     }
     expect(sniff(random)).toBe('unknown');
-    // UTF-16LE text: half the bytes are NUL, which no plain-text route can handle.
-    expect(sniff(bytes(0xff, 0xfe, 0x49, 0x00, 0x64, 0x00, 0x2c, 0x00, 0x4e, 0x00, 0x61, 0x00))).toBe('unknown');
+    // UTF-16LE without a byte-order mark: half the bytes are NUL and nothing says which encoding it is.
+    expect(sniff(bytes(0x49, 0x00, 0x64, 0x00, 0x2c, 0x00, 0x4e, 0x00, 0x61, 0x00))).toBe('unknown');
     // A PDF is printable at the front and binary right after.
     const pdf = new Uint8Array(512);
     pdf.set(ascii('%PDF-1.7\n'), 0);

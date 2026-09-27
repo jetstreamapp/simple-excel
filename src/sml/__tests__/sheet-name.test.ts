@@ -96,6 +96,21 @@ describe('sanitizeSheetName', () => {
     expect(sanitize('[]')).toBe('__');
   });
 
+  it('EC-XML-CONTROL-CHARS-METADATA: replaces the characters XML forbids and unpaired surrogates with underscores', () => {
+    expect(sanitize('Q1\u0001Report')).toBe('Q1_Report');
+    expect(sanitize('a\u0000b\u0008c\u000Bd\u000Ce\u001Ff')).toBe('a_b_c_d_e_f');
+    expect(sanitize('non\uFFFEchar\uFFFF')).toBe('non_char_');
+    expect(sanitize('lone \uD83D high')).toBe('lone _ high');
+    expect(sanitize('lone \uDE00 low')).toBe('lone _ low');
+    expect(sanitize('🚀 Launch'), 'a complete pair is a real character').toBe('🚀 Launch');
+  });
+
+  it("EC-XML-CONTROL-CHARS-METADATA: replaces tab, LF and CR too, which Excel's rename box refuses", () => {
+    expect(sanitize('Line\nBreak')).toBe('Line_Break');
+    expect(sanitize('Tab\tSeparated\r')).toBe('Tab_Separated_');
+    expect(isValidSheetName('Tab\tName')).toBe(false);
+  });
+
   it('throws INVALID_SHEET_NAME when the input is not a string', () => {
     try {
       sanitizeSheetName(undefined as unknown as string, new Set());
@@ -115,6 +130,13 @@ describe('isValidSheetName', () => {
     expect(isValidSheetName("'quoted'")).toBe(false);
     expect(isValidSheetName('A'.repeat(32))).toBe(false);
     expect(isValidSheetName(' padded ')).toBe(false);
+  });
+
+  it('EC-XML-CONTROL-CHARS-METADATA: is false for control characters and unpaired surrogates', () => {
+    expect(isValidSheetName('Q1\u0001Report')).toBe(false);
+    expect(isValidSheetName('x\uFFFF')).toBe(false);
+    expect(isValidSheetName('x\uD800')).toBe(false);
+    expect(isValidSheetName('🚀')).toBe(true);
   });
 });
 

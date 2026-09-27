@@ -33,6 +33,8 @@ export type {
   RawCell,
   ReadLimits,
   ReadValue,
+  ReadWarning,
+  ReadWarningCode,
   RowsOptions,
   SharedStringBudget,
   Sheet,

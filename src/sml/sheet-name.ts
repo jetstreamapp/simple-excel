@@ -2,7 +2,14 @@ import { XlsxError } from '../errors';
 
 export const MAX_SHEET_NAME_LENGTH: number = 31;
 
-const FORBIDDEN_CHARACTERS = /[:\\/?*[\]]/g;
+/**
+ * The characters Excel refuses in a sheet name, plus every C0 control, U+FFFE and U+FFFF: the name lands in
+ * `workbook.xml` and `app.xml`, where XML 1.0 cannot carry most controls at all (EC-XML-CONTROL-CHARS-METADATA), and
+ * Excel's own rename box refuses tab, LF and CR even though XML could escape them. With the `u` flag a surrogate pair
+ * is one code point, so the surrogate range only matches the unpaired halves, which cannot be encoded as UTF-8 either.
+ */
+// eslint-disable-next-line no-control-regex -- the control characters are exactly what this looks for
+const FORBIDDEN_CHARACTERS = /[:\\/?*[\]\u0000-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/gu;
 /** Excel keeps `History` for the change-tracking sheet and refuses it in any casing. */
 const RESERVED_NAME = 'history';
 /** A name made only of these can go into a formula unquoted. Anything else (spaces, accents, `'`) is quoted. */
@@ -53,7 +60,8 @@ function withCopySuffix(base: string, attempt: number): string {
 }
 
 /**
- * Make a sheet name Excel accepts and unique within the workbook: `: \ / ? * [ ]` become `_`, leading and trailing
+ * Make a sheet name Excel accepts and unique within the workbook: `: \ / ? * [ ]`, control characters and
+ * unpaired surrogates become `_`, leading and trailing
  * apostrophes are stripped, the name is trimmed to 31 characters, `History` (reserved, case-insensitive) becomes
  * `History_`, empty input becomes `Sheet<n>`. Collisions (case-insensitive against `taken`) get ` (2)`, ` (3)`, ...
  * fitted inside the 31-character budget. The returned name is added to `taken`.

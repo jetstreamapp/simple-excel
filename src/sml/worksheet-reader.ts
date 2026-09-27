@@ -1,17 +1,18 @@
 import { XlsxError } from '../errors';
-import type { CellErrorCode, CellValue, OpenOptions, RawCell, RowsOptions } from '../types';
+import type { CellErrorCode, CellValue, OpenOptions, RawCell, ReadWarning, ReadWarningCode, RowsOptions } from '../types';
 import { decodeCellText } from '../xml/escape';
 import { XmlTokenizer, type XmlTokenizerHandler } from '../xml/tokenizer';
 import { columnIndexOfRef, formatRef, MAX_COLUMNS, MAX_ROWS } from './cell-ref';
 import { componentsFromIso, componentsFromSerial, dateFromComponents, serialFromComponents } from './date';
 
-export type WorksheetWarningCode = 'shared-string-index-out-of-range';
-
-/** Something the sheet says that Excel tolerates and we repaired. Reported once per code per sheet read. */
-export interface WorksheetWarning {
-  readonly code: WorksheetWarningCode;
-  /** A1 reference of the first cell that triggered it. */
-  readonly ref: string;
+/** What the facade's object mode adds to a row read. */
+export interface WorksheetRowsOptions extends RowsOptions {
+  /**
+   * The header row of an object-mode read: its error cells read as their text whatever `errors` says, since SheetJS
+   * names such a column `#N/A` (EC-HEADER-ERROR-CELL). A row number, or `'first'` for the first row that is not
+   * blank, which is how object mode finds its header when the caller names none. Every other row follows `errors`.
+   */
+  readonly errorTextRow?: number | 'first';
 }
 
 export interface WorksheetReadContext {
@@ -31,8 +32,11 @@ export interface WorksheetReadContext {
   readonly maxTextLength: number;
   /** Checked between chunks; an aborted signal ends the read with `XlsxError('ABORTED')`. Supplied by the facade. */
   readonly signal?: AbortSignal;
-  /** Optional diagnostics sink. Each warning code fires at most once per sheet read, however many cells hit it. */
-  readonly onWarning?: (warning: WorksheetWarning) => void;
+  /**
+   * Optional diagnostics sink. Each warning code fires at most once per sheet read, however many cells hit it. The
+   * facade adds the sheet name; the parser fills in the code, the message and the cell reference.
+   */
+  readonly onWarning?: (warning: ReadWarning) => void;
 }
 
 export interface SheetRow {
@@ -66,6 +70,23 @@ const TYPE_ISO_DATE = 6;
 /** `t="s"` is five characters, so four kept from the previous chunk catch one split across the boundary. */
 const SHARED_TYPE_SCAN_TAIL = 4;
 
+const CODE_SPACE = 0x20;
+const CODE_DOLLAR = 0x24;
+const CODE_ZERO = 0x30;
+const CODE_NINE = 0x39;
+const CODE_UPPER_A = 0x41;
+const CODE_UPPER_Z = 0x5a;
+const CODE_LOWER_B = 0x62;
+const CODE_LOWER_O = 0x6f;
+const CODE_LOWER_X = 0x78;
+/** OR-ing an ASCII letter with this lower-cases it. */
+const ASCII_LOWER_BIT = 0x20;
+
+// What a numeric `<v>` that starts with a zero or with whitespace turns out to hold; see `leadingNumericKind`.
+const NUMERIC_DECIMAL = 0;
+const NUMERIC_BLANK = 1;
+const NUMERIC_RADIX = 2;
+
 function cellTypeOf(attribute: string): number {
   switch (attribute) {
     case 'n':
@@ -95,6 +116,59 @@ function decodeIfEscaped(text: string): string {
 
 function hasSharedType(text: string): boolean {
   return text.includes('t="s"') || text.includes("t='s'");
+}
+
+function isXmlWhitespace(code: number): boolean {
+  return code === CODE_SPACE || code === 0x09 || code === 0x0a || code === 0x0d;
+}
+
+/**
+ * Unary `+` accepts more than a spreadsheet number: whitespace alone is 0, and `0x1A`, `0b11`, `0o7` are hex, binary
+ * and octal. Excel only writes decimal, so the first is a blank (EC-EMPTY-V-ELEMENT) and the rest are not numbers at
+ * all (EC-NUMBER-RADIX-PREFIX). Only text that starts with `0` or whitespace can be either, so only that text is
+ * looked at here: after any leading whitespace, nothing at all, or a zero followed by a radix letter.
+ */
+function leadingNumericKind(text: string): number {
+  let position = 0;
+  while (position < text.length && isXmlWhitespace(text.charCodeAt(position))) {
+    position++;
+  }
+  if (position === text.length) {
+    return NUMERIC_BLANK;
+  }
+  if (text.charCodeAt(position) !== CODE_ZERO) {
+    return NUMERIC_DECIMAL;
+  }
+  const radixLetter = text.charCodeAt(position + 1) | ASCII_LOWER_BIT;
+  return radixLetter === CODE_LOWER_X || radixLetter === CODE_LOWER_B || radixLetter === CODE_LOWER_O ? NUMERIC_RADIX : NUMERIC_DECIMAL;
+}
+
+/**
+ * The 0-based column of a reference that is well formed but lies past XFD (`XFE2`, `AAAA1`), or -1 for anything
+ * else. `columnIndexOfRef` reports such a reference as malformed, and a malformed `r` means "the next column"; told
+ * apart here, on that rare path only, so a cell past the grid cannot be moved back into it (EC-REF-BEYOND-XFD).
+ */
+function columnIndexPastGrid(ref: string): number {
+  let position = ref.charCodeAt(0) === CODE_DOLLAR ? 1 : 0;
+  const lettersStart = position;
+  let oneBasedColumn = 0;
+  while (position < ref.length) {
+    const code = ref.charCodeAt(position);
+    if (code < CODE_UPPER_A || code > CODE_UPPER_Z) {
+      break;
+    }
+    // Saturate rather than overflow: every column past the grid is as unusable as the next.
+    oneBasedColumn = Math.min(oneBasedColumn * 26 + (code - CODE_UPPER_A + 1), MAX_COLUMNS + 1);
+    position++;
+  }
+  if (position === lettersStart || oneBasedColumn <= MAX_COLUMNS) {
+    return -1;
+  }
+  if (ref.charCodeAt(position) === CODE_DOLLAR) {
+    position++;
+  }
+  const rowCode = ref.charCodeAt(position);
+  return rowCode >= CODE_ZERO && rowCode <= CODE_NINE ? oneBasedColumn - 1 : -1;
 }
 
 function limitExceeded(message: string, detail: Readonly<Record<string, unknown>>): XlsxError {
@@ -138,7 +212,8 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   /** Which fields of a produced `Date` carry the sheet's wall clock. Unused while `serialDates`. */
   protected readonly dateFields: 'local' | 'utc';
   protected readonly serialDates: boolean;
-  protected readonly errorMode: NonNullable<OpenOptions['errors']>;
+  /** How `t="e"` cells materialize for the row being read; object mode switches it for its header row. */
+  protected errorMode: NonNullable<OpenOptions['errors']>;
   protected readonly captureFormulas: boolean;
   protected readonly maxColumns: number;
 
@@ -164,7 +239,7 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   private sharedStringsScanTail = '';
   /** Cells that met `t="s"` before the table was loaded; applied after the chunk, before any row is yielded. */
   private readonly deferredCells: ((strings: readonly string[]) => void)[] = [];
-  private readonly warned = new Set<WorksheetWarningCode>();
+  private readonly warned = new Set<ReadWarningCode>();
 
   constructor(context: WorksheetReadContext, options: ParserOptions) {
     this.context = context;
@@ -370,6 +445,12 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
       const parsed = columnIndexOfRef(ref);
       if (parsed >= 0) {
         column = parsed;
+      } else {
+        // Past XFD is a real position, just not one a sheet can hold: it fails the column check below.
+        const pastGrid = columnIndexPastGrid(ref);
+        if (pastGrid >= 0) {
+          column = pastGrid;
+        }
       }
     }
     if (column >= this.maxColumns) {
@@ -416,7 +497,7 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
       this.onDeferredSharedString(index);
       return;
     }
-    this.onCell(this.sharedStringAt(strings, index));
+    this.onCell(this.sharedStringAt(strings, index, this.rowNumber, this.column));
   }
 
   private cellValue(): CellValue {
@@ -439,9 +520,10 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   }
 
   /**
-   * `<v/>` and a missing `<v>` are both blank, never 0 (EC-EMPTY-V-ELEMENT). A value that is not a finite double
-   * comes back as its raw text: Numbers writes `<v>inf</v>` for the max double (EC-NUMBERS-INF-VALUE), and both
-   * dropping the cell and returning Infinity would lose what the file actually said.
+   * `<v/>`, a `<v>` of only whitespace and a missing `<v>` are all blank, never 0 (EC-EMPTY-V-ELEMENT). A value that
+   * is not a finite decimal number comes back as its raw text: Numbers writes `<v>inf</v>` for the max double
+   * (EC-NUMBERS-INF-VALUE), and both dropping the cell and returning Infinity would lose what the file actually said.
+   * `0x1A` and the other radix spellings unary `+` accepts are text for the same reason (EC-NUMBER-RADIX-PREFIX).
    */
   private numberValue(): CellValue {
     const text = this.valueText;
@@ -451,6 +533,16 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     const parsed = +text;
     if (!Number.isFinite(parsed)) {
       return text;
+    }
+    const first = text.charCodeAt(0);
+    if (first === CODE_ZERO || first <= CODE_SPACE) {
+      const kind = leadingNumericKind(text);
+      if (kind === NUMERIC_BLANK) {
+        return null;
+      }
+      if (kind === NUMERIC_RADIX) {
+        return text;
+      }
     }
     // -0 has no spreadsheet representation (EC-NUM-NEGATIVE-ZERO).
     const value = parsed === 0 ? 0 : parsed;
@@ -500,11 +592,15 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     return dateFromComponents(components, this.dateFields);
   }
 
-  /** Out of range is what Excel itself tolerates: the cell reads blank (EC-SST-INDEX-OUT-OF-RANGE). */
-  protected sharedStringAt(strings: readonly string[], index: number): string {
+  /**
+   * Out of range is what Excel itself tolerates: the cell reads as empty text (EC-SST-INDEX-OUT-OF-RANGE), and so
+   * does every `t="s"` cell of a package with no table at all (EC-SST-ABSENT-INLINE-ONLY). `rowNumber` and `column`
+   * are the cell's own, which a deferred cell no longer shares with the parser.
+   */
+  protected sharedStringAt(strings: readonly string[], index: number, rowNumber: number, column: number): string {
     const value = strings[index];
     if (value === undefined) {
-      this.warn('shared-string-index-out-of-range');
+      this.warnSharedStringMiss(index, strings.length, rowNumber, column);
       return '';
     }
     return value;
@@ -518,13 +614,23 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     return formatRef(this.rowNumber - 1, this.column);
   }
 
-  private warn(code: WorksheetWarningCode): void {
+  /** Only ever reached for a cell that missed the table, so the message is built at most once per code. */
+  private warnSharedStringMiss(index: number, tableSize: number, rowNumber: number, column: number): void {
     const report = this.context.onWarning;
-    if (report === undefined || this.warned.has(code)) {
+    if (report === undefined) {
+      return;
+    }
+    const code: ReadWarningCode = this.context.hasSharedStrings ? 'SST_INDEX_OUT_OF_RANGE' : 'SHARED_STRINGS_MISSING';
+    if (this.warned.has(code)) {
       return;
     }
     this.warned.add(code);
-    report({ code, ref: this.currentRef() });
+    const ref = formatRef(rowNumber - 1, column);
+    const message =
+      code === 'SST_INDEX_OUT_OF_RANGE'
+        ? `Cell ${ref} refers to shared string ${index}, but the table holds ${tableSize}; it reads as empty text, as in Excel.`
+        : `Cell ${ref} refers to the shared-string table, but this workbook has none; it reads as empty text.`;
+    report({ code, message, ref });
   }
 
   private async loadSharedStrings(): Promise<readonly string[]> {
@@ -544,23 +650,28 @@ class RowsParser extends WorksheetParser {
   private readonly maxRows: number;
   private readonly blankRows: boolean;
   private readonly formulaAsValue: boolean;
+  private readonly errorTextRow: number | 'first' | undefined;
 
   private cells: CellValue[] = [];
   private batch: SheetRow[] = [];
   private emitted = 0;
+  /** No row with a value has been emitted yet: with `errorTextRow: 'first'`, the next one is the header row. */
+  private awaitingFirstRow = true;
   /** With `blankRows`, the next row number that must appear so `rows[i].index === i + startRow` keeps holding. */
   private nextIndex: number;
 
-  constructor(context: WorksheetReadContext, options: RowsOptions) {
+  constructor(context: WorksheetReadContext, options: WorksheetRowsOptions) {
     super(context, {
       captureFormulas: options.formulas === 'text',
-      maxColumns: options.maxColumns ?? MAX_COLUMNS,
+      // No sheet has a column past XFD, whatever cap the caller allows.
+      maxColumns: Math.min(options.maxColumns ?? MAX_COLUMNS, MAX_COLUMNS),
       errorMode: context.errors,
     });
     this.startRow = Math.max(1, options.startRow ?? 1);
     this.maxRows = options.maxRows ?? Number.POSITIVE_INFINITY;
     this.blankRows = options.blankRows === true;
     this.formulaAsValue = options.formulas === 'text';
+    this.errorTextRow = options.errorTextRow;
     this.nextIndex = this.startRow;
     if (this.maxRows < 1) {
       this.stop();
@@ -577,6 +688,10 @@ class RowsParser extends WorksheetParser {
     this.collecting = rowNumber >= this.startRow;
     if (this.collecting) {
       this.cells = [];
+      if (this.errorTextRow !== undefined) {
+        const isHeaderRow = this.errorTextRow === 'first' ? this.awaitingFirstRow : rowNumber === this.errorTextRow;
+        this.errorMode = isHeaderRow ? 'string' : this.context.errors;
+      }
     }
   }
 
@@ -587,6 +702,9 @@ class RowsParser extends WorksheetParser {
       end--;
     }
     cells.length = end;
+    if (end > 0) {
+      this.awaitingFirstRow = false;
+    }
     if (end === 0 && !this.blankRows) {
       return;
     }
@@ -620,11 +738,12 @@ class RowsParser extends WorksheetParser {
       return;
     }
     const cells = this.cells;
+    const rowNumber = this.rowNumber;
     const column = this.column;
     // The placeholder must not be null, or the trailing-empty trim could drop the slot before the fixup runs.
     this.place('');
     this.defer(strings => {
-      cells[column] = this.sharedStringAt(strings, index);
+      cells[column] = this.sharedStringAt(strings, index, rowNumber, column);
     });
   }
 
@@ -697,9 +816,11 @@ class HeadParser extends WorksheetParser {
 
   protected override onDeferredSharedString(index: number): void {
     const ref = this.currentRef();
+    const rowNumber = this.rowNumber;
+    const column = this.column;
     const formula = this.formulaText.length === 0 ? undefined : this.formulaText;
     this.defer(strings => {
-      this.cells.set(ref, rawCell(this.sharedStringAt(strings, index), undefined, formula));
+      this.cells.set(ref, rawCell(this.sharedStringAt(strings, index, rowNumber, column), undefined, formula));
     });
   }
 }
@@ -713,7 +834,7 @@ class HeadParser extends WorksheetParser {
 export function readWorksheetRows(
   chunks: AsyncIterable<Uint8Array>,
   context: WorksheetReadContext,
-  options: RowsOptions,
+  options: WorksheetRowsOptions,
 ): AsyncIterable<SheetRow> {
   return streamRows(chunks, context, options);
 }
@@ -721,7 +842,7 @@ export function readWorksheetRows(
 async function* streamRows(
   chunks: AsyncIterable<Uint8Array>,
   context: WorksheetReadContext,
-  options: RowsOptions,
+  options: WorksheetRowsOptions,
 ): AsyncGenerator<SheetRow, void, undefined> {
   const parser = new RowsParser(context, options);
   if (parser.stopped) {

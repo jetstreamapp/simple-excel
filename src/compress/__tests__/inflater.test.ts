@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { deflateRawSync } from 'node:zlib';
-import { describe, expect, it } from 'vitest';
-import { XlsxError } from '../../errors';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { isXlsxError, XlsxError } from '../../errors';
 import { createInflater } from '../inflater';
 
 const MIB = 1024 * 1024;
@@ -279,5 +279,45 @@ describe('createInflater', () => {
       await inflater.abort();
       await expect(inflater.push(new Uint8Array(1))).rejects.toMatchObject({ code: 'ABORTED' });
     });
+  });
+});
+
+describe('createInflater: environments without deflate-raw', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reports a DecompressionStream that refuses deflate-raw (Node 20.0-20.11) as UNSUPPORTED_ENVIRONMENT', () => {
+    const Native = DecompressionStream;
+    vi.stubGlobal(
+      'DecompressionStream',
+      class extends Native {
+        constructor(format: CompressionFormat) {
+          if (format === 'deflate-raw') {
+            throw new TypeError(`The argument 'format' is invalid. Received '${format}'`);
+          }
+          super(format);
+        }
+      },
+    );
+    let thrown: unknown;
+    try {
+      createInflater(() => Promise.resolve(), { maxBytes: MIB, method: 'deflate' });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(isXlsxError(thrown) && thrown.code).toBe('UNSUPPORTED_ENVIRONMENT');
+    expect(isXlsxError(thrown) && thrown.message).toContain('deflate-raw');
+    expect(isXlsxError(thrown) && thrown.message).toContain('Node.js 20.12');
+    expect(isXlsxError(thrown) && thrown.detail?.cause).toBeInstanceOf(TypeError);
+    // Stored entries need no decompressor at all.
+    expect(() => createInflater(() => Promise.resolve(), { maxBytes: MIB, method: 'store' })).not.toThrow();
+  });
+
+  it('reports a missing DecompressionStream as UNSUPPORTED_ENVIRONMENT', () => {
+    vi.stubGlobal('DecompressionStream', undefined);
+    expect(() => createInflater(() => Promise.resolve(), { maxBytes: MIB, method: 'deflate' })).toThrow(
+      expect.objectContaining({ code: 'UNSUPPORTED_ENVIRONMENT' }) as unknown as Error,
+    );
   });
 });

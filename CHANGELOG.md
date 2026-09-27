@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `OpenOptions.onWarning`, with the `ReadWarning` and `ReadWarningCode` types: the reader reports damage it repairs
+  instead of refusing, once per code per sheet. The first codes are a shared-string index past the end of the table
+  and a shared-string cell in a workbook with no shared-string part; both cells read blank, as in Excel.
+- `openWorkbook` accepts any typed array or `DataView` and a `SharedArrayBuffer`, and recognises buffers from another
+  realm (an iframe, a worker, an Electron bridge).
+
+### Changed
+
+- Object mode (`rows({ mode: 'object' })` and `toObjects()`) finds the header row: without `headerRow` it is the first
+  row at or after `startRow` that holds a value, so a sheet whose first rows are blank reads like `sheet_to_json`
+  instead of naming every column `__EMPTY`. Columns start at the sheet's `<dimension>`, so an all-blank column A no
+  longer becomes `__EMPTY`, and `toObjects()` gives every record every key. An explicit `headerRow` behaves as before.
+- A header cell holding an error value names its column with the error text (`#N/A`), as in SheetJS.
+- `onCellTruncated` fires once, after `close()`, with the workbook's total. It used to fire at every sheet close
+  with a running total.
+- `rowCount` is only a zip64 sizing hint: the writer no longer writes `<dimension>` from it. A hint lower than the
+  rows written made SheetJS and pandas read only the declared rows.
+- The writer refuses input that used to produce a file Excel repairs, with `WRITER_STATE`: a workbook with no sheet or
+  with every sheet hidden, style ids `registerStyle` did not return, error values that are not a `#` code, overlapping
+  or duplicate merges (checked when `merge()` is called), style fields outside Excel's ranges, non-numeric or negative
+  widths, `freeze` and `rowCount` values, a row that is not an array, and a `properties.created` outside the years
+  1-9999. Column widths above 255 are written as 255. Unsupported cell values name the sheet, cell and type.
+- Any failure while writing aborts the sink once, and every later call rejects with that original error.
+- A `Date` written with a style that has no date format keeps that style's font, fill, border and alignment.
+- An error value outside `CellErrorCode` that is still a `#` code (a newer Excel error such as `#SPILL!`, which the
+  reader can return) is written as its text instead of as an error cell Excel would repair.
+- A `Date` from another realm is accepted as a cell value and as `properties.created`.
+- Control characters in sheet names become `_`; in the title, creator and number format codes they are dropped, and a
+  font name holding one is refused.
+- A serial past 9999-12-31 in a date-formatted cell reads as a number, and a `Date` after 9999 is written as ISO text.
+- `sniff` classifies Windows-1252, Shift-JIS and UTF-16 (with a byte-order mark) text as `'text'`.
+- `engines.node` is `>=20.12`, the first Node whose `CompressionStream` and `DecompressionStream` accept `deflate-raw`.
+
+### Fixed
+
+- A column headed `__proto__` lost its values, and a `Date` under it replaced the record's prototype.
+- A workbook whose part names differ in case from its relationships (`xl/SharedStrings.xml`) read every string as
+  blank; part names now match case-insensitively.
+- `writeRow({ Id, Name })` silently wrote an empty row.
+- Control characters in a sheet name or document property produced a part that LibreOffice and openpyxl refuse.
+- Truncation to 32,767 characters could split an emoji.
+- A `properties.created` that was an invalid `Date` silently left out `docProps/core.xml`.
+- A row array reused and changed before the previous `writeRow` settled could be written with the later values.
+- The active tab now always points at a visible sheet when the first sheet is hidden.
+- `openWorkbook` threw a bare `TypeError` for input that is not bytes; it now throws `NOT_XLSX`. Reading on a Node
+  without `DecompressionStream('deflate-raw')` throws `UNSUPPORTED_ENVIRONMENT`, and reading a sheet after
+  `workbook.close()` throws `ABORTED` for every kind of source.
+- A numeric `<v>` of only whitespace read as 0, radix-prefixed text such as `0x1A` read as a number, and a cell
+  reference past column XFD wrapped into the next column (it now fails with `LIMIT_EXCEEDED`).
+- A test that failed in time zones observing summer time on the day it ran.
+
 ## [0.1.1] - 2026-09-26
 
 ### Changed

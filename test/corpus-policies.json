@@ -192,7 +192,8 @@
   },
   "golden-sfdc-report-formatted": {
     "parityExemptions": ["xlsx-engine canonical!J"],
-    "reason": "no expected dump: the report export is a corpus smoke read. Parity: its long-text column embeds the escape-literal and CRLF probes, which SheetJS decodes and collapses (EC-XML-ESCAPE-CASE, EC-CRLF-NORMALIZED)"
+    "reason": "no expected dump: the report export is a corpus smoke read. Parity: its long-text column embeds the escape-literal and CRLF probes, which SheetJS decodes and collapses (EC-XML-ESCAPE-CASE, EC-CRLF-NORMALIZED)",
+    "paritySkip": "A Formatted report: a styled but empty row 1, a title block and the real header on row 12, so no header-row rule yields usable records. SheetJS starts at the dimension's row 1 and names every column __EMPTY; object mode starts at the first row with a value (EC-HEADER-ROW-FIRST-NONEMPTY). Neither is meaningful, so parity is not compared; the corpus smoke read still runs."
   },
   "golden-canonical-gsheets-from-csv": {
     "allowedCategories": [
@@ -216,9 +217,16 @@
     "reason": "Corpus: Excel's re-save preserved SheetJS's negative time serials, serial 0 and serial 60, so the file still carries them (EC-EXCEL-RESAVE-PRESERVES-SHIFTED-SERIALS). Parity: SheetJS re-derives its own times from the negative serials, decodes _X0041_ and drops error values to defval."
   },
   "golden-canonical-excel-365-1904": {
-    "allowedCategories": ["control-chars-stripped", "crlf-normalized", "escape-sequence-mangled", "string-mismatch", "temporal-mismatch"],
-    "parityExemptions": ["Data!F", "Features!B4", "Features!B5", "Features!B6"],
-    "reason": "Corpus: switching the workbook to the 1904 epoch left every serial untouched, so all 90 temporal cells mean four years and a day later than the ground truth, and SheetJS reads the same values (EC-DATE-1904). Parity: SheetJS decodes _X0041_ and drops error values to defval."
+    "allowedCategories": [
+      "control-chars-stripped",
+      "crlf-normalized",
+      "date-as-serial",
+      "escape-sequence-mangled",
+      "string-mismatch",
+      "temporal-mismatch"
+    ],
+    "parityExemptions": ["Data!F", "Features!B4", "Features!B5", "Features!B6", "Data!M10", "Data!M22"],
+    "reason": "Corpus: switching the workbook to the 1904 epoch left every serial untouched, so all 90 temporal cells mean four years and a day later than the ground truth, and SheetJS reads the same values (EC-DATE-1904). Parity: SheetJS decodes _X0041_ and drops error values to defval. The shifted 9999-12-31 cells (M10, M22) land in year 10004, past Excel's last date, so they read as the number Excel shows as ######; SheetJS returns a year-10004 Date (EC-DATE-SERIAL-OVER-9999)."
   },
   "golden-canonical-simple-excel": {
     "allowedCategories": ["date-as-text", "dst-gap-shift-1h"],

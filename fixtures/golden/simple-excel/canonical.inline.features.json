@@ -1,5 +1,5 @@
 {
-  "generator": "@jetstreamapp/simple-excel (every string inline, no sharedStrings part)",
+  "generator": "@jetstreamapp/simple-excel (the default: every string inline, no sharedStrings part)",
   "applied": ["freeze", "autoFilter", "merges", "columnWidths", "hiddenSheet", "numFmts"],
   "skipped": [
     {

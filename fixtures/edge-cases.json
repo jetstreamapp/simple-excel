@@ -758,5 +758,205 @@
     "seenIn": "hostile-xlsb-renamed (Excel 365 'Excel binary file format' save).",
     "expected": "Detect via [Content_Types].xml (application/vnd.ms-excel.sheet.binary.macroEnabled.main) and say 'save as .xlsx'.",
     "status": "observed"
+  },
+  {
+    "id": "EC-HEADER-ROW-FIRST-NONEMPTY",
+    "family": "Structure",
+    "symptom": "The header row is not row 1: a blank first row (Excel and openpyxl write <dimension ref=\"A2:D5\"/>, Google Sheets writes none).",
+    "seenIn": "SheetJS sheet_to_json starts at the first row of the used range and finds the headers; simple-excel 0.1.1 always used row 1, named every column __EMPTY and read the header row as data (headers [] under dropEmptyHeaders). SheetJS itself fails when the dimension is loose (aoa_to_sheet with origin A2 writes A1:D5).",
+    "expected": "Without an explicit headerRow, object mode takes the first row at or after startRow that holds a value.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-HEADER-DIMENSION-START-COLUMN",
+    "family": "Structure",
+    "symptom": "An all-blank leading column: Excel writes <dimension ref=\"B3:E6\"/>.",
+    "seenIn": "SheetJS starts the record keys at the range's first column; simple-excel 0.1.1 named column A __EMPTY.",
+    "expected": "Name columns from the dimension's first column; keep any value left of it under a blank-header name.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-HEADER-PROTO-KEY",
+    "family": "Security",
+    "symptom": "A header named __proto__ (or constructor, toString, hasOwnProperty).",
+    "seenIn": "Plain-object assignment hits the __proto__ setter: the column's values vanish and a Date value changes the record's prototype (simple-excel 0.1.1).",
+    "expected": "Every header name becomes an own enumerable property; records keep Object.prototype.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-HEADER-ERROR-CELL",
+    "family": "Cells",
+    "symptom": "A header cell holding an error value (#N/A).",
+    "seenIn": "SheetJS names the column #N/A; simple-excel 0.1.1 named it __EMPTY.",
+    "expected": "Name the column with the error text, whatever the errors option says.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-PART-NAME-CASE",
+    "family": "Container",
+    "symptom": "A part name whose case differs from the relationship target (xl/SharedStrings.xml for sharedStrings.xml).",
+    "seenIn": "OPC part names are ASCII case-insensitive and SheetJS resolves them; simple-excel 0.1.1 read every string cell as '' with no error, and a case-mismatched worksheet gave NOT_XLSX.",
+    "expected": "Resolve the exact name first, then a case-insensitive match.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-INPUT-TYPE",
+    "family": "Jetstream",
+    "symptom": "openWorkbook given something that is not bytes (null, a string, a plain object), a typed array other than Uint8Array, a SharedArrayBuffer, or a buffer from another realm (iframe, worker, Electron bridge).",
+    "seenIn": "simple-excel 0.1.1 threw a bare TypeError, and instanceof checks fail across realms.",
+    "expected": "Accept any ArrayBufferView and SharedArrayBuffer without copying, check types cross-realm, and reject the rest with NOT_XLSX.",
+    "status": "contract"
+  },
+  {
+    "id": "EC-DATE-SERIAL-OVER-9999",
+    "family": "Dates",
+    "symptom": "A date-formatted serial past 9999-12-31 (2,958,465 in the 1900 system), such as a phone number typed into a date column; a JS Date after 9999.",
+    "seenIn": "Excel shows ########; SheetJS returns a year-10000 Date, or an Invalid Date whose toISOString throws; simple-excel 0.1.1 did the same and wrote out-of-range serials.",
+    "expected": "Reader: return the number. Writer: write ISO text, as for pre-1900 dates (EC-DATE-PRE-1900).",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-NUMBER-RADIX-PREFIX",
+    "family": "Numbers",
+    "symptom": "Numeric text with a radix prefix in <v> (0x1A, 0b11, 0o7).",
+    "seenIn": "Unary + accepts them (simple-excel 0.1.1 read 0x1A as 26); parseFloat readers read 0; Excel never writes them.",
+    "expected": "Not a number: the cell reads as its raw text, the same path as other non-numeric <v> text (inf, twelve).",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-REF-BEYOND-XFD",
+    "family": "Cells",
+    "symptom": "A cell reference past the last column (<c r=\"XFE2\">).",
+    "seenIn": "simple-excel 0.1.1 wrapped it into the next column; Excel treats it as a repair trigger (primer section 12.3).",
+    "expected": "Never wrap into another column: a well-formed reference past XFD fails with LIMIT_EXCEEDED, like any cell past the last column. A malformed reference still falls back to the next column.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-SNIFF-LEGACY-TEXT",
+    "family": "Jetstream",
+    "symptom": "CSV bytes in Windows-1252, UTF-16 or Shift-JIS.",
+    "seenIn": "Excel for Windows saves CSV as Windows-1252; simple-excel 0.1.1 sniff returned 'unknown', so the CSV router refused them; SheetJS parses them.",
+    "expected": "sniff returns 'text': UTF-16 by its byte-order mark, legacy single- and multi-byte text by the absence of NULs and control bytes.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-WORKBOOK-NO-SHEETS",
+    "family": "Structure",
+    "symptom": "A workbook closed with no sheet added.",
+    "seenIn": "SheetJS throws \"Workbook is empty\"; simple-excel 0.1.1 wrote a zero-sheet package the validator rejects.",
+    "expected": "WRITER_STATE from close(); the sink is aborted.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-DIMENSION-FROM-HINT",
+    "family": "Structure",
+    "symptom": "<dimension> written from a row-count hint before the rows exist.",
+    "seenIn": "When the hint is low, SheetJS and openpyxl read-only mode read only the declared rows; when it is high, SheetJS returns empty rows; rows wider than the header lose columns. Excel ignores it (primer section 12.15).",
+    "expected": "Write <dimension> only when it is exact. A streaming writer omits it (EC-NO-DIMENSION); rowCount only sizes zip64.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-TRUNCATION-SURROGATE",
+    "family": "Strings",
+    "symptom": "The 32,767-character cut lands between the halves of a surrogate pair (an emoji).",
+    "seenIn": "Jetstream's truncateCellsForExcel and simple-excel 0.1.1 left U+FFFD before the suffix.",
+    "expected": "Cut before the pair; the result stays within 32,767 units including the suffix.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-ROW-NOT-ARRAY",
+    "family": "Jetstream",
+    "symptom": "writeRow given an object ({ Id, Name }) instead of an array.",
+    "seenIn": "simple-excel 0.1.1 wrote an empty row with no error.",
+    "expected": "WRITER_STATE.",
+    "status": "contract"
+  },
+  {
+    "id": "EC-CELL-UNSUPPORTED-TYPE",
+    "family": "Jetstream",
+    "symptom": "A cell value that is an object, an array, a function or a symbol (a Salesforce describe attribute, a subquery result).",
+    "seenIn": "SheetJS writes an object as a blank cell and an array as its first element; simple-excel throws.",
+    "expected": "WRITER_STATE naming the sheet, the cell and the type. The caller converts the value (Jetstream's adapter serializes it).",
+    "status": "policy"
+  },
+  {
+    "id": "EC-XML-CONTROL-CHARS-METADATA",
+    "family": "Strings",
+    "symptom": "Control characters in a sheet name, title, creator, font name or number format code.",
+    "seenIn": "Written raw by simple-excel 0.1.1: LibreOffice refuses the file and openpyxl raises ParseError, while our own reader accepted it.",
+    "expected": "Replace them with _ in sheet names and drop them from other metadata. Cell text keeps the _xHHHH_ encoding (EC-XML-CONTROL-CHARS).",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-STYLE-ID-RANGE",
+    "family": "Cells",
+    "symptom": "A cell style index at or above the cellXfs count, negative or fractional.",
+    "seenIn": "Excel repairs the file (primer section 12.5) and openpyxl crashes; simple-excel 0.1.1 wrote whatever number it was given.",
+    "expected": "WRITER_STATE for any style id that registerStyle did not return.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-ERROR-CODE-UNKNOWN",
+    "family": "Cells",
+    "symptom": "t=\"e\" holding text that is not an error literal.",
+    "seenIn": "Excel repairs the file (primer section 12.6) and calamine rejects the workbook; simple-excel 0.1.1 wrote { error } unchecked.",
+    "expected": "Write only the CellErrorCode literals as t=\"e\". Another # code (a newer Excel error such as #SPILL! or #CALC!, which a reader can return) is written as its text; anything else is refused with WRITER_STATE.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-STYLE-FIELD-RANGE",
+    "family": "Structure",
+    "symptom": "Style fields outside Excel's ranges: font size outside 1-409, font name over 31 characters, unknown alignment or border values, a number format over 255 characters, more than 64,000 cell formats.",
+    "seenIn": "The validator rejects them; simple-excel 0.1.1 wrote them, and fill: {} threw a bare TypeError.",
+    "expected": "WRITER_STATE from registerStyle, naming the field.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-MERGE-OVERLAP",
+    "family": "Structure",
+    "symptom": "Overlapping or duplicate mergeCell ranges.",
+    "seenIn": "Excel repairs the file (primer section 12.8); LibreOffice and the validator accept it; simple-excel 0.1.1 wrote them.",
+    "expected": "merge() rejects an overlap or duplicate with WRITER_STATE, synchronously.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-ALL-SHEETS-HIDDEN",
+    "family": "Structure",
+    "symptom": "Every sheet hidden, or the active tab on a hidden sheet.",
+    "seenIn": "Excel repairs the file (primer section 12.10).",
+    "expected": "close() rejects a workbook whose sheets are all hidden; the first visible sheet is the active, selected tab.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-DOCPROPS-CREATED-RANGE",
+    "family": "Structure",
+    "symptom": "properties.created that is an invalid Date or outside the years 1-9999.",
+    "seenIn": "simple-excel 0.1.1 dropped docProps/core.xml while the relationships still referenced it (the validator reports a missing part), or wrote +010000-01-01, which openpyxl rejects.",
+    "expected": "WRITER_STATE from createWorkbookWriter.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-DATE-STYLE-MERGE",
+    "family": "Dates",
+    "symptom": "A Date written with a style that has no date format (a bold, filled row style).",
+    "seenIn": "simple-excel 0.1.1 replaced the whole style with the default date style, so the date cell lost its font, fill and border.",
+    "expected": "Keep the caller's font, fill, border and alignment and add the default date format; a style that already has a date format is used as it is.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-ROW-SNAPSHOT",
+    "family": "Cells",
+    "symptom": "One row array reused and mutated before the previous writeRow settled.",
+    "seenIn": "simple-excel 0.1.1 queued rows by reference until the sheet's zip entry opened, writing the last values several times.",
+    "expected": "Copy queued rows, and copy the header at addSheet.",
+    "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-WRITER-FAILURE-STICKY",
+    "family": "Container",
+    "symptom": "A failure mid-write: the sink, the deflater or a validation error.",
+    "seenIn": "simple-excel 0.1.1 left the sink open, and later calls reported a derived error (\"Cannot start the zip entry xl/styles.xml\").",
+    "expected": "Abort the sink once; every later call rejects with the original error.",
+    "status": "verified 2026-09-27 (readiness audit)"
   }
 ]

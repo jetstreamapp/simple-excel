@@ -18,12 +18,37 @@ const FLUSH_THRESHOLD_CHARS = 64 * 1024;
 const MAX_CELL_CHARS = 32_767;
 /** 2^53: past this a bigint no longer survives the trip through a double, so it is written as text. */
 const MAX_EXACT_BIGINT = 9_007_199_254_740_992n;
+/** Excel's widest column, in character units; `<col width>` above it fails the schema (EC-COLS-WIDTH-OVER-255). */
+const MAX_COLUMN_WIDTH = 255;
+
+const SURROGATE_HIGH_FIRST = 0xd800;
+const SURROGATE_HIGH_LAST = 0xdbff;
+
+/** The error literals `t="e"` may carry; anything else is a repair-dialog error (primer section 12.6). */
+const CELL_ERROR_CODES: ReadonlySet<string> = new Set([
+  '#NULL!',
+  '#DIV/0!',
+  '#VALUE!',
+  '#REF!',
+  '#NAME?',
+  '#NUM!',
+  '#N/A',
+  '#GETTING_DATA',
+]);
 
 /** Excel's own defaults, in inches. All six attributes are required by the schema. */
 const PAGE_MARGINS = '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
 
-/** Handed back by `writeRow` when nothing had to be flushed, so a row costs no promise allocation. */
-const NOTHING_TO_FLUSH: Promise<void> = Promise.resolve();
+/** Rows per bucket of the merge overlap index. */
+const MERGE_ROW_BLOCK_SHIFT = 4;
+/** A merge spanning more row blocks than this is kept on a list every overlap check scans, rather than indexed. */
+const MERGE_MAX_INDEXED_BLOCKS = 8;
+
+/**
+ * Handed back by `writeRow` when nothing had to be flushed, so a row costs no promise allocation. Exported so the
+ * facade can tell "buffered" apart from a flush or a refusal without attaching a handler to every row.
+ */
+export const NOTHING_TO_FLUSH: Promise<void> = Promise.resolve();
 
 export interface WorksheetWriterContext {
   readonly entry: ZipEntryWriter;
@@ -34,10 +59,15 @@ export interface WorksheetWriterContext {
   readonly dates: 'local' | 'utc';
   readonly cellOverflow: 'truncate' | 'throw';
   readonly truncationSuffix: string;
-  /** Called once at close with the number of cells this sheet truncated, and only when that is more than zero. */
-  readonly onCellTruncated: (count: number) => void;
+  /** The sheet's name as written to the workbook; only used to make error messages point at the right sheet. */
+  readonly sheetName: string;
   /** Excel marks exactly one sheet as the selected tab; the facade passes true for the first visible sheet. */
   readonly tabSelected?: boolean;
+  /**
+   * The sheet's merged ranges. The facade creates them up front so `merge()` validates synchronously even before
+   * the zip entry has opened; a worksheet writer used on its own creates its own.
+   */
+  readonly merges?: MergedRanges;
 }
 
 export interface WorksheetWriteSummary {
@@ -49,17 +79,245 @@ export interface WorksheetWriteSummary {
 }
 
 /**
- * The A1 range covering `rows` rows and `columns` columns from the top-left cell. `<dimension>`, the sheet summary
- * and the autofilter (header row through the last written row) are all this same shape.
+ * The A1 range covering `rows` rows and `columns` columns from the top-left cell. The sheet summary and the
+ * autofilter (header row through the last written row) are both this shape.
  */
 export function sheetRange(rows: number, columns: number): string {
   return `A1:${columnLetters(columns - 1)}${rows}`;
+}
+
+/** A value's type as an error message names it: `array` and `null` are called out, class instances by class. */
+function describeType(value: unknown): string {
+  if (Array.isArray(value)) {
+    return 'array';
+  }
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value === 'object') {
+    const className = (value as { constructor?: { name?: unknown } }).constructor?.name;
+    return typeof className === 'string' && className !== 'Object' && className !== '' ? `object (${className})` : 'object';
+  }
+  return typeof value;
+}
+
+/** True when `styleId` is an integer in `[0, styleCount)`: one conversion and two comparisons. */
+function isStyleIdInRange(styleId: StyleId, styleCount: number): boolean {
+  return styleId >>> 0 === styleId && styleId < styleCount;
+}
+
+function styleIdError(where: string, styleId: unknown, styleCount: number): XlsxError {
+  return new XlsxError(
+    'WRITER_STATE',
+    `${where}: ${typeof styleId === 'number' ? String(styleId) : `a ${describeType(styleId)}`} is not a registered style id ` +
+      `(this workbook has ids 0 to ${styleCount - 1}). Use an id registerStyle returned.`,
+    { styleId, styleCount },
+  );
+}
+
+/** Throws `WRITER_STATE` unless `styleId` is a style the registry has handed out (EC-STYLE-ID-RANGE). */
+function assertStyleId(styleId: unknown, styleCount: number, where: string): void {
+  if (typeof styleId !== 'number' || !isStyleIdInRange(styleId, styleCount)) {
+    throw styleIdError(where, styleId, styleCount);
+  }
+}
+
+/**
+ * Check a sheet's options before anything is queued, so a bad option fails `addSheet` itself rather than a later
+ * `writeRow`: `rowCount` a non-negative safe integer, `header` an array, `headerStyle` and every column style a
+ * registered id (EC-STYLE-ID-RANGE), every column width a finite non-negative number (EC-COLS-WIDTH-OVER-255).
+ */
+export function validateSheetOptions(options: SheetOptions, styleCount: number): void {
+  if (typeof options !== 'object' || options === null) {
+    throw new XlsxError('WRITER_STATE', 'Sheet options must be an object.', { options });
+  }
+  const { rowCount, header, headerStyle, columns } = options;
+  if (rowCount !== undefined && !(Number.isSafeInteger(rowCount) && rowCount >= 0)) {
+    throw new XlsxError('WRITER_STATE', `rowCount must be a whole number of rows, 0 or more; got ${String(rowCount)}.`, { rowCount });
+  }
+  if (header !== undefined && !Array.isArray(header)) {
+    throw new XlsxError('WRITER_STATE', `header must be an array of cell values; got a ${describeType(header)}.`);
+  }
+  if (headerStyle !== undefined && headerStyle !== false) {
+    assertStyleId(headerStyle, styleCount, 'headerStyle');
+  }
+  if (options.freeze !== undefined) {
+    validateFreeze(options.freeze);
+  }
+  if (columns === undefined) {
+    return;
+  }
+  if (!Array.isArray(columns)) {
+    throw new XlsxError('WRITER_STATE', `columns must be an array of column options; got a ${describeType(columns)}.`);
+  }
+  if (columns.length > MAX_COLUMNS) {
+    throw new XlsxError('ROW_OUT_OF_RANGE', `${columns.length} column definitions exceed the ${MAX_COLUMNS} columns a sheet can hold.`, {
+      columns: columns.length,
+    });
+  }
+  for (const [index, column] of columns.entries()) {
+    if (typeof column !== 'object' || column === null) {
+      throw new XlsxError('WRITER_STATE', `columns[${index}] must be an object; got a ${describeType(column)}.`);
+    }
+    const { width, style } = column;
+    if (width !== undefined && !(typeof width === 'number' && Number.isFinite(width) && width >= 0)) {
+      throw new XlsxError(
+        'WRITER_STATE',
+        `columns[${index}].width must be a finite number of characters, 0 or more; got ${String(width)}.`,
+        { column: index, width },
+      );
+    }
+    if (style !== undefined) {
+      assertStyleId(style, styleCount, `columns[${index}].style`);
+    }
+  }
+}
+
+/** Frozen rows and columns must leave at least one scrolling cell inside the grid (`topLeftCell` is written as A1). */
+function validateFreeze(freeze: NonNullable<SheetOptions['freeze']>): void {
+  if (typeof freeze !== 'object' || freeze === null) {
+    throw new XlsxError('WRITER_STATE', `freeze must be an object like { rows: 1 }; got a ${describeType(freeze)}.`);
+  }
+  const limits = [
+    ['rows', freeze.rows, MAX_ROWS],
+    ['cols', freeze.cols, MAX_COLUMNS],
+  ] as const;
+  for (const [field, value, limit] of limits) {
+    if (value !== undefined && !(Number.isSafeInteger(value) && value >= 0 && value < limit)) {
+      throw new XlsxError('WRITER_STATE', `freeze.${field} must be a whole number from 0 to ${limit - 1}; got ${String(value)}.`, {
+        field: `freeze.${field}`,
+        value,
+      });
+    }
+  }
+}
+
+/**
+ * The merged ranges of one sheet, validated as they are added (EC-MERGE-OVERLAP): A1 shape (either case), at least
+ * two cells, inside the grid, and not overlapping or repeating a range already registered - each of which Excel
+ * answers with the repair dialog (primer section 12.8). Overlap checks go through a row-block index, so a sheet with
+ * thousands of merges does not pay a quadratic scan.
+ */
+export class MergedRanges {
+  private readonly sheetName: string;
+  /** Normalized `A1:C3` text, in the order the ranges were added. */
+  private readonly refs: string[] = [];
+  private readonly tops: number[] = [];
+  private readonly lefts: number[] = [];
+  private readonly bottoms: number[] = [];
+  private readonly rights: number[] = [];
+  /** Indexes of the merges touching each 16-row block. */
+  private readonly byRowBlock = new Map<number, number[]>();
+  /** Merges too tall to index by block; every check scans them. */
+  private readonly tall: number[] = [];
+
+  constructor(sheetName: string) {
+    this.sheetName = sheetName;
+  }
+
+  /** The ranges in the order they were added, normalized to `A1:C3`. */
+  get ranges(): readonly string[] {
+    return this.refs;
+  }
+
+  /** Validate and register one range; throws `WRITER_STATE` without registering anything when it is refused. */
+  add(range: string): void {
+    const parsed = typeof range === 'string' ? parseRange(range.toUpperCase()) : null;
+    if (parsed === null) {
+      throw new XlsxError(
+        'WRITER_STATE',
+        `Sheet "${this.sheetName}": ${typeof range === 'string' ? `"${range}"` : `a ${describeType(range)}`} is not a range like A1:C1 inside A1:XFD1048576.`,
+        { range },
+      );
+    }
+    const { start, end } = parsed;
+    const normalized = `${formatRef(start.row, start.col)}:${formatRef(end.row, end.col)}`;
+    if (start.row === end.row && start.col === end.col) {
+      throw new XlsxError(
+        'WRITER_STATE',
+        `Sheet "${this.sheetName}": "${range}" merges a single cell, which Excel rejects. Merge two or more cells.`,
+        { range },
+      );
+    }
+    const conflict = this.findOverlap(start.row, start.col, end.row, end.col);
+    if (conflict >= 0) {
+      const existing = this.refs[conflict] ?? '';
+      throw new XlsxError(
+        'WRITER_STATE',
+        existing === normalized
+          ? `Sheet "${this.sheetName}": "${range}" is already merged. Register each merged range once.`
+          : `Sheet "${this.sheetName}": "${range}" overlaps the merged range "${existing}", which Excel rejects. Merged ranges must not overlap.`,
+        { range, overlaps: existing },
+      );
+    }
+
+    const index = this.refs.length;
+    this.refs.push(normalized);
+    this.tops.push(start.row);
+    this.lefts.push(start.col);
+    this.bottoms.push(end.row);
+    this.rights.push(end.col);
+    const firstBlock = start.row >> MERGE_ROW_BLOCK_SHIFT;
+    const lastBlock = end.row >> MERGE_ROW_BLOCK_SHIFT;
+    if (lastBlock - firstBlock >= MERGE_MAX_INDEXED_BLOCKS) {
+      this.tall.push(index);
+      return;
+    }
+    for (let block = firstBlock; block <= lastBlock; block++) {
+      const bucket = this.byRowBlock.get(block);
+      if (bucket === undefined) {
+        this.byRowBlock.set(block, [index]);
+      } else {
+        bucket.push(index);
+      }
+    }
+  }
+
+  /** Index of a registered merge sharing at least one cell with the rectangle, or -1. */
+  private findOverlap(top: number, left: number, bottom: number, right: number): number {
+    for (const index of this.tall) {
+      if (this.overlaps(index, top, left, bottom, right)) {
+        return index;
+      }
+    }
+    const firstBlock = top >> MERGE_ROW_BLOCK_SHIFT;
+    const lastBlock = bottom >> MERGE_ROW_BLOCK_SHIFT;
+    if (lastBlock - firstBlock >= MERGE_MAX_INDEXED_BLOCKS) {
+      for (let index = 0; index < this.refs.length; index++) {
+        if (this.overlaps(index, top, left, bottom, right)) {
+          return index;
+        }
+      }
+      return -1;
+    }
+    for (let block = firstBlock; block <= lastBlock; block++) {
+      for (const index of this.byRowBlock.get(block) ?? []) {
+        if (this.overlaps(index, top, left, bottom, right)) {
+          return index;
+        }
+      }
+    }
+    return -1;
+  }
+
+  private overlaps(index: number, top: number, left: number, bottom: number, right: number): boolean {
+    return (
+      (this.tops[index] ?? 0) <= bottom &&
+      (this.bottoms[index] ?? 0) >= top &&
+      (this.lefts[index] ?? 0) <= right &&
+      (this.rights[index] ?? 0) >= left
+    );
+  }
 }
 
 /**
  * Row-at-a-time worksheet XML in the fixed schema order (sheetPr? dimension? sheetViews? sheetFormatPr? cols?
  * sheetData autoFilter? mergeCells?). Cells append to a string builder that is encoded and pushed to the zip entry
  * every 64 Ki characters; `writeRow` therefore only awaits at flush boundaries. Rows and columns are monotonic.
+ *
+ * No `<dimension>` is written (EC-DIMENSION-FROM-HINT): it precedes `sheetData`, so it could only come from a hint,
+ * and readers that trust a wrong one (SheetJS, openpyxl in read-only mode) silently drop rows and columns outside it,
+ * while a missing one is tolerated everywhere (primer section 12.15).
  *
  * The first failure is latched: the XML is left half-written at that point, so every later call reports the same
  * error rather than producing a file Excel would refuse. Callers recover by aborting the workbook.
@@ -72,17 +330,11 @@ export class WorksheetWriter {
   private readonly dates: 'local' | 'utc';
   private readonly cellOverflow: 'truncate' | 'throw';
   private readonly truncationSuffix: string;
-  private readonly onCellTruncated: (count: number) => void;
+  private readonly sheetName: string;
   private readonly autoFilter: boolean;
-  /**
-   * Columns the caller announced up front, used for `<dimension>`, which is written before any row. The wider of the
-   * header and the column definitions wins: a dimension that is too wide costs nothing, while one that is too narrow
-   * makes readers that trust it (SheetJS's `!ref`, for one) drop the cells outside it.
-   */
-  private readonly declaredColumns: number;
+  private readonly merges: MergedRanges;
 
   private readonly pending: string[] = [];
-  private readonly merges: string[] = [];
   private pendingChars = 0;
   private rowsWritten = 0;
   private columnsWritten = 0;
@@ -99,15 +351,11 @@ export class WorksheetWriter {
     this.dates = context.dates;
     this.cellOverflow = context.cellOverflow;
     this.truncationSuffix = context.truncationSuffix;
-    this.onCellTruncated = context.onCellTruncated;
+    this.sheetName = context.sheetName;
     this.autoFilter = options.autoFilter === true;
-    this.declaredColumns = Math.max(options.header?.length ?? 0, options.columns?.length ?? 0);
+    this.merges = context.merges ?? new MergedRanges(context.sheetName);
 
     this.append(`${XML_DECLARATION}<worksheet xmlns="${SPREADSHEET_NS}" xmlns:r="${OFFICE_REL_NS}">`);
-    const dimension = declaredDimension(options, this.declaredColumns);
-    if (dimension !== null) {
-      this.append(`<dimension ref="${dimension}"/>`);
-    }
     this.append(sheetViewsXml(options.freeze, context.tabSelected === true));
     this.append('<sheetFormatPr defaultRowHeight="15"/>');
     this.append(colsXml(options.columns));
@@ -119,6 +367,10 @@ export class WorksheetWriter {
     return this.rowsWritten + 1;
   }
 
+  /**
+   * Append one row. Resolves to `NOTHING_TO_FLUSH` while the row only went into the buffer; a refused row (bad value,
+   * unregistered style, over-long text under `cellOverflow: 'throw'`) rejects and latches the failure.
+   */
   writeRow(values: readonly CellInput[], styles?: StyleId | readonly (StyleId | undefined)[]): Promise<void> {
     if (this.failure !== undefined) {
       return Promise.reject(this.failure);
@@ -135,7 +387,7 @@ export class WorksheetWriter {
     return this.pendingChars >= FLUSH_THRESHOLD_CHARS ? this.flush() : NOTHING_TO_FLUSH;
   }
 
-  /** Register a merged range in A1 notation. Emitted at close, in the order the ranges were added. */
+  /** Register a merged range in A1 notation; validated now (EC-MERGE-OVERLAP), emitted at close in order. */
   merge(range: string): void {
     if (this.failure !== undefined) {
       throw this.failure;
@@ -143,15 +395,7 @@ export class WorksheetWriter {
     if (this.closed) {
       throw new XlsxError('WRITER_STATE', 'This sheet is closed; merged ranges can no longer be added to it.', { range });
     }
-    const parsed = parseRange(range);
-    if (parsed === null) {
-      throw new XlsxError('WRITER_STATE', `"${range}" is not a range like A1:C1.`, { range });
-    }
-    // A 1x1 merge is one of the things Excel opens the repair dialog for (primer section 12.8).
-    if (parsed.start.row === parsed.end.row && parsed.start.col === parsed.end.col) {
-      throw new XlsxError('WRITER_STATE', `"${range}" merges a single cell, which Excel rejects. Merge two or more cells.`, { range });
-    }
-    this.merges.push(`${formatRef(parsed.start.row, parsed.start.col)}:${formatRef(parsed.end.row, parsed.end.col)}`);
+    this.merges.add(range);
   }
 
   /** Close `</sheetData>`, write autoFilter/mergeCells, flush, close the zip entry. */
@@ -168,9 +412,10 @@ export class WorksheetWriter {
     if (this.autoFilter && this.rowsWritten > 0 && this.columnsWritten > 0) {
       this.append(`<autoFilter ref="${sheetRange(this.rowsWritten, this.columnsWritten)}"/>`);
     }
-    if (this.merges.length > 0) {
-      this.append(`<mergeCells count="${this.merges.length}">`);
-      for (const range of this.merges) {
+    const merges = this.merges.ranges;
+    if (merges.length > 0) {
+      this.append(`<mergeCells count="${merges.length}">`);
+      for (const range of merges) {
         this.append(`<mergeCell ref="${range}"/>`);
       }
       this.append('</mergeCells>');
@@ -179,10 +424,6 @@ export class WorksheetWriter {
     this.append('</worksheet>');
     await this.flush();
     await this.entry.close();
-    if (this.truncatedCells > 0) {
-      // Reported once per sheet, with this sheet's count; the facade turns that into the workbook running total.
-      this.onCellTruncated(this.truncatedCells);
-    }
 
     return {
       rows: this.rowsWritten,
@@ -208,12 +449,36 @@ export class WorksheetWriter {
     }
 
     const rowNumberText = String(rowNumber);
-    const sharedStyle = typeof styles === 'number' ? styles : undefined;
-    const styleList = typeof styles === 'object' ? styles : undefined;
+    // Snapshotted per row: a style registered mid-row (a derived date style) is never one the caller passed.
+    const styleCount = this.styles.count;
+    let sharedStyle: StyleId | undefined;
+    let styleList: readonly (StyleId | undefined)[] | undefined;
+    if (typeof styles === 'number') {
+      if (!isStyleIdInRange(styles, styleCount)) {
+        throw styleIdError(`Sheet "${this.sheetName}" row ${rowNumberText}`, styles, styleCount);
+      }
+      sharedStyle = styles;
+    } else if (Array.isArray(styles)) {
+      styleList = styles;
+    } else if (styles !== undefined) {
+      throw new XlsxError(
+        'WRITER_STATE',
+        `Sheet "${this.sheetName}" row ${rowNumberText}: styles must be a style id or an array of them; got a ${describeType(styles)}.`,
+      );
+    }
+
     this.rowColumns = 0;
     this.append(`<row r="${rowNumberText}">`);
     for (let i = 0; i < values.length; i++) {
-      this.appendCell(columnLetters(i) + rowNumberText, values[i], styleList === undefined ? sharedStyle : styleList[i], i);
+      const ref = columnLetters(i) + rowNumberText;
+      let styleId = sharedStyle;
+      if (styleList !== undefined) {
+        styleId = styleList[i];
+        if (styleId !== undefined && !isStyleIdInRange(styleId, styleCount)) {
+          throw styleIdError(`Sheet "${this.sheetName}" cell ${ref}`, styleId, styleCount);
+        }
+      }
+      this.appendCell(ref, values[i], styleId, i);
     }
     this.append('</row>');
 
@@ -265,12 +530,37 @@ export class WorksheetWriter {
       this.appendDate(ref, value, styleId, columnIndex);
       return;
     }
-    const errorCode = (value as CellError).error;
+    const errorCode = kind === 'object' && !Array.isArray(value) ? (value as CellError).error : undefined;
     if (typeof errorCode === 'string') {
-      this.emit(`<c r="${ref}"${styleAttribute(styleId)} t="e"><v>${encodeCellText(errorCode)}</v></c>`, columnIndex);
+      if (CELL_ERROR_CODES.has(errorCode)) {
+        this.emit(`<c r="${ref}"${styleAttribute(styleId)} t="e"><v>${errorCode}</v></c>`, columnIndex);
+        return;
+      }
+      // `t="e"` with anything but a literal from the standard's list is a repair-dialog error (primer section 12.6,
+      // EC-ERROR-CODE-UNKNOWN). A newer Excel error such as `#SPILL!` or `#CALC!`, which the reader can hand back from
+      // a file, is written as its text: it displays the same and a read-then-write round trip keeps working.
+      if (errorCode.startsWith('#')) {
+        this.appendString(ref, errorCode, styleId, columnIndex);
+        return;
+      }
+      throw new XlsxError(
+        'WRITER_STATE',
+        `Sheet "${this.sheetName}" cell ${ref}: "${errorCode}" is not an Excel error value. Use one of ${[...CELL_ERROR_CODES].join(' ')}.`,
+        { ref, error: errorCode },
+      );
+    }
+    // A Date from another realm (an iframe, a vm context, an Electron bridge) fails `instanceof`; this branch is only
+    // reached on the way to an error, so the tag check costs nothing on the normal path.
+    if (Object.prototype.toString.call(value) === '[object Date]') {
+      this.appendDate(ref, value as unknown as Date, styleId, columnIndex);
       return;
     }
-    throw new XlsxError('WRITER_STATE', `A cell value of type ${kind} cannot be written to a spreadsheet.`, { ref });
+    throw new XlsxError(
+      'WRITER_STATE',
+      `Sheet "${this.sheetName}" cell ${ref}: a value of type ${describeType(value)} cannot be written. ` +
+        'Convert it to a string, number, boolean, Date or null first.',
+      { ref, type: describeType(value) },
+    );
   }
 
   private appendDate(ref: string, value: Date, styleId: StyleId | undefined, columnIndex: number): void {
@@ -281,13 +571,15 @@ export class WorksheetWriter {
     }
     const serial = serialFromComponents(components, this.date1904);
     if (serial === null) {
-      // Pre-epoch instants are not Excel dates (EC-DATE-PRE-1900); ISO text keeps the value readable.
+      // Pre-epoch and post-9999 instants are not Excel dates (EC-DATE-PRE-1900, EC-DATE-SERIAL-OVER-9999); ISO text
+      // keeps the value readable.
       this.appendString(ref, isoText(components), styleId, columnIndex);
       return;
     }
-    // A serial under a general-purpose style would show as a bare number, so a date always gets a date format:
-    // the caller's style when it already has one, the workbook's default date style otherwise.
-    const dateStyle = styleId !== undefined && this.styles.isDateStyle(styleId) ? styleId : this.styles.defaultDateStyle;
+    // A serial under a general-purpose style would show as a bare number, so a date always gets a date format: the
+    // caller's style when it already has one, otherwise the caller's style with the default date format merged in
+    // (EC-DATE-STYLE-MERGE), so bold, fills, borders and alignment survive on date cells.
+    const dateStyle = styleId === undefined ? this.styles.defaultDateStyle : this.styles.dateStyleFor(styleId);
     this.emit(`<c r="${ref}" s="${dateStyle}"><v>${numberText(serial)}</v></c>`, columnIndex);
   }
 
@@ -316,9 +608,12 @@ export class WorksheetWriter {
       );
     }
     this.truncatedCells++;
-    const keep = Math.max(0, MAX_CELL_CHARS - this.truncationSuffix.length);
-    // The slice guards a suffix longer than the limit itself; the visible marker is what matters, not the tail.
-    return (text.slice(0, keep) + this.truncationSuffix).slice(0, MAX_CELL_CHARS);
+    const suffix = this.truncationSuffix;
+    if (suffix.length >= MAX_CELL_CHARS) {
+      // A suffix at least as long as the limit is all that fits; the visible marker is what matters, not the tail.
+      return cutBeforeLimit(suffix, MAX_CELL_CHARS);
+    }
+    return cutBeforeLimit(text, MAX_CELL_CHARS - suffix.length) + suffix;
   }
 
   private emit(fragment: string, columnIndex: number): void {
@@ -344,10 +639,22 @@ export class WorksheetWriter {
     try {
       await this.entry.write(encodeXmlChunk(text));
     } catch (reason) {
-      this.failure = reason;
-      throw reason;
+      // A row refused while this flush was in flight is the first failure; the aborted write only follows from it.
+      if (this.failure === undefined) {
+        this.failure = reason;
+      }
+      throw this.failure;
     }
   }
+}
+
+/**
+ * The first `limit` UTF-16 units of `text`, one fewer when the last one kept would be the high half of a surrogate
+ * pair (EC-TRUNCATION-SURROGATE): a split pair becomes U+FFFD in the file, right before the truncation marker.
+ */
+function cutBeforeLimit(text: string, limit: number): string {
+  const lastKept = text.charCodeAt(limit - 1);
+  return text.slice(0, lastKept >= SURROGATE_HIGH_FIRST && lastKept <= SURROGATE_HIGH_LAST ? limit - 1 : limit);
 }
 
 function styleAttribute(styleId: StyleId | undefined): string {
@@ -369,18 +676,15 @@ function pad(value: number, width: number): string {
   return String(value).padStart(width, '0');
 }
 
+/**
+ * ISO 8601 text for a date Excel cannot hold as a serial. Years 0-9999 keep the four-digit form; a negative year gets
+ * a leading minus over four digits (`-0050`) and a year past 9999 is written out in full (`10000`), the ISO 8601
+ * expanded forms.
+ */
 function isoText(components: DateComponents): string {
   const { year, month, day, hour, minute, second } = components;
-  return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}T${pad(hour, 2)}:${pad(minute, 2)}:${pad(second, 2)}`;
-}
-
-/** `<dimension>` is only written when both extents are known up front; readers derive the range otherwise. */
-function declaredDimension(options: SheetOptions, declaredColumns: number): string | null {
-  if (options.rowCount === undefined || declaredColumns === 0) {
-    return null;
-  }
-  const rows = options.rowCount + (options.header === undefined ? 0 : 1);
-  return rows < 1 ? null : sheetRange(rows, declaredColumns);
+  const yearText = year < 0 ? `-${pad(-year, 4)}` : pad(year, 4);
+  return `${yearText}-${pad(month, 2)}-${pad(day, 2)}T${pad(hour, 2)}:${pad(minute, 2)}:${pad(second, 2)}`;
 }
 
 function sheetViewsXml(freeze: SheetOptions['freeze'], tabSelected: boolean): string {
@@ -402,15 +706,13 @@ function sheetViewsXml(freeze: SheetOptions['freeze'], tabSelected: boolean): st
   return `<sheetViews>${view}</sheetViews>`;
 }
 
-/** One `<col>` per entry that actually sets something; Excel only honours `width` alongside `customWidth="1"`. */
+/**
+ * One `<col>` per entry that actually sets something; Excel only honours `width` alongside `customWidth="1"`. Widths
+ * past Excel's 255 are clamped (EC-COLS-WIDTH-OVER-255); the options were validated by `validateSheetOptions`.
+ */
 function colsXml(columns: SheetOptions['columns']): string {
   if (columns === undefined || columns.length === 0) {
     return '';
-  }
-  if (columns.length > MAX_COLUMNS) {
-    throw new XlsxError('ROW_OUT_OF_RANGE', `${columns.length} column definitions exceed the ${MAX_COLUMNS} columns a sheet can hold.`, {
-      columns: columns.length,
-    });
   }
   const parts: string[] = [];
   for (const [index, column] of columns.entries()) {
@@ -418,7 +720,7 @@ function colsXml(columns: SheetOptions['columns']): string {
       continue;
     }
     const position = index + 1;
-    const width = column.width === undefined ? '' : ` width="${column.width}" customWidth="1"`;
+    const width = column.width === undefined ? '' : ` width="${Math.min(column.width, MAX_COLUMN_WIDTH)}" customWidth="1"`;
     const hidden = column.hidden === true ? ' hidden="1"' : '';
     const style = column.style === undefined || column.style === 0 ? '' : ` style="${column.style}"`;
     parts.push(`<col min="${position}" max="${position}"${width}${hidden}${style}/>`);

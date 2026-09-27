@@ -1,8 +1,8 @@
 # 05 - Compatibility matrix
 
-Which readers open which writers' files, and how faithfully. Rendered from the newest
-`oracle/results/<run>/results.json` by `oracle/render-matrix.mjs`; the oracle procedure and
-PASS definition are in `README.md`.
+Which readers open which writers' files, and how faithfully. Rendered from the newest run of each label under
+`oracle/results/` by `oracle/render-matrix.mjs`; the oracle procedure is in `docs/docs/compatibility.md` ("How the
+checking works") and the header of `oracle/run.mjs`, and each run's `summary.md` states the PASS definition.
 
 _Accurate as of 2026-09-12. Regenerate with `research/regenerate.sh`._
 
@@ -126,21 +126,21 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 2026-09-12T17:27:25.181Z, MacBook-Air.local, Node v24.18.0.
 
-| fixture (generator)                                          | validator | sheetjs                                               | openpyxl                                             | calamine                                           | libreoffice | excel |
-| ------------------------------------------------------------ | --------- | ----------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ----------- | ----- |
-| `golden-canonical-simple-excel`<br>simple-excel 0.0.0        | PASS      | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS        | PASS  |
-| `golden-canonical-simple-excel-inline`<br>simple-excel 0.0.0 | PASS      | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS        | PASS  |
-| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.0.0  | PASS      | ERROR                                                 | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS        | PASS  |
+| fixture (generator)                                              | validator | sheetjs                                               | openpyxl                                             | calamine                                           | libreoffice | excel |
+| ---------------------------------------------------------------- | --------- | ----------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ----------- | ----- |
+| `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev        | PASS      | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS        | PASS  |
+| `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev | PASS      | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS        | PASS  |
+| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev  | PASS      | ERROR                                                 | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | PASS        | PASS  |
 
 ### Run `phase-d-office-kit-on-ours` (2026-09-12-phase-d-office-kit-on-ours)
 
 2026-09-12T18:26:43.444Z, MacBook-Air.local, Node v24.18.0.
 
-| fixture (generator)                                          | office-kit                                            | office-kit-stream                                            |
-| ------------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------ |
-| `golden-canonical-simple-excel`<br>simple-excel 0.0.0        | 94% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (time-only-has-date-part 24, temporal-mismatch 6)        |
-| `golden-canonical-simple-excel-inline`<br>simple-excel 0.0.0 | 94% (time-only-has-date-part 24, temporal-mismatch 6) | 88% (escape-sequence-mangled 39, time-only-has-date-part 24) |
-| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.0.0  | 94% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (time-only-has-date-part 24, temporal-mismatch 6)        |
+| fixture (generator)                                              | office-kit                                            | office-kit-stream                                            |
+| ---------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev        | 94% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (time-only-has-date-part 24, temporal-mismatch 6)        |
+| `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev | 94% (time-only-has-date-part 24, temporal-mismatch 6) | 88% (escape-sequence-mangled 39, time-only-has-date-part 24) |
+| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev  | 94% (time-only-has-date-part 24, temporal-mismatch 6) | 94% (time-only-has-date-part 24, temporal-mismatch 6)        |
 
 ### Run `phase-d-simple-excel-edge` (2026-09-12-phase-d-simple-excel-edge)
 
@@ -189,9 +189,9 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | `golden-canonical-gsheets-from-csv`<br>Google Sheets                             | 80% (text-as-number 38, number-as-text 16)            |
 | `golden-canonical-excel-365-resave-sheetjs`<br>Microsoft Excel 16.112.4 macOS    | 92% (date-as-serial 30, escape-sequence-mangled 14)   |
 | `golden-canonical-excel-365-1904`<br>Microsoft Excel 16.112.4 macOS              | 80% (temporal-mismatch 90, control-chars-stripped 22) |
-| `golden-canonical-simple-excel`<br>simple-excel 0.0.0                            | 99% (dst-gap-shift-1h 5, date-as-text 3)              |
-| `golden-canonical-simple-excel-inline`<br>simple-excel 0.0.0                     | 99% (dst-gap-shift-1h 5, date-as-text 3)              |
-| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.0.0                      | 99% (dst-gap-shift-1h 5, date-as-text 3)              |
+| `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev                        | 99% (dst-gap-shift-1h 5, date-as-text 3)              |
+| `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev                 | 99% (dst-gap-shift-1h 5, date-as-text 3)              |
+| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev                  | 99% (dst-gap-shift-1h 5, date-as-text 3)              |
 
 ### Run `phase-d-simple-excel-hostile` (2026-09-12-phase-d-simple-excel-hostile)
 
@@ -212,15 +212,15 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | `hostile-zip-bomb-30mb-sheet`<br>hand-built<br>expect `ZIP_BOMB`                   | PASS: ZIP_BOMB            |
 | `hostile-xlsb-renamed`<br>Microsoft Excel 16.112.4 macOS<br>expect `NOT_XLSX`      | PASS: XLSB                |
 
-### Run `phase-d-simple-excel-jetstream` (2026-09-12-phase-d-simple-excel-jetstream)
+### Run `phase-d-simple-excel-jetstream` (2026-09-27-phase-d-simple-excel-jetstream)
 
-2026-09-12T18:26:30.992Z, MacBook-Air.local, Node v24.18.0.
+2026-09-27T17:06:31.984Z, MacBook-Air.local, Node v24.21.0.
 
-| fixture (generator)                                                                                 | simple-excel |
-| --------------------------------------------------------------------------------------------------- | ------------ |
-| `jetstream-multi-object-template-gsheets`<br>Google Sheets xlsx export, workbook created 2021-07-10 | OPENED       |
-| `jetstream-records-product2-sheetjs`<br>SheetJS unknown                                             | OPENED       |
-| `jetstream-records-product2-csv`<br>hand-authored CSV<br>expect `NOT_XLSX`                          | ERROR        |
+| fixture (generator)                                                                                 | simple-excel   |
+| --------------------------------------------------------------------------------------------------- | -------------- |
+| `jetstream-multi-object-template-gsheets`<br>Google Sheets xlsx export, workbook created 2021-07-10 | OPENED         |
+| `jetstream-records-product2-sheetjs`<br>SheetJS unknown                                             | OPENED         |
+| `jetstream-records-product2-csv`<br>hand-authored CSV<br>expect `NOT_XLSX`                          | PASS: NOT_XLSX |
 
 ### Run `user-goldens` (2026-09-12-user-goldens)
 
@@ -229,6 +229,16 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | fixture (generator)                        | excel              |
 | ------------------------------------------ | ------------------ |
 | `golden-canonical-numbers`<br>Numbers 14.4 | REPAIRED (see log) |
+
+### Run `audit-fixes-writer` (2026-09-27-audit-fixes-writer)
+
+2026-09-27T18:25:19.685Z, MacBook-Air.local, Node v24.21.0.
+
+| fixture (generator)                                              | validator | libreoffice | openpyxl                                             | calamine                                           | sheetjs                                               | simple-excel                             |
+| ---------------------------------------------------------------- | --------- | ----------- | ---------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
+| `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev        | PASS      | PASS        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 99% (dst-gap-shift-1h 5, date-as-text 3) |
+| `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev | PASS      | PASS        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 99% (dst-gap-shift-1h 5, date-as-text 3) |
+| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev  | PASS      | PASS        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | ERROR                                                 | 99% (dst-gap-shift-1h 5, date-as-text 3) |
 
 Legend: **PASS** every compared cell equal after fixture policies; **n%** share of matching cells with the two largest mismatch categories (04 maps categories to catalog entries); **FAIL: n schema errors** Open XML SDK validator; **REPAIRED** Excel wrote a recovery log while opening (silent repair under automation); **OPENED** no ground truth; **REJECTED/ACCEPTED** hostile fixture outcome (a classified rejection is the goal); **ERROR** the reader threw on a fixture it should read.
 
@@ -331,7 +341,8 @@ zip bomb are rejected with `ENCRYPTED` and `ZIP_BOMB`, and compares a `fromWrita
 a `collectToBytes` run. Every expectation is evaluated in the page against the values the page itself wrote, so a
 browser difference shows up as a named failing check rather than as a diff the runner has to interpret.
 
-**2026-09-12, macOS 15, Apple silicon. 72 of 72 checks in all three:**
+**2026-09-12, macOS 26, Apple silicon. 72 of 72 checks in all three** (re-run on 2026-09-27 against the 0.1.1
+build with the same browser versions: 72 of 72 again):
 
 | Browser  | Version               | Checks | Write 20k rows (main / worker) | Read back (main / worker Blob) | Output    |
 | -------- | --------------------- | ------ | ------------------------------ | ------------------------------ | --------- |

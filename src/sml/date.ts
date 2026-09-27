@@ -27,6 +27,9 @@ const MONTH_LENGTHS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 /** Day number of the 1900 system's epoch. Serials >= 61 are exactly this many days plus the serial. */
 const EPOCH_1900_DAY = daysFromCivil(1899, 12, 30);
 const EPOCH_1904_DAY = daysFromCivil(1904, 1, 1);
+/** Excel's last date is 9999-12-31: serial 2,958,465 in the 1900 system (EC-DATE-SERIAL-OVER-9999). */
+const LAST_EXCEL_YEAR = 9999;
+const LAST_EXCEL_DAY = daysFromCivil(LAST_EXCEL_YEAR, 12, 31);
 
 /** Days from 1970-01-01 to a civil date, valid for any proleptic Gregorian year. */
 function daysFromCivil(year: number, month: number, day: number): number {
@@ -107,11 +110,12 @@ function componentsOf(dayNumber: number, msOfDay: number): DateComponents {
 
 /**
  * Excel serial (days since the epoch, fraction = time of day) for a wall-clock instant. Rounded to the nearest
- * millisecond. Uses the 1900 system unless `date1904`; dates before the epoch (1900-01-01 or 1904-01-01) and the
- * non-existent 1900-02-29 return null. Time-only inputs (year 1899, month 12, day 30) yield a fraction in [0, 1).
+ * millisecond. Uses the 1900 system unless `date1904`; dates before the epoch (1900-01-01 or 1904-01-01), dates after
+ * 9999-12-31 and the non-existent 1900-02-29 return null. Time-only inputs (year 1899, month 12, day 30) yield a
+ * fraction in [0, 1).
  */
 export function serialFromComponents(components: DateComponents, date1904: boolean): number | null {
-  if (!isValidComponents(components)) {
+  if (!isValidComponents(components) || components.year > LAST_EXCEL_YEAR) {
     return null;
   }
   const msOfDay = millisecondsOfDay(components);
@@ -138,7 +142,9 @@ export function serialFromComponents(components: DateComponents, date1904: boole
 /**
  * Inverse of `serialFromComponents`. Serial 60 in the 1900 system (Excel's fake leap day) maps to 1900-03-01 and
  * serials below 61 shift by one day, matching what every other reader does. Returns null for negative serials
- * (Excel displays those as `#####`) and non-finite input. Fractions are rounded to the nearest millisecond.
+ * (Excel displays those as `#####`), for serials past 9999-12-31 (a phone number typed into a date column; Excel
+ * shows `#####` too, and a JS Date that far out is either year 10000+ or invalid) and for non-finite input.
+ * Fractions are rounded to the nearest millisecond.
  */
 export function componentsFromSerial(serial: number, date1904: boolean): DateComponents | null {
   if (!Number.isFinite(serial) || serial < 0) {
@@ -149,6 +155,9 @@ export function componentsFromSerial(serial: number, date1904: boolean): DateCom
   if (msOfDay >= MS_PER_DAY) {
     msOfDay -= MS_PER_DAY;
     wholeDays++;
+  }
+  if (wholeDays > LAST_EXCEL_DAY - (date1904 ? EPOCH_1904_DAY : EPOCH_1900_DAY)) {
+    return null;
   }
   if (date1904) {
     return componentsOf(EPOCH_1904_DAY + wholeDays, msOfDay);

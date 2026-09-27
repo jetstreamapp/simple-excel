@@ -13,11 +13,12 @@ It writes a workbook by pushing rows into a sink as they arrive and reads one by
 iterator. Nothing accumulates: there is no in-memory worksheet, no whole-sheet XML string and no unbounded shared
 string table. A one-million-row export costs about as much memory as a one-thousand-row export — measured, that is
 77 MB of JS heap growth to write 1,000,000 × 20 columns of Salesforce-shaped data, against 45 MB for 100,000 rows
-of the same, where SheetJS throws `RangeError: Invalid string length`. The whole browser entry is 24.9 KB brotli
-with no dependencies. [Streaming and memory](./streaming-and-memory.md) has the numbers and the method.
+of the same, where SheetJS throws `RangeError: Invalid string length`. (Those runs used the optional shared-string
+table, before inline strings became the default.) The whole browser entry is 29.0 KB brotli with no dependencies.
+[Streaming and memory](./streaming-and-memory.md) has the numbers and the method.
 
 :::info
-The library is pre-release and the API may still shift before 1.0. `CHANGELOG.md` records what has landed.
+The library is at 0.1 on npm, and the API may still shift before 1.0. `CHANGELOG.md` records every release.
 :::
 
 ## What it is for
@@ -72,13 +73,13 @@ Pick something else when:
 
 ## How the pieces fit
 
-| Concept              | What it is                                                                                            |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `ByteSink`           | Where written bytes go: a Blob, a byte array, a `WritableStream`, a file. See [Writing](./writing.md) |
-| `WorkbookWriter`     | Owns the zip, the styles and the shared strings; hands out one `SheetWriter` at a time                |
-| `SourceInput`        | Where read bytes come from: `ArrayBuffer`, `Uint8Array`, `Blob`/`File`, or a `RandomAccessSource`     |
-| `Workbook` / `Sheet` | Lists sheets without touching sheet XML; streams rows on demand. See [Reading](./reading.md)          |
-| `XlsxError`          | Every failure, carrying a stable `code`. See [Errors](./errors.md)                                    |
+| Concept              | What it is                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `ByteSink`           | Where written bytes go: a Blob, a byte array, a `WritableStream`, a file. See [Writing](./writing.md)            |
+| `WorkbookWriter`     | Owns the zip, the styles and, under `strings: 'auto'`, the shared strings; hands out one `SheetWriter` at a time |
+| `SourceInput`        | Where read bytes come from: `ArrayBuffer`, `Uint8Array`, `Blob`/`File`, or a `RandomAccessSource`                |
+| `Workbook` / `Sheet` | Lists sheets without touching sheet XML; streams rows on demand. See [Reading](./reading.md)                     |
+| `XlsxError`          | Every failure, carrying a stable `code`. See [Errors](./errors.md)                                               |
 
 ## Where to go next
 

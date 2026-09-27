@@ -30,8 +30,8 @@ const blob = await sink.result();
 ```
 
 Bytes reach the sink while rows are still being written: the first chunk of `xl/worksheets/sheet1.xml` is handed
-over long before `close()`. Nothing is buffered except the zip central directory (a few KB) and whatever the
-shared-string budget allows.
+over long before `close()`. Nothing is buffered except the zip central directory (a few KB) and, under
+`strings: 'auto'`, whatever the shared-string budget allows.
 
 ## `createWorkbookWriter(sink, options?)`
 
@@ -93,7 +93,9 @@ const fileSink = fromWritableStream(await handle.createWritable());
 
 `collectToBlob` and `collectToBytes` expose `bytesWritten` while the write is running. `collectToBytes` throws
 `LIMIT_EXCEEDED` past `maxBytes`; `collectToBlob` throws `UNSUPPORTED_ENVIRONMENT` at construction if the platform
-has no `Blob`.
+has no `Blob`. `collectToBytes().result()` is synchronous and throws `WRITER_STATE` until `workbook.close()` has
+resolved; `collectToBlob().result()` can be called early and resolves when the workbook closes. After an abort, or a
+failed write (which aborts the sink), both fail with the abort reason.
 
 [Streaming and memory](./streaming-and-memory.md) covers which sink to choose for a given size and platform, and
 the Node file sinks are in [Node](./node.md).
@@ -104,37 +106,72 @@ the Node file sinks are in [Node](./node.md).
 const sheet = workbook.addSheet('Accounts', options);
 ```
 
-| `SheetOptions` | Type                       | Default | Notes                                                                            |
-| -------------- | -------------------------- | ------- | -------------------------------------------------------------------------------- |
-| `header`       | `readonly CellInput[]`     | —       | Written as row 1, bold unless you say otherwise                                  |
-| `headerStyle`  | `StyleId \| false`         | bold    | `false` writes the header unstyled; a `StyleId` replaces the default             |
-| `columns`      | `readonly ColumnOptions[]` | —       | `{ width?, hidden?, style? }` per column, left to right                          |
-| `freeze`       | `{ rows?, cols? }`         | —       | `{ rows: 1 }` freezes the header row                                             |
-| `autoFilter`   | `boolean`                  | `false` | Filter over the header row and every written column                              |
-| `hidden`       | `boolean`                  | `false` | `state="hidden"` in the workbook part                                            |
-| `rowCount`     | `number`                   | —       | Data rows, excluding the header. Enables `<dimension>` and up-front zip64 sizing |
+| `SheetOptions` | Type                       | Default | Notes                                                                                                                      |
+| -------------- | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `header`       | `readonly CellInput[]`     | —       | Written as row 1, bold unless you say otherwise                                                                            |
+| `headerStyle`  | `StyleId \| false`         | bold    | `false` writes the header unstyled; a `StyleId` replaces the default                                                       |
+| `columns`      | `readonly ColumnOptions[]` | —       | `{ width?, hidden?, style? }` per column, left to right                                                                    |
+| `freeze`       | `{ rows?, cols? }`         | —       | `{ rows: 1 }` freezes the header row                                                                                       |
+| `autoFilter`   | `boolean`                  | `false` | Filter over the header row and every written column                                                                        |
+| `hidden`       | `boolean`                  | `false` | `state="hidden"` in the workbook part                                                                                      |
+| `rowCount`     | `number`                   | —       | Data rows, excluding the header. A hint for up-front zip64 sizing; never written as `<dimension>`, so it need not be exact |
 
-`ColumnOptions.width` is Excel's character-width unit, and Excel's schema caps it at 255 — a wider value produces
-a file Excel opens but the Open XML validator rejects (`EC-COLS-WIDTH-OVER-255`).
+`ColumnOptions.width` is Excel's character-width unit, and Excel's schema caps it at 255: a wider value is written
+as 255, and a negative, `NaN` or infinite width throws `WRITER_STATE` (`EC-COLS-WIDTH-OVER-255`). `addSheet` also
+checks `freeze` (whole numbers that leave a scrolling cell inside the grid), `rowCount` (a whole number, 0 or more)
+and every style id it is given, and a refused `addSheet` leaves the workbook as it was. `ColumnOptions.style` is the
+column's default format (`<col style>`): it applies to cells the writer does not emit, such as ones a user types in
+later. Cells you write keep the style passed to `writeRow`.
 
 `SheetWriter` is:
 
-| Member                      | Meaning                                                                       |
-| --------------------------- | ----------------------------------------------------------------------------- |
-| `name`                      | The name actually used, after sanitizing and de-duplication                   |
-| `nextRow`                   | 1-based index of the row the next `writeRow` will produce                     |
-| `writeRow(values, styles?)` | One row                                                                       |
-| `writeRows(rows)`           | An `Iterable` or `AsyncIterable` of rows, written in order with back-pressure |
-| `merge(range)`              | Registers a merged range in A1 notation; emitted at sheet close               |
-| `close()`                   | Resolves to a `SheetWriteSummary` (`{ name, rows, columns }`)                 |
+| Member                      | Meaning                                                                          |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| `name`                      | The name actually used, after sanitizing and de-duplication                      |
+| `nextRow`                   | 1-based index of the row the next `writeRow` will produce                        |
+| `writeRow(values, styles?)` | One row                                                                          |
+| `writeRows(rows)`           | An `Iterable` or `AsyncIterable` of rows, written in order with back-pressure    |
+| `merge(range)`              | Registers a merged range in A1 notation, checked at once; emitted at sheet close |
+| `close()`                   | Resolves to a `SheetWriteSummary` (`{ name, rows, columns }`)                    |
 
 ### Sheet names
 
-Excel's rules are enforced for you, so `addSheet` never fails on a name a user typed. `: \ / ? * [ ]` become `_`,
+Excel's rules are enforced for you, so `addSheet` never fails on a name a user typed. `: \ / ? * [ ]` and control
+characters (tab and line breaks included) become `_`,
 leading and trailing apostrophes are stripped, the name is trimmed to 31 characters, the reserved name `History`
 (any casing) becomes `History_`, an empty name becomes `Sheet<n>`, and a case-insensitive collision gets ` (2)`,
 ` (3)` … fitted inside the 31-character budget. Read `sheet.name` if you need to know what was used — the mapping
 matters when you later look the sheet up by name.
+
+### Sheet-name and cell-reference helpers
+
+The rules above are exported, along with the A1 arithmetic the writer uses, for callers that key data by sheet
+name before writing or build merge ranges from coordinates:
+
+| Export                                            | What it does                                                                                                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sanitizeSheetName(name, taken)`                  | Returns the name `addSheet` would pick. `taken` is a `Set<string>` of the **lower-cased** names already used; the result is added to it, lower-cased     |
+| `isValidSheetName(name)`                          | `true` when the name needs no sanitizing. It does not check for collisions                                                                               |
+| `MAX_SHEET_NAME_LENGTH`                           | `31`                                                                                                                                                     |
+| `formatRef(row, col)`                             | 0-based row and column to an A1 reference: `formatRef(2, 1)` is `'B3'`                                                                                   |
+| `formatRange(startRow, startCol, endRow, endCol)` | 0-based corners to a range, normalized so the top-left comes first: `formatRange(0, 0, 0, 2)` is `'A1:C1'`                                               |
+| `parseRef(ref)`                                   | `'B3'` to `{ row: 2, col: 1 }` (a `CellRef`, 0-based); `$` anchors are tolerated; `null` when the text is not an upper-case A1 reference inside the grid |
+| `parseRange(range)`                               | `'A1:C3'` to `{ start, end }` (a `CellRange`, normalized); a single reference parses as a one-cell range; `null` when malformed                          |
+| `columnLetters(index)` / `columnIndexOf(letters)` | `0` to `'A'`, `26` to `'AA'`, and back; `columnIndexOf` returns `-1` for anything that is not upper-case column letters inside the grid                  |
+| `MAX_ROWS` / `MAX_COLUMNS`                        | `1,048,576` / `16,384`                                                                                                                                   |
+
+`formatRef`, `formatRange` and `columnLetters` throw `ROW_OUT_OF_RANGE` for a coordinate outside the grid, and
+`sanitizeSheetName` throws `INVALID_SHEET_NAME` for a name that is not a string.
+
+```ts
+import { formatRange, sanitizeSheetName } from '@jetstreamapp/simple-excel';
+
+const taken = new Set<string>();
+const names = ['Accounts', 'accounts', 'Q1/Q2'].map(name => sanitizeSheetName(name, taken));
+// ['Accounts', 'accounts (2)', 'Q1_Q2']
+
+sheet.merge(formatRange(0, 0, 0, 2)); // 'A1:C1'
+```
 
 ## Rows and values
 
@@ -146,19 +183,27 @@ await sheet.writeRows(asyncGeneratorOfRows());
 ```
 
 Rows are strictly sequential: row _n_ is serialized and gone before row _n+1_ starts. There is no way to revisit a
-written row, and there are no cell coordinates in the API — position in the array is the column.
+written row, and there are no cell coordinates in the API — position in the array is the column. A row has to be an
+array: an object such as `{ Id, Name }` throws `WRITER_STATE` rather than writing an empty row (`EC-ROW-NOT-ARRAY`),
+so map records to arrays in header order first. A row array you reuse and change between calls is safe even when
+you do not await each `writeRow`.
 
 `CellInput` is `string | number | boolean | Date | null | undefined | bigint | CellError`:
 
-| Input                | What is written                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------- |
-| `string`             | Shared string or inline string (see below); `_xHHHH_`-escaped, `xml:space="preserve"` when needed |
-| `number`             | `<v>` with the shortest round-trip form. `NaN` and `±Infinity` become the error cell `#NUM!`      |
-| `boolean`            | `t="b"` with `1` / `0`                                                                            |
-| `Date`               | A serial under a date number format. An **invalid `Date` writes nothing** — no `<c>` at all       |
-| `null` / `undefined` | No `<c>` element, unless a non-default style was given for that cell (then an empty styled cell)  |
-| `bigint`             | A number while `\|value\| <= 2^53`; a string beyond that, so no digits are silently lost          |
-| `{ error: '#N/A' }`  | A real error cell (`t="e"`), not the text `#N/A`                                                  |
+| Input                | What is written                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `string`             | Inline string by default, a shared string under `strings: 'auto'` (see below); `_xHHHH_`-escaped, `xml:space="preserve"` when needed    |
+| `number`             | `<v>` with the shortest round-trip form. `NaN` and `±Infinity` become the error cell `#NUM!`                                            |
+| `boolean`            | `t="b"` with `1` / `0`                                                                                                                  |
+| `Date`               | A serial under a date number format. An **invalid `Date` writes nothing** — no `<c>` at all. Before 1900 or after 9999: ISO text        |
+| `null` / `undefined` | No `<c>` element, unless a non-default style was given for that cell (then an empty styled cell)                                        |
+| `bigint`             | A number while `\|value\| <= 2^53`; a string beyond that, so no digits are silently lost                                                |
+| `{ error: '#N/A' }`  | A real error cell (`t="e"`) for the `CellErrorCode` literals. Another `#` code (`#SPILL!`) is written as its text; anything else throws |
+
+Anything else, such as a plain object, an array, a function or a symbol, throws `WRITER_STATE` with a message that
+names the sheet, the cell and the type (`Sheet "Accounts" cell C7: a value of type object cannot be written…`).
+SheetJS wrote an object as a blank cell and an array as its first element; the writer will not guess, so convert
+such values (for example with `JSON.stringify`) before writing (`EC-CELL-UNSUPPORTED-TYPE`).
 
 Text that starts with `=` stays text. The writer never infers a formula from a value — that is both a
 formula-injection surface and a reliable way to make Excel show its repair dialog
@@ -205,7 +250,14 @@ Line styles are `'thin' | 'medium' | 'thick' | 'dashed' | 'dotted' | 'double' | 
 
 `registerStyle` interns: two identical `CellStyle` objects return the same `StyleId`, so calling it inside a row
 loop is safe but pointless. `StyleId` 0 is the default style. Register every style you need up front and keep the
-ids.
+ids: `writeRow`, `columns` and `headerStyle` only accept ids that `registerStyle` returned (`EC-STYLE-ID-RANGE`).
+
+`registerStyle` checks what Excel would otherwise repair or refuse, and throws `WRITER_STATE` naming the field: a
+font size outside 1–409, a font name that is empty, longer than 31 characters or holds a control character, a
+colour that is not `#RRGGBB`, a `fill` without a colour, an alignment or border value outside the lists above, a
+number format code that is empty or longer than 255 characters, a numeric `numFmt` that is not a built-in or
+registered id, and more than 64,000 styles in one workbook (`EC-STYLE-FIELD-RANGE`). A refused style registers
+nothing and does not affect the workbook.
 
 ### Number formats
 
@@ -220,7 +272,9 @@ Number formats are **not rendered** on read: a cell's value is the number, never
 
 A `Date` written without a date style is given one automatically, because a bare serial under the General format
 shows as a five-digit number in Excel. The default code is **`yyyy-mm-dd hh:mm:ss`**, registered once per
-workbook. If the style you pass for that cell already carries a date or time number format, yours is used instead:
+workbook. If the style you pass for that cell has no number format of its own (a bold, filled row style, say), the
+date cell keeps its font, fill, border and alignment and gains the default date format (`EC-DATE-STYLE-MERGE`). If
+the style already carries a date or time number format, yours is used as it is:
 
 ```ts
 const dateOnly = workbook.registerStyle({ numFmt: 'yyyy-mm-dd' });
@@ -234,8 +288,20 @@ await sheet.writeRow([new Date()]); // yyyy-mm-dd hh:mm:ss
 sheet.merge('A1:C1');
 ```
 
-A1 notation, registered while the sheet is open and emitted at close in the order added. A single-cell range
-(`'A1:A1'`) throws `WRITER_STATE`: Excel opens the repair dialog for one-cell merges.
+A1 notation in either case (`'a1:c1'` works), registered while the sheet is open and emitted at close in the
+order added. `merge()` checks the range at once and throws `WRITER_STATE` for a range that is not `A1:C1`-shaped,
+a single cell (`'A1:A1'`), a range outside the grid, or one that overlaps or repeats a range already merged on the
+sheet: Excel opens the repair dialog for each of these (`EC-MERGE-OVERLAP`). A refused merge does not affect the
+rest of the workbook.
+
+## Workbook-level rules
+
+`workbook.close()` refuses two workbooks Excel would repair, with `WRITER_STATE`, and aborts the sink: one with no
+sheet at all (`EC-WORKBOOK-NO-SHEETS`), and one whose sheets are all hidden (`EC-ALL-SHEETS-HIDDEN`). When the first
+sheet is hidden, the first visible sheet is the one Excel opens on. `properties.created` must be a valid `Date`
+between the years 1 and 9999, checked when the writer is created (`EC-DOCPROPS-CREATED-RANGE`). Control characters
+in sheet names become `_`, and they are dropped from the title, creator, font names and number format codes, where
+XML cannot carry them (`EC-XML-CONTROL-CHARS-METADATA`); cell text keeps them, encoded as `_xHHHH_`.
 
 ## Shared strings
 
@@ -281,11 +347,11 @@ An entry larger than 4 GiB needs zip64 headers, and Excel only accepts them when
 file header** — that is, before the first byte of the entry, when the writer cannot yet know how big it will be.
 So the decision has to be made up front (ADR-002).
 
-| `zip64`            | Behaviour                                                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `'auto'` (default) | A worksheet gets zip64 only when its declared `rowCount` makes a > 4 GiB part plausible (about 40M cells). Everything else stays a standard zip |
-| `true`             | Every streamed part gets zip64 headers                                                                                                          |
-| `false`            | Never emitted                                                                                                                                   |
+| `zip64`            | Behaviour                                                                                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `'auto'` (default) | A worksheet gets zip64 only when its declared `rowCount` makes a > 4 GiB part plausible (about 40M cells, see below). Everything else stays a standard zip |
+| `true`             | Every streamed part gets zip64 headers                                                                                                                     |
+| `false`            | Never emitted                                                                                                                                              |
 
 :::caution
 `'auto'` is deliberately conservative because **SheetJS 0.20.3 cannot open a zip64 archive at all** ("Unsupported
@@ -295,12 +361,18 @@ can handle it.
 :::
 
 A sheet written without a `rowCount` stays 32-bit, and if a part does pass 4 GiB the writer fails with
-`ENTRY_TOO_LARGE` naming `zip64: true` as the fix. Announcing `rowCount` is the way to get zip64 exactly when it
-is needed:
+`ENTRY_TOO_LARGE`, whose message says to enable zip64 (`zip64: true`) or split the data across sheets. Announcing
+`rowCount` lets `'auto'` switch zip64 on for a sheet with a huge number of cells:
 
 ```ts
 const sheet = workbook.addSheet('Huge', { header, rowCount: records.length });
 ```
+
+`'auto'` estimates the part's size from its cell count (about 100 bytes a cell), so it cannot see long text. 140,000
+rows of 32,000-character cells pass 4 GiB with an accurate `rowCount`, and the write fails cleanly with
+`ENTRY_TOO_LARGE` at that point. When rows carry long text (email bodies, JSON blobs), estimate the uncompressed size
+yourself and pass `zip64: true` when it could exceed about 3.5 GiB, accepting that SheetJS and Google Drive cannot
+read that file.
 
 ## Compression and the deflater
 
@@ -310,15 +382,29 @@ const sheet = workbook.addSheet('Huge', { header, rowCount: records.length });
 | `deflater`    | `DeflaterFactory`      | platform    | Swap in another compressor                                 |
 
 The default compressor is `CompressionStream('deflate-raw')`, which has no compression level. Where
-`CompressionStream` is unavailable the writer silently switches to `'store'` rather than claiming method 8 over
-uncompressed bytes. In Node, `nodeDeflater(level)` gives you zlib and a level — level 1 is roughly 2–3× faster
+`CompressionStream` is unavailable or rejects `deflate-raw` the writer silently switches to `'store'` rather than
+claiming method 8 over uncompressed bytes. In Node, `nodeDeflater(level)` gives you zlib and a level — level 1 is roughly 2–3× faster
 than the default on xlsx-shaped XML:
 
 ```ts
-import { nodeDeflater, toFile } from '@jetstreamapp/simple-excel/node';
+import { createWorkbookWriter, nodeDeflater, toFile } from '@jetstreamapp/simple-excel/node';
 
 const workbook = createWorkbookWriter(toFile('out.xlsx'), { deflater: nodeDeflater(1) });
 ```
+
+:::caution
+A stored entry is streamed like any other, so its sizes follow the data in a data descriptor. Excel, LibreOffice,
+openpyxl and calamine read that, but **SheetJS 0.20.3 does not** ("Bad compressed size"). Avoid
+`compression: 'store'` when SheetJS reads your files. Every current browser and Node 20.12+ compress, so the automatic
+fallback only happens on older platforms.
+:::
+
+`createDeflater` is the default `DeflaterFactory`: the platform `CompressionStream('deflate-raw')`, or a
+pass-through when the entry is stored or the platform cannot compress. A custom `deflater` has the same shape. The
+writer calls it once per zip entry as `(onChunk, { method })`, where `method` is `'deflate' | 'store'`, and it
+returns a `Deflater`: `push(chunk)`, `finish()`, `abort(reason?)` and the `bytesIn` / `bytesOut` counters. It must
+hand compressed bytes to `onChunk` in order, awaiting each call, and `finish()` must resolve only after the last
+`onChunk` has settled.
 
 ## Deterministic output
 
@@ -355,6 +441,10 @@ const workbook = createWorkbookWriter(sink, {
   call throws `ABORTED` and the sink is torn down.
 - `workbook.abort(reason?)` does the same thing imperatively. Call it in a `catch` so a half-written stream is not
   left open.
+- Any failure while writing (a sink that rejects, a compressor that fails, a value the writer refuses mid-row)
+  aborts the sink once, and every later call rejects with that same, original error (`EC-WRITER-FAILURE-STICKY`).
+  Mistakes that write nothing, such as a refused `registerStyle`, `addSheet` or `merge`, are thrown to the caller
+  and leave the workbook usable.
 
 ```ts
 try {
@@ -376,8 +466,10 @@ opens with a repair prompt (`EC-CELL-32767-LIMIT`):
 | `truncationSuffix` | string                    | `'...(truncated)'` |
 | `onCellTruncated`  | `(count: number) => void` | —                  |
 
-With `'truncate'`, the text is cut so that the suffix still fits inside the limit, and the count is reported
-through `onCellTruncated` and in the final result. With `'throw'` a long cell raises `CELL_TOO_LONG`.
+With `'truncate'`, the text is cut so that the suffix still fits inside the limit, never between the two halves of
+an emoji (`EC-TRUNCATION-SURROGATE`). `onCellTruncated` is called **once**, after `workbook.close()` has finished
+the file, with the workbook's total, and only when something was truncated; the same count is in the final result
+as `truncatedCells`. An exception thrown from the callback rejects `close()` even though the file is complete. With `'throw'` a long cell raises `CELL_TOO_LONG`.
 
 ## The result
 
@@ -400,7 +492,7 @@ summary earlier, if you need it before the workbook finishes.
 
 | Option             | Type                                    | Default                |
 | ------------------ | --------------------------------------- | ---------------------- |
-| `strings`          | `'auto' \| 'inline' \| 'shared'`        | `'auto'`               |
+| `strings`          | `'auto' \| 'inline' \| 'shared'`        | `'inline'`             |
 | `sstBudget`        | `{ maxUnique?, maxChars?, maxLength? }` | 65,536 / 16 Mi / 256   |
 | `zip64`            | `'auto' \| boolean`                     | `'auto'`               |
 | `compression`      | `'deflate' \| 'store'`                  | `'deflate'`            |

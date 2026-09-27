@@ -166,8 +166,8 @@ on the way out.
 
 ## Writing a very large file
 
-- Announce `rowCount` on `addSheet` when you know it. It enables `<dimension>` and lets the zip64 decision be
-  made up front.
+- Announce `rowCount` on `addSheet` when you know it, so the zip64 decision can be made up front. It is only a
+  hint: the writer never writes `<dimension>` from it, so a count that turns out wrong costs nothing.
 - Use `onProgress` (every 5,000 rows) for the UI, and an `AbortSignal` so a user can cancel.
 - Leave `strings` on its inline default unless the data is very low-cardinality and file size matters more than
   write speed; then `strings: 'auto'` builds a bounded table. Excel re-shares strings the first time the user
@@ -184,15 +184,16 @@ file header_, before the entry's first byte. So the decision is made up front, f
 **SheetJS 0.20.3 cannot open a zip64 archive at all** — "Unsupported ZIP file", even for a small one — and
 **Google Drive fails to convert one to a Google Sheet** on upload (`EC-ZIP64-SMALL`). Excel, LibreOffice, openpyxl
 and calamine all read them. That is why `zip64: 'auto'` only turns it on for a sheet whose declared size makes a
-
-> 4 GiB part plausible (about 40M cells; Google Sheets tops out at 10M cells, so such a file could not be imported
-> there regardless). If any consumer of your files is SheetJS or Google Sheets, leave it on `'auto'` and do not set
-> `zip64: true`.
-> :::
+part over 4 GiB plausible (about 40M cells; Google Sheets tops out at 10M cells, so such a file could not be
+imported there regardless). If any consumer of your files is SheetJS or Google Sheets, leave it on `'auto'` and do
+not set `zip64: true`.
+:::
 
 A sheet written with an unknown row count stays 32-bit, and a part that does pass 4 GiB fails with
-`ENTRY_TOO_LARGE` naming `zip64: true` as the fix. Excel's own 1,048,576-row limit means such a sheet would need
-more than 4 KB of XML per row, so this is rare in practice.
+`ENTRY_TOO_LARGE`, whose message says to enable zip64 (`zip64: true`) or split the data across sheets. Excel's own
+1,048,576-row limit means such a sheet would need more than 4 KB of XML per row. That is rare, but long text gets
+there: `'auto'` sizes a sheet by its cell count, so 140,000 rows of 32,000-character cells pass 4 GiB even with an
+accurate `rowCount`. See [Writing](./writing.md#zip64) for how to decide when your rows carry long text.
 
 ## Numbers
 
@@ -200,7 +201,9 @@ The claim on this page is measurable, so here is the measurement. Apple M4, Node
 Salesforce-shaped data (about 1.7 KB of text per row), rows pulled from a generator so nothing but the writer is
 resident, peak sampled every 25 ms. Run
 [`2026-09-12-macbook-air-phase-e-combined`](https://github.com/jetstreamapp/simple-excel/tree/main/bench/results/2026-09-12-macbook-air-phase-e-combined),
-with the streamed-source timings taken one size per process.
+with the streamed-source timings taken one size per process. These rows were measured before inline strings
+became the default (with the bounded shared-string table, now `strings: 'auto'`); the heap and RSS figures are the
+ones `research/06-performance-baseline.md` quotes.
 
 | Rows written        | Time   | Output | JS heap growth | Peak process RSS |
 | ------------------- | ------ | ------ | -------------- | ---------------- |

@@ -7,7 +7,7 @@ import { XlsxError } from '../../errors';
 import type { CellStyle } from '../../types';
 import { DEFAULT_DATE_FORMAT } from '../numfmt';
 import { appXml, contentTypesXml, coreXml, rootRelsXml, workbookRelsXml, workbookXml, type SheetPartInfo } from '../package-parts';
-import { StyleRegistry } from '../styles';
+import { MAX_CELL_STYLES, StyleRegistry } from '../styles';
 
 const DEFAULT_STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -198,6 +198,142 @@ describe('StyleRegistry number formats', () => {
     expect(registry.isDateStyle(registry.register({ numFmt: '0%' }))).toBe(false);
     expect(registry.isDateStyle(registry.register({ numFmt: '"months" 0' }))).toBe(false);
     expect(registry.isDateStyle(registry.register({ font: { bold: true } }))).toBe(false);
+  });
+});
+
+describe('StyleRegistry validation (EC-STYLE-FIELD-RANGE)', () => {
+  /** The field an invalid style is refused for, or 'accepted'. */
+  function refusedField(style: unknown): string {
+    try {
+      new StyleRegistry().register(style as CellStyle);
+    } catch (error) {
+      if (!(error instanceof XlsxError) || error.code !== 'WRITER_STATE') {
+        return `unexpected ${String(error)}`;
+      }
+      return String(error.detail?.field);
+    }
+    return 'accepted';
+  }
+
+  it('accepts every field at the edges of its range', () => {
+    expect(refusedField({ font: { size: 1, name: 'A' } })).toBe('accepted');
+    expect(refusedField({ font: { size: 409, name: 'x'.repeat(31) } })).toBe('accepted');
+    expect(refusedField({ font: { size: 10.5 } })).toBe('accepted');
+    expect(refusedField({ numFmt: 0 })).toBe('accepted');
+    expect(refusedField({ numFmt: 163 })).toBe('accepted');
+    expect(refusedField({ numFmt: '0'.repeat(255) })).toBe('accepted');
+    expect(refusedField({ alignment: { horizontal: 'right', vertical: 'bottom' } })).toBe('accepted');
+    expect(refusedField({ border: { left: 'hair', right: 'double', top: 'dotted', bottom: 'thick' } })).toBe('accepted');
+  });
+
+  it('refuses a font size outside 1-409 points', () => {
+    for (const size of [0, 0.5, 410, -3, Number.NaN, Number.POSITIVE_INFINITY, '12']) {
+      expect(refusedField({ font: { size } }), String(size)).toBe('font.size');
+    }
+  });
+
+  it('refuses a font name that is empty, longer than 31 characters, not text or holds a control character', () => {
+    for (const name of ['', 'x'.repeat(32), 42, '\u0001', 'Arial\u0007', 'Tab\tName']) {
+      expect(refusedField({ font: { name } }), String(name)).toBe('font.name');
+    }
+  });
+
+  it('refuses colours that are not hex, including non-strings, on every coloured field', () => {
+    expect(refusedField({ font: { color: 'red' } })).toBe('font.color');
+    expect(refusedField({ font: { color: 0xff0000 } })).toBe('font.color');
+    expect(refusedField({ fill: { color: '#12345' } })).toBe('fill.color');
+    expect(refusedField({ border: { top: 'thin', color: 'blue' } })).toBe('border.color');
+  });
+
+  it('refuses a fill without a colour instead of throwing a TypeError', () => {
+    expect(refusedField({ fill: {} })).toBe('fill.color');
+    expect(refusedField({ fill: '#FF0000' })).toBe('fill.color');
+    expect(refusedField({ fill: null })).toBe('fill.color');
+  });
+
+  it('refuses alignments and border styles outside their enums', () => {
+    expect(refusedField({ alignment: { horizontal: 'justify' } })).toBe('alignment.horizontal');
+    expect(refusedField({ alignment: { vertical: 'middle' } })).toBe('alignment.vertical');
+    expect(refusedField({ border: 'bold' })).toBe('border');
+    expect(refusedField({ border: { left: 'thin', bottom: 'wavy' } })).toBe('border.bottom');
+    expect(refusedField({ border: 7 })).toBe('border');
+  });
+
+  it('refuses number formats that are empty, too long, or not a built-in or registered id', () => {
+    for (const numFmt of ['', '0'.repeat(256)]) {
+      expect(refusedField({ numFmt }), `code of ${numFmt.length}`).toBe('numFmt');
+    }
+    for (const numFmt of [-1, 1.5, Number.NaN, 164, 200, true]) {
+      expect(refusedField({ numFmt }), String(numFmt)).toBe('numFmt');
+    }
+  });
+
+  it('refuses a style that is not an object', () => {
+    expect(refusedField(null)).toBe('style');
+    expect(refusedField('bold')).toBe('style');
+    expect(refusedField({ font: 'bold' })).toBe('font');
+    expect(refusedField({ alignment: 'center' })).toBe('alignment');
+  });
+
+  it('names the field and the value in the message', () => {
+    expect(() => new StyleRegistry().register({ font: { size: 500 } })).toThrow(/font\.size 500 .*1 to 409/);
+    expect(() => new StyleRegistry().register({ alignment: { horizontal: 'justify' as 'left' } })).toThrow(
+      /alignment\.horizontal "justify"/,
+    );
+  });
+
+  it('leaves nothing behind when a style is refused', () => {
+    const registry = new StyleRegistry();
+    expect(() => registry.register({ font: { bold: true }, numFmt: '0.000', fill: {} as { color: string } })).toThrow(XlsxError);
+    expect(() => registry.register({ numFmt: '0.0000', font: { italic: true, color: 'red' } })).toThrow(XlsxError);
+    expect(() => registry.register({ numFmt: '0.00000', fill: { color: '#00FF00' }, border: { top: 'thin', color: 'nope' } })).toThrow(
+      XlsxError,
+    );
+    expect(registry.toXml()).toBe(DEFAULT_STYLES_XML);
+  });
+
+  it(`stops at ${MAX_CELL_STYLES} cell styles but still resolves the ones it has`, () => {
+    const registry = new StyleRegistry();
+    for (let index = 1; registry.count < MAX_CELL_STYLES; index++) {
+      registry.register({ numFmt: `0.${'0'.repeat(index % 200)}"${index}"` });
+    }
+    expect(registry.count).toBe(MAX_CELL_STYLES);
+    expect(() => registry.register({ font: { bold: true } })).toThrowError(expect.objectContaining({ code: 'WRITER_STATE' }));
+    expect(registry.register({ numFmt: '0.0"1"' }), 'an existing style still resolves').toBe(1);
+  });
+});
+
+describe('StyleRegistry date styles (EC-DATE-STYLE-MERGE)', () => {
+  it('derives a date style that keeps every other component of the caller style, once', () => {
+    const registry = new StyleRegistry();
+    const styleId = registry.register({ font: { bold: true }, fill: { color: '#EE00AA' }, border: 'thin', alignment: { wrapText: true } });
+    const derived = registry.dateStyleFor(styleId);
+    expect(registry.dateStyleFor(styleId)).toBe(derived);
+    expect(registry.isDateStyle(derived)).toBe(true);
+    expect(registry.count).toBe(3);
+    expect(registry.toXml()).toContain(
+      '<xf numFmtId="164" fontId="1" fillId="2" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"' +
+        ' applyAlignment="1"><alignment wrapText="1"/></xf>',
+    );
+  });
+
+  it('keeps a style that already renders as a date and maps style 0 to the default date style', () => {
+    const registry = new StyleRegistry();
+    const dated = registry.register({ numFmt: 'dd/mm/yyyy', font: { bold: true } });
+    expect(registry.dateStyleFor(dated)).toBe(dated);
+    expect(registry.dateStyleFor(0)).toBe(registry.defaultDateStyle);
+  });
+});
+
+describe('metadata escaping (EC-XML-CONTROL-CHARS-METADATA)', () => {
+  it('drops characters XML forbids from number format codes and unpaired surrogates from font names', () => {
+    const registry = new StyleRegistry();
+    registry.register({ font: { name: 'Ari\uD800al' }, numFmt: '0.00\u0007" units\uD800"' });
+    const xml = registry.toXml();
+    expect(xml).toContain('<name val="Arial"/>');
+    expect(xml).toContain('formatCode="0.00&quot; units&quot;"');
+    // eslint-disable-next-line no-control-regex -- the characters XML forbids are exactly what must not be there
+    expect(xml).not.toMatch(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/);
   });
 });
 

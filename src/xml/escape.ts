@@ -1,6 +1,8 @@
 const CHAR_TAB = 9;
 const CHAR_LINE_FEED = 10;
+const CHAR_CARRIAGE_RETURN = 13;
 const CHAR_SPACE = 32;
+const CHAR_QUOTE = 34;
 const CHAR_AMPERSAND = 38;
 const CHAR_LESS_THAN = 60;
 const CHAR_GREATER_THAN = 62;
@@ -123,48 +125,80 @@ function startsEncodedEscapeRun(text: string, index: number): boolean {
   return closingCode === CHAR_UNDERSCORE || isWrittenAsEscapeSequence(closingCode);
 }
 
-/** Escape `&`, `<`, `>` for element text. Returns the input unchanged when nothing needs escaping. */
-export function escapeText(text: string): string {
+/**
+ * True for a UTF-16 code unit XML 1.0 excludes from `Char` outright, surrogates aside (they are only legal as a pair,
+ * which the callers check against the next code unit): the C0 controls other than tab, LF and CR, and U+FFFE/U+FFFF.
+ * Not even a character reference can carry one of these, so metadata text has nowhere to put them.
+ */
+function isForbiddenXmlCharacter(code: number): boolean {
+  return code < CHAR_SPACE ? code !== CHAR_TAB && code !== CHAR_LINE_FEED && code !== CHAR_CARRIAGE_RETURN : code >= NON_CHARACTER_FIRST;
+}
+
+/**
+ * The shared scan behind `escapeText` and `escapeAttr`: XML metacharacters become entities, and everything XML 1.0
+ * forbids (EC-XML-CONTROL-CHARS-METADATA: C0 controls except tab/LF/CR, U+FFFE, U+FFFF, unpaired surrogates) is
+ * dropped. Cell text keeps those characters as `_xHHHH_` instead (`encodeCellText`); sheet names, document
+ * properties, font names and number-format codes are not ST_Xstring in every reader, so dropping is the only
+ * well-formed and universally readable choice. Returns the input unchanged when there is nothing to do.
+ */
+function escapeMarkup(text: string, forAttribute: boolean): string {
   let out = '';
   let last = 0;
   for (let i = 0; i < text.length; i++) {
     const code = text.charCodeAt(i);
-    if (code === 38 || code === 60 || code === 62) {
-      out += text.slice(last, i) + (code === 38 ? '&amp;' : code === 60 ? '&lt;' : '&gt;');
-      last = i + 1;
+    let replacement: string;
+    if (code >= CHAR_SPACE && code < SURROGATE_FIRST) {
+      if (code === CHAR_AMPERSAND) {
+        replacement = '&amp;';
+      } else if (code === CHAR_LESS_THAN) {
+        replacement = '&lt;';
+      } else if (code === CHAR_GREATER_THAN) {
+        replacement = '&gt;';
+      } else if (code === CHAR_QUOTE && forAttribute) {
+        replacement = '&quot;';
+      } else {
+        continue;
+      }
+    } else if (code === CHAR_TAB || code === CHAR_LINE_FEED || code === CHAR_CARRIAGE_RETURN) {
+      if (!forAttribute) {
+        continue;
+      }
+      // Attribute-value normalization would fold these into spaces, so an attribute spells them as references.
+      replacement = code === CHAR_TAB ? '&#9;' : code === CHAR_LINE_FEED ? '&#10;' : '&#13;';
+    } else if (code >= SURROGATE_FIRST && code <= SURROGATE_LAST) {
+      const nextCode = text.charCodeAt(i + 1);
+      if (code <= SURROGATE_HIGH_LAST && nextCode >= SURROGATE_LOW_FIRST && nextCode <= SURROGATE_LAST) {
+        // A complete pair is an astral character: legal XML, passed through as is.
+        i++;
+        continue;
+      }
+      replacement = '';
+    } else if (isForbiddenXmlCharacter(code)) {
+      replacement = '';
+    } else {
+      continue;
     }
+    out += text.slice(last, i) + replacement;
+    last = i + 1;
   }
   return last === 0 ? text : out + text.slice(last);
 }
 
-/** Escape `&`, `<`, `>`, `"` and the whitespace characters that attribute normalization would otherwise fold. */
+/**
+ * Escape `&`, `<`, `>` for element text and drop the characters XML 1.0 forbids (EC-XML-CONTROL-CHARS-METADATA).
+ * For metadata only (document properties, sheet titles); cell text goes through `encodeCellText`. Returns the input
+ * unchanged when nothing needs escaping.
+ */
+export function escapeText(text: string): string {
+  return escapeMarkup(text, false);
+}
+
+/**
+ * Escape `&`, `<`, `>`, `"` and the whitespace characters that attribute normalization would otherwise fold, and
+ * drop the characters XML 1.0 forbids (EC-XML-CONTROL-CHARS-METADATA). Returns the input unchanged when clean.
+ */
 export function escapeAttr(text: string): string {
-  let out = '';
-  let last = 0;
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    let replacement: string | undefined;
-    if (code === 38) {
-      replacement = '&amp;';
-    } else if (code === 60) {
-      replacement = '&lt;';
-    } else if (code === 62) {
-      replacement = '&gt;';
-    } else if (code === 34) {
-      replacement = '&quot;';
-    } else if (code === 9) {
-      replacement = '&#9;';
-    } else if (code === 10) {
-      replacement = '&#10;';
-    } else if (code === 13) {
-      replacement = '&#13;';
-    }
-    if (replacement !== undefined) {
-      out += text.slice(last, i) + replacement;
-      last = i + 1;
-    }
-  }
-  return last === 0 ? text : out + text.slice(last);
+  return escapeMarkup(text, true);
 }
 
 /**
