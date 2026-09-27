@@ -4,6 +4,13 @@ The streaming xlsx library we would build if hand-rolling, and the rubric any ca
 
 _Accurate as of 2026-09-11 (branch chore/xlsx-hand-roll)._
 
+_Design as proposed on 2026-09-11, before the build. The shipped library is `@jetstreamapp/simple-excel`; its
+authoritative API is `src/types.ts` and `docs/docs/`. Divergences: `strings` defaults to `'inline'` (ADR-001
+addendum) and `xl/sharedStrings.xml` is written only under `'auto'`/`'shared'` when something was interned;
+duplicate zip entries are rejected (`ZIP_DUPLICATE_ENTRY`); the inflate guard is a byte cap, not a ratio; zip64
+`'auto'` keys off `rowCount`; the reader is `openWorkbook` with `XlsxError` codes; crc32 is slicing-by-16; column
+styles (`<col style>`) are supported._
+
 Working name `@jetstreamapp/xlsx`. Zero runtime dependencies. Targets: Chrome 121+, Firefox 120+, Safari 16.4+, Node 24, module Web Workers, Electron renderer and main, MV3 extension pages. Claims about Excel behavior that the oracle has not yet confirmed are marked "(verify)".
 
 ## 1. Package layout and module boundaries

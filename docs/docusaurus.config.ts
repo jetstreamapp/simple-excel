@@ -12,7 +12,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://simple-excel.dev',
+  url: 'https://simple-excel.getjetstream.app',
   baseUrl: '/',
 
   organizationName: 'jetstreamapp',
@@ -90,11 +90,11 @@ const config: Config = {
           position: 'right',
           items: [
             {
-              href: 'https://simple-excel.dev/llms.txt',
+              href: 'https://simple-excel.getjetstream.app/llms.txt',
               label: 'llms.txt (summary)',
             },
             {
-              href: 'https://simple-excel.dev/llms-full.txt',
+              href: 'https://simple-excel.getjetstream.app/llms-full.txt',
               label: 'llms-full.txt (complete)',
             },
           ],
@@ -140,11 +140,11 @@ const config: Config = {
             },
             {
               label: 'LLM Docs (llms.txt)',
-              href: 'https://simple-excel.dev/llms.txt',
+              href: 'https://simple-excel.getjetstream.app/llms.txt',
             },
             {
               label: 'LLM Docs (full)',
-              href: 'https://simple-excel.dev/llms-full.txt',
+              href: 'https://simple-excel.getjetstream.app/llms-full.txt',
             },
           ],
         },

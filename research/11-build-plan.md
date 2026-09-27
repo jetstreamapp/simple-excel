@@ -5,7 +5,7 @@ The contract every module is built and tested against. Numbers, rules and edge c
 signatures, work packages and gates.
 
 _Accurate as of 2026-09-12. Package: `@jetstreamapp/simple-excel`. Target: browsers with Web Streams and
-`CompressionStream` (evergreen), Node 20+. Zero runtime dependencies._
+`CompressionStream` (evergreen), Node 20.12+. Zero runtime dependencies._
 
 ## 1. Goals and their gates
 
@@ -26,7 +26,7 @@ src/
   node/index.ts            node entry: fromFile, toFile, toWritable, zlib deflater
   types.ts                 CellValue, CellError, RawCell, Row, options, XlsxError codes
   errors.ts                XlsxError class + codes
-  zip/crc32.ts             table-driven CRC32 (slicing-by-8 later if measured)
+  zip/crc32.ts             slicing-by-16 CRC32
   zip/zip-writer.ts        streaming zip writer: local headers, data descriptors, zip64 up-front, central dir
   zip/zip-reader.ts        EOCD/zip64 scan, central directory, per-entry inflate stream
   zip/source.ts            RandomAccessSource over ArrayBuffer/Uint8Array/Blob
@@ -144,7 +144,7 @@ class XlsxError extends Error { readonly code: XlsxErrorCode; readonly detail?: 
 type XlsxErrorCode = 'NOT_XLSX' | 'ENCRYPTED' | 'LEGACY_XLS' | 'XLSB' | 'ODS' | 'ZIP_TRUNCATED' | 'ZIP_BOMB' | 'ZIP_DUPLICATE_ENTRY' | 'XML_DOCTYPE' | 'XML_MALFORMED' | 'LIMIT_EXCEEDED' | 'SHEET_NOT_FOUND' | 'INVALID_SHEET_NAME' | 'ROW_OUT_OF_RANGE' | 'ENTRY_TOO_LARGE' | 'WRITER_STATE';
 ```
 
-`@jetstreamapp/simple-excel/node`: `fromFile(path)`, `toFile(path)`, `toWritable(writable)`, `nodeDeflater({ level })`.
+`@jetstreamapp/simple-excel/node`: `fromFile(path)`, `toFile(path)`, `toWritable(writable)`, `nodeDeflater(level?)`.
 
 ## 4. Module contracts (what each agent builds)
 
@@ -166,7 +166,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 ### A3 `zip/zip-reader.ts` + `zip/source.ts`
 
 - `interface RandomAccessSource { readonly size: number; read(offset: number, length: number): Promise<Uint8Array> }`; `sourceFrom(input: ArrayBuffer | Uint8Array | Blob): RandomAccessSource`.
-- `class ZipReader { static open(source, limits): Promise<ZipReader>; readonly entries: ReadonlyMap<string, ZipEntry>; has(name); stream(name): AsyncIterable<Uint8Array>; read(name): Promise<Uint8Array>; readText(name): Promise<string>; close() }` — EOCD scan of the last 64 KiB + 22, zip64 EOCD/locator, central directory parse, names normalized (`\`→`/`, leading `/` stripped), duplicate names → `XlsxError('ZIP_DUPLICATE_ENTRY')`, local header parsed for its own extra-field length, method 0 and 8 only, inflated-byte caps and ratio guard → `XlsxError('ZIP_BOMB')`, truncated → `XlsxError('ZIP_TRUNCATED')`. CRC verified on both paths; a stream throws `ZIP_CRC_MISMATCH` after its last chunk.
+- `class ZipReader { static open(source, limits): Promise<ZipReader>; readonly entries: ReadonlyMap<string, ZipEntry>; has(name); stream(name): AsyncIterable<Uint8Array>; read(name): Promise<Uint8Array>; readText(name): Promise<string>; close() }` — EOCD scan of the last 64 KiB + 22, zip64 EOCD/locator, central directory parse, names normalized (`\`→`/`, leading `/` stripped), duplicate names → `XlsxError('ZIP_DUPLICATE_ENTRY')`, local header parsed for its own extra-field length, method 0 and 8 only, inflated-byte caps → `XlsxError('ZIP_BOMB')`, truncated → `XlsxError('ZIP_TRUNCATED')`. CRC verified on both paths; a stream throws `ZIP_CRC_MISMATCH` after its last chunk.
 - Tests: every file our writer produces; the `fixtures/edge` zip variants (data descriptors, stored, SST after sheets); `fixtures/hostile` truncated / duplicate / bomb / CRC.
 
 ### A4 `compress/deflater.ts`, `compress/inflater.ts`
@@ -188,7 +188,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 
 ### A7 `sml/cell-ref.ts`, `sml/date.ts`, `sml/numfmt.ts`, `sml/sheet-name.ts`
 
-- `columnLetter(index0)`, `columnIndex(letters)`, `formatRef(row0, col0)`, `parseRef(ref)`, `parseRange(ref)`; limits 1,048,576 × 16,384.
+- `columnLetters(index0)`, `columnIndexOf(letters)`, `formatRef(row0, col0)`, `parseRef(ref)`, `parseRange(ref)`; limits 1,048,576 × 16,384.
 - `serialFromComponents({y,m,d,hh,mm,ss,ms}, date1904)`, `componentsFromSerial(serial, date1904)`; rules: serial 60 fake day, serials < 61 shift, negative/pre-epoch rejected (`ROW_OUT_OF_RANGE` is not it — use a `DateOutOfRange` result), time-only = fraction of a day, ms rounding; `dateFromComponents(c, 'local'|'utc')`, `componentsFromDate(d, 'local'|'utc')`.
 - `BUILTIN_NUMFMTS`, `isDateFormat(code | id)`, `isBuiltinDateId(id)`, `DEFAULT_DATE_FORMAT = 'yyyy-mm-dd hh:mm:ss'`.
 - `sanitizeSheetName(name, taken: Set<string>)` → replaces `: \ / ? * [ ]` with `_`, strips leading/trailing apostrophes, trims to 31, dedupes case-insensitively with ` (2)` fitted inside 31, `History` → `History_`, empty → `Sheet1`.
@@ -221,7 +221,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 
 ### B5 `write/workbook-writer.ts` + `sinks.ts`
 
-- `createWorkbookWriter` per §3; part order: `[Content_Types].xml` first (static with `<Default Extension="xml">` + Overrides) — verified in Phase A oracle, fallback last; `_rels/.rels`, docProps, sheets, SST, styles, workbook, workbook rels; progress/abort; sheet-name sanitizing; single open sheet.
+- `createWorkbookWriter` per §3; part order: `_rels/.rels`, `docProps/core.xml`, the worksheets, `xl/sharedStrings.xml` (only when strings were interned), `xl/styles.xml`, `xl/workbook.xml`, `xl/_rels/workbook.xml.rels`, `docProps/app.xml`, `[Content_Types].xml` last (EC-ZIP-CONTENT-TYPES-LAST); progress/abort; sheet-name sanitizing; single open sheet.
 - Sinks: `collectToBlob` folds chunks into sub-Blobs every 32 MiB; `collectToBytes` with `maxBytes`; stream adapters.
 - Tests: golden bytes (deterministic) for the canonical workbook; validator on output; read back with our reader; back-pressure with a slow sink; abort; `writeRows` from an async generator of 100k rows under a heap ceiling (`--expose-gc` in a Node test).
 
@@ -238,7 +238,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 
 ### D `src/node/index.ts`
 
-- `fromFile(path): RandomAccessSource` (FileHandle), `toFile(path): ByteSink`, `toWritable(stream): ByteSink`, `nodeDeflater(level)` swap-in. Tests run in Node only.
+- `fromFile(path): Promise<FileSource>` (FileHandle), `toFile(path): ByteSink`, `toWritable(stream): ByteSink`, `nodeDeflater(level)` swap-in. Tests run in Node only.
 
 ### E Integration and tooling
 
@@ -281,7 +281,7 @@ rule "touch only your module's files and tests". The lead integrates, runs the f
 
 ## 7. Definition of done for 1.0
 
-Status on 2026-09-12:
+Status on 2026-09-27:
 
 1. ~~All gates in §1 measured and recorded in 06 (bench) and 05 (oracle) with our engine included.~~ Done
    (`bench/results/2026-09-12-*`, `oracle/results/2026-09-12-*`).
@@ -294,5 +294,5 @@ Status on 2026-09-12:
    goldens at 650/658 with only the writer's own conventions differing. **Every manual check is closed** (`fixtures/golden/simple-excel/STEPS.md`).
 4. ~~README comparison table backed by the bench numbers; docs site has write/read/streaming/errors pages.~~ Done.
 5. ~~Jetstream adapter notes (08) updated to the final API.~~ Done.
-6. Open: create the GitHub repository and push; first release (`npm run release` derives 0.1.0 from the changelog);
+6. ~~Create the GitHub repository and push; first release.~~ Done: 0.1.0 (2026-09-12) and 0.1.1 (2026-09-26). Open:
    the Jetstream migration itself (08 §5) happens in the Jetstream repo behind a flag.

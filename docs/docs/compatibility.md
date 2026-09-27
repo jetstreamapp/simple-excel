@@ -24,11 +24,12 @@ which is regenerated from the newest oracle run rather than hand-maintained.
 | `sheetjs`           | SheetJS CE 0.20.3 with `cellDates: true, cellText: false`                                                                          |
 | `openpyxl`          | Python openpyxl 3.1 with `rich_text=True`                                                                                          |
 | `calamine`          | Rust calamine via python-calamine with `skip_empty_area=False`                                                                     |
-| `office-kit`        | `@office-kit/xlsx` 0.11 document API                                                                                               |
+| `office-kit`        | `@office-kit/xlsx` document API (0.11.0 in the recorded runs; the repo now pins 0.23)                                              |
 | `office-kit-stream` | `@office-kit/xlsx` streaming API (`loadWorkbookStream` + `iterRows`)                                                               |
 
-Google Sheets, Apple Numbers and Excel on Windows are checked by hand — they cannot be automated locally — and
-that checklist is part of the definition of done for 1.0.
+Google Sheets, Apple Numbers, Excel for Mac and Excel for the web (standing in for Excel on Windows) cannot be
+automated locally, so they were checked by hand on 2026-09-12. All passed; the one expected failure is Drive
+refusing to convert the zip64 variant (below).
 
 ## What the writer has passed
 
@@ -74,7 +75,8 @@ results log live in
 
 ## What the reader has passed
 
-As of the `phase-d-simple-excel-*` oracle runs, this library reads every fixture in the corpus:
+As of the `phase-d-simple-excel-*` oracle runs, this library reads every fixture in the corpus (the six Google
+Sheets, Numbers and Excel-for-the-web re-exports of our goldens added since are covered by the corpus suite):
 
 | Set                      | Result                                                                                                                                                                                                                       |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -129,7 +131,7 @@ bomb, stream into a `WritableStream` — and fails on any difference. It is desc
 | WebKit (Playwright, headless)   | 26.6 (Safari 26.6 UA) | 72/72 checks                                                     |
 | Safari (macOS, by hand)         | —                     | run `node test/browser/run.mjs --serve` and open the printed URL |
 
-Run 2026-09-12 on macOS 15 (Apple silicon). Every check passed in all three: `CompressionStream('deflate-raw')`,
+Run 2026-09-12 on macOS 26 (Apple silicon). Every check passed in all three: `CompressionStream('deflate-raw')`,
 `DecompressionStream`, `WritableStream` and `Blob` are present everywhere, module workers load the library
 unchanged, a `Blob` written in a worker transfers to the page by reference, and the reader returns the same
 values for every trap cell — unicode, a CRLF kept as `\r\n`, a control character, an `_x0041_` literal, `-0`

@@ -5,16 +5,20 @@ goal, and should we build it or adopt `@office-kit/xlsx`?
 
 _Accurate as of 2026-09-12 (branch `chore/xlsx-hand-roll`)._
 
+_Superseded in part: the ADR-008 addendum chose to build the library; the result is `@jetstreamapp/simple-excel`,
+released 0.1.0 (2026-09-12) and 0.1.1 (2026-09-26). The decision and status below are the feasibility-phase
+snapshot; the counts are updated to 2026-09-27._
+
 ## Verdict: GO - realistic, and narrower than it looks
 
 **Building it is realistic.** The expensive parts of a spreadsheet library are the ones Jetstream never
 needs: round-trip editing of existing workbooks, formula evaluation, charts, pivots, number-format rendering.
 Jetstream only (a) writes new workbooks from rows it already holds and (b) reads rows and a few fixed cells
 from workbooks users upload (01). With that scope the engine is a streaming zip writer, an XML tokenizer, a
-row writer/reader, a small styles registry and a date/escape layer - roughly 4,600-5,200 lines (07 A11), with
+row writer/reader, a small styles registry and a date/escape layer - roughly 4,600-5,200 lines (07 §11), with
 the platform providing deflate on every target (ADR-005). No wasm, no CSP change, no dependency.
 
-**The requirements are now written down and testable.** The corpus (37 fixtures, 64 catalogued edge cases,
+**The requirements are now written down and testable.** The corpus (58 fixtures, 95 catalogued edge cases,
 04), the compatibility oracle across eight readers including Excel itself (05) and the benchmark harness (06)
 exist and are committed; they are the acceptance suite for any engine, ours or someone else's.
 
@@ -46,17 +50,17 @@ four-week mark we ship whichever combination passes the gates.
 
 ## Scope guard
 
-Out of scope for v1 (07 A9): formulas, number-format rendering, charts, images, comments, data validation,
+Out of scope for v1 (07 §9): formulas, number-format rendering, charts, images, comments, data validation,
 conditional formatting, workbook editing, encrypted files, `.xls`/`.xlsb`/`.ods`. Data-validation lists for
 load templates and hyperlinks to records are the first v2 candidates.
 
 ## Where things stand
 
-| Area                                                                                                                                                                                    | Status                                                                                 |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Usage inventory (01), format primer (02), library landscape (03), reference architecture (07), migration plan (08), risks (09), ADRs                                                    | written                                                                                |
-| Fixtures: 17 goldens from 11 generators (incl. Excel 365 desktop, Google Sheets, Numbers, Salesforce/POI), 15 edge, 11 hostile, 3 Jetstream assets; manifest with sha256 and provenance | committed; only the Google Sheets CSV-import golden remains to redo (STEPS.md)         |
-| Oracle: SheetJS, office-kit (document + stream), openpyxl, calamine, Open XML SDK validator, LibreOffice, Excel (silent-repair detection)                                               | committed with five result runs (goldens, edge, hostile, user-goldens, csv-imports)    |
-| Benchmark: sheetjs, exceljs, office-kit, write-excel-file; Node runs (baseline, scale, ceiling, shapes, combined) and a Chrome worker run committed                                     | office-kit gate verdict 3 pass / 4 fail; renderer-memory API TODO in `bench/README.md` |
-| office-kit evaluation (10) and ADR-008                                                                                                                                                  | decided: dual track, four-week time-box                                                |
-| Jetstream code changes                                                                                                                                                                  | none (hardening candidates documented only, 08)                                        |
+| Area                                                                                                                                                                                                       | Status                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Usage inventory (01), format primer (02), library landscape (03), reference architecture (07), migration plan (08), risks (09), ADRs                                                                       | written                                                                                |
+| Fixtures: 28 goldens from 13 generators (incl. Excel 365 desktop, Excel for the web, Google Sheets, Numbers, Salesforce/POI), 15 edge, 12 hostile, 3 Jetstream assets; manifest with sha256 and provenance | committed                                                                              |
+| Oracle: SheetJS, office-kit (document + stream), openpyxl, calamine, Open XML SDK validator, LibreOffice, Excel (silent-repair detection)                                                                  | committed with 15 result runs                                                          |
+| Benchmark: sheetjs, exceljs, office-kit, write-excel-file; Node runs (baseline, scale, ceiling, shapes, combined) and a Chrome worker run committed                                                        | office-kit gate verdict 3 pass / 4 fail; renderer-memory API TODO in `bench/README.md` |
+| office-kit evaluation (10) and ADR-008                                                                                                                                                                     | decided: hand-roll (ADR-008 addendum); shipped as `@jetstreamapp/simple-excel` 0.1.0   |
+| Jetstream code changes                                                                                                                                                                                     | none (hardening candidates documented only, 08)                                        |

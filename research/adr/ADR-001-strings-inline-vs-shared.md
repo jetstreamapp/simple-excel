@@ -38,4 +38,6 @@ Two measurements after the library was built changed the default from the bounde
 Fidelity in a mainstream application outweighs a tenth of the platform-deflate write time. Inline also matches
 what Jetstream ships today (`bookSST: false` in SheetJS) and removes the only data structure whose size depended
 on the data. The bounded hybrid stays available as `strings: 'auto'` for very low-cardinality
-exports where size matters more than speed; the goldens pin both shapes.
+exports where size matters more than speed; the goldens pin both shapes. Under `'inline'` no
+`xl/sharedStrings.xml` is written; under `'auto'`/`'shared'` it is written, with exact counts, only when at least one
+string was interned (`src/write/workbook-writer.ts`).
