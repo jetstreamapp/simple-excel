@@ -1,0 +1,378 @@
+{
+  "meta": {
+    "date": "2026-09-27T18:25:19.685Z",
+    "host": "MacBook-Air.local",
+    "label": "audit-fixes-writer",
+    "node": "v24.21.0",
+    "readers": ["validator", "libreoffice", "openpyxl", "calamine", "sheetjs", "simple-excel"],
+    "fixtures": ["golden-canonical-simple-excel", "golden-canonical-simple-excel-inline", "golden-canonical-simple-excel-zip64"]
+  },
+  "results": [
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "validator",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "PASS",
+      "ms": 340,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "libreoffice",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "PASS",
+      "ms": 1721,
+      "exit": 0,
+      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-27-audit-fixes-writer/golden-canonical-simple-excel.libreoffice/canonical.xlsx using filter : Calc Office ",
+      "resaveDiff": {
+        "matches": 588,
+        "cells": 658,
+        "byCategory": {
+          "date-as-text": 3,
+          "time-only-has-date-part": 24,
+          "historical-tz-offset-shift": 10,
+          "escape-sequence-mangled": 5,
+          "temporal-mismatch": 6,
+          "empty-string-vs-blank": 15,
+          "number-precision": 4,
+          "crlf-normalized": 3
+        }
+      }
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "openpyxl",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 122,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "escape-sequence-mangled": 30,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "calamine",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 81,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 662,
+      "matches": 632,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "error-mismatch": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "sheetjs",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 79,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 658,
+      "matches": 613,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6,
+        "crlf-normalized": 3,
+        "string-mismatch": 4
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel",
+      "reader": "simple-excel",
+      "file": "golden/simple-excel/canonical.xlsx",
+      "status": "DIFF",
+      "ms": 66,
+      "readerVersion": "simple-excel 0.1.1",
+      "cells": 658,
+      "matches": 650,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "validator",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "PASS",
+      "ms": 311,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.inline.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "libreoffice",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "PASS",
+      "ms": 1012,
+      "exit": 0,
+      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.inline.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-27-audit-fixes-writer/golden-canonical-simple-excel-inline.libreoffice/canonical.inline.xlsx using ",
+      "resaveDiff": {
+        "matches": 588,
+        "cells": 658,
+        "byCategory": {
+          "date-as-text": 3,
+          "time-only-has-date-part": 24,
+          "historical-tz-offset-shift": 10,
+          "escape-sequence-mangled": 5,
+          "temporal-mismatch": 6,
+          "empty-string-vs-blank": 15,
+          "number-precision": 4,
+          "crlf-normalized": 3
+        }
+      }
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "openpyxl",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 113,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "escape-sequence-mangled": 30,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "calamine",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 72,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 662,
+      "matches": 632,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "error-mismatch": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "sheetjs",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 74,
+      "readerVersion": "sheetjs 0.20.3",
+      "cells": 658,
+      "matches": 613,
+      "byCategory": {
+        "date-as-text": 3,
+        "time-only-has-date-part": 24,
+        "dst-gap-shift-1h": 5,
+        "temporal-mismatch": 6,
+        "crlf-normalized": 3,
+        "string-mismatch": 4
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-inline",
+      "reader": "simple-excel",
+      "file": "golden/simple-excel/canonical.inline.xlsx",
+      "status": "DIFF",
+      "ms": 64,
+      "readerVersion": "simple-excel 0.1.1",
+      "cells": 658,
+      "matches": 650,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "validator",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "PASS",
+      "ms": 318,
+      "exit": 0,
+      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.zip64.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stderr": "",
+      "schemaErrors": 0,
+      "errorsSample": []
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "libreoffice",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "PASS",
+      "ms": 987,
+      "exit": 0,
+      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.zip64.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-27-audit-fixes-writer/golden-canonical-simple-excel-zip64.libreoffice/canonical.zip64.xlsx using fil",
+      "resaveDiff": {
+        "matches": 588,
+        "cells": 658,
+        "byCategory": {
+          "date-as-text": 3,
+          "time-only-has-date-part": 24,
+          "historical-tz-offset-shift": 10,
+          "escape-sequence-mangled": 5,
+          "temporal-mismatch": 6,
+          "empty-string-vs-blank": 15,
+          "number-precision": 4,
+          "crlf-normalized": 3
+        }
+      }
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "openpyxl",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 112,
+      "readerVersion": "openpyxl 3.1.5",
+      "cells": 658,
+      "matches": 620,
+      "byCategory": {
+        "escape-sequence-mangled": 30,
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {
+          "merges": "ok",
+          "autoFilter": "expected A2:C12, got A1:C12",
+          "hyperlink": "missing",
+          "note": "missing",
+          "hiddenRows": "missing",
+          "hiddenColumns": "missing",
+          "freeze": "ok"
+        }
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "calamine",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 70,
+      "readerVersion": "python-calamine 0.8.2",
+      "cells": 662,
+      "matches": 632,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5,
+        "blank-vs-empty-string": 19,
+        "error-mismatch": 3
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "sheetjs",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "ERROR",
+      "ms": 1989,
+      "error": "^ | Error: Unsupported ZIP file | Node.js v24.21.0"
+    },
+    {
+      "fixture": "golden-canonical-simple-excel-zip64",
+      "reader": "simple-excel",
+      "file": "golden/simple-excel/canonical.zip64.xlsx",
+      "status": "DIFF",
+      "ms": 61,
+      "readerVersion": "simple-excel 0.1.1",
+      "cells": 658,
+      "matches": 650,
+      "byCategory": {
+        "date-as-text": 3,
+        "dst-gap-shift-1h": 5
+      },
+      "structural": {
+        "Features": {}
+      },
+      "diffExit": 1
+    }
+  ]
+}
