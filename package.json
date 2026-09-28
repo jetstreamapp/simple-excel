@@ -1,6 +1,6 @@
 {
   "name": "@jetstreamapp/simple-excel",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Streaming, dependency-free xlsx reader and writer for browsers and Node. Built for large files that must open cleanly in Excel, Google Sheets, LibreOffice and Numbers.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.mjs",

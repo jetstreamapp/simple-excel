@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-28
+
 ### Added
 
 - `OpenOptions.onWarning`, with the `ReadWarning` and `ReadWarningCode` types: the reader reports damage it repairs
@@ -102,6 +104,7 @@ All notable changes to this project will be documented in this file.
   2.77 s (1.71 s with `nodeDeflater(1)`), 1,000,000 rows from 45.8 s to 31.9 s, and typed reads of the same
   100,000 rows from 2.10 s to 1.62 s.
 
-[Unreleased]: https://github.com/jetstreamapp/simple-excel/compare/0.1.1...HEAD
+[Unreleased]: https://github.com/jetstreamapp/simple-excel/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/jetstreamapp/simple-excel/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/jetstreamapp/simple-excel/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/jetstreamapp/simple-excel/releases/tag/0.1.0
