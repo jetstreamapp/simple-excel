@@ -14,8 +14,10 @@ export type CellErrorCode = '#NULL!' | '#DIV/0!' | '#VALUE!' | '#REF!' | '#NAME?
 
 /**
  * An Excel error value (`t="e"`). The writer writes the `CellErrorCode` literals as error cells, another `#` code (a
- * newer Excel error such as `#SPILL!`, which the reader can return) as its text, and refuses anything else
- * (EC-ERROR-CODE-UNKNOWN). The reader returns it as a string, an object or null per `OpenOptions.errors`.
+ * newer Excel error such as `#SPILL!`) as its text, and refuses anything else (EC-ERROR-CODE-UNKNOWN). The reader
+ * returns it as a string, an object or null per `OpenOptions.errors`. `error` is typed as the standard codes, but the
+ * reader passes through whatever literal the file holds, so under `errors: 'object'` a newer code (`#SPILL!`,
+ * `#CALC!`, `#FIELD!`, ...) can appear: do not treat `CellErrorCode` as exhaustive when reading.
  */
 export interface CellError {
   readonly error: CellErrorCode;

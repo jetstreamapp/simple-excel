@@ -94,7 +94,9 @@ const workbook = await openWorkbook(file, {
 | `onWarning` | `(warning: ReadWarning) => void` | —          | Told about problems the reader repaired instead of rejecting; see below                                                   |
 
 `errors: 'object'` also changes the static type: the workbook becomes `Workbook<CellValue | CellError>` and row
-values widen to include `{ error: '#N/A' }`.
+values widen to include `{ error: '#N/A' }`. The `error` field holds whatever error literal the file has. Newer Excel
+errors such as `#SPILL!` or `#CALC!` come through as they are, although `CellErrorCode` only lists the standard
+ones, so a `switch` over it needs a default branch.
 
 ### Warnings
 
