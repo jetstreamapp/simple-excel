@@ -31,9 +31,17 @@ const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 409;
 /** Excel truncates or refuses longer font names. */
 const MAX_FONT_NAME_LENGTH = 31;
-/** A control character in a font name is dropped on write and could leave no name at all, so it is refused. */
+/**
+ * A control character in a font name or number format code is dropped on write and could leave nothing behind, so
+ * it is refused (EC-STYLE-FIELD-RANGE).
+ */
 // eslint-disable-next-line no-control-regex -- the control characters are exactly what this looks for
 const CONTROL_CHARACTER = /[\u0000-\u001F\uFFFE\uFFFF]/;
+
+/** Text that would still say something once written: no control characters, and not only unpaired surrogates. */
+function isWritableText(text: string): boolean {
+  return !CONTROL_CHARACTER.test(text) && escapeAttr(text) !== '';
+}
 /** Excel's Format Cells dialog refuses a longer custom number format code. */
 const MAX_NUMFMT_CODE_LENGTH = 255;
 const HORIZONTAL_ALIGNMENTS: ReadonlySet<string> = new Set(['left', 'center', 'right']);
@@ -114,7 +122,7 @@ function validateStyle(style: CellStyle): void {
     }
     if (
       name !== undefined &&
-      !(typeof name === 'string' && name.length > 0 && name.length <= MAX_FONT_NAME_LENGTH && !CONTROL_CHARACTER.test(name))
+      !(typeof name === 'string' && name.length > 0 && name.length <= MAX_FONT_NAME_LENGTH && isWritableText(name))
     ) {
       throw invalidStyle(
         'font.name',
@@ -161,11 +169,11 @@ function validateStyle(style: CellStyle): void {
       throw invalidStyle('alignment.vertical', vertical, `alignment.vertical ${formatValue(vertical)} is not one of top, center, bottom.`);
     }
   }
-  if (typeof numFmt === 'string' && (numFmt.length === 0 || numFmt.length > MAX_NUMFMT_CODE_LENGTH)) {
+  if (typeof numFmt === 'string' && (numFmt.length === 0 || numFmt.length > MAX_NUMFMT_CODE_LENGTH || !isWritableText(numFmt))) {
     throw invalidStyle(
       'numFmt',
       numFmt,
-      `numFmt must be a format code of 1 to ${MAX_NUMFMT_CODE_LENGTH} characters; this one has ${numFmt.length}.`,
+      `numFmt ${formatValue(numFmt)} is not a format code Excel accepts. Use 1 to ${MAX_NUMFMT_CODE_LENGTH} characters and no control characters.`,
     );
   }
   if (numFmt !== undefined && typeof numFmt !== 'string' && typeof numFmt !== 'number') {

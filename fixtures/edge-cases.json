@@ -884,7 +884,7 @@
     "family": "Strings",
     "symptom": "Control characters in a sheet name, title, creator, font name or number format code.",
     "seenIn": "Written raw by simple-excel 0.1.1: LibreOffice refuses the file and openpyxl raises ParseError, while our own reader accepted it.",
-    "expected": "Replace them with _ in sheet names and drop them from other metadata. Cell text keeps the _xHHHH_ encoding (EC-XML-CONTROL-CHARS).",
+    "expected": "Replace them with _ in sheet names, drop them from the title and creator, and refuse a font name or number format code that holds one. Cell text keeps the _xHHHH_ encoding (EC-XML-CONTROL-CHARS).",
     "status": "verified 2026-09-27 (readiness audit)"
   },
   {

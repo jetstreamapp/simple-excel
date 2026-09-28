@@ -1089,7 +1089,8 @@ describe('rows and cells', () => {
     });
     // A font name with a control character is refused outright (EC-STYLE-FIELD-RANGE); an unpaired surrogate is dropped.
     expect(await errorCode(() => workbook.registerStyle({ font: { name: 'Cal\u0002ibri' } }))).toBe('WRITER_STATE');
-    const style = workbook.registerStyle({ font: { name: 'Cal\uD800ibri' }, numFmt: '0.00\u0003' });
+    expect(await errorCode(() => workbook.registerStyle({ numFmt: '0.00\u0003' }))).toBe('WRITER_STATE');
+    const style = workbook.registerStyle({ font: { name: 'Cal\uD800ibri' }, numFmt: '0.00\uD800' });
     const sheet = workbook.addSheet('Acc\u0001ounts\u001F', { header: ['Name\u0001'] });
     await sheet.writeRow(['text with \u0001 control', 1.5], [undefined, style]);
     await sheet.close();

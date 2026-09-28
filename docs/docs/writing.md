@@ -255,7 +255,7 @@ ids: `writeRow`, `columns` and `headerStyle` only accept ids that `registerStyle
 `registerStyle` checks what Excel would otherwise repair or refuse, and throws `WRITER_STATE` naming the field: a
 font size outside 1–409, a font name that is empty, longer than 31 characters or holds a control character, a
 colour that is not `#RRGGBB`, a `fill` without a colour, an alignment or border value outside the lists above, a
-number format code that is empty or longer than 255 characters, a numeric `numFmt` that is not a built-in or
+number format code that is empty, longer than 255 characters or holds a control character, a numeric `numFmt` that is not a built-in or
 registered id, and more than 64,000 styles in one workbook (`EC-STYLE-FIELD-RANGE`). A refused style registers
 nothing and does not affect the workbook.
 
@@ -300,8 +300,9 @@ rest of the workbook.
 sheet at all (`EC-WORKBOOK-NO-SHEETS`), and one whose sheets are all hidden (`EC-ALL-SHEETS-HIDDEN`). When the first
 sheet is hidden, the first visible sheet is the one Excel opens on. `properties.created` must be a valid `Date`
 between the years 1 and 9999, checked when the writer is created (`EC-DOCPROPS-CREATED-RANGE`). Control characters
-in sheet names become `_`, and they are dropped from the title, creator, font names and number format codes, where
-XML cannot carry them (`EC-XML-CONTROL-CHARS-METADATA`); cell text keeps them, encoded as `_xHHHH_`.
+in sheet names become `_` and are dropped from the title and creator, where XML cannot carry them; a font name or
+number format code holding one is refused (`EC-XML-CONTROL-CHARS-METADATA`). Cell text keeps them, encoded as
+`_xHHHH_`.
 
 ## Shared strings
 

@@ -49,6 +49,8 @@ const LARGE_READ_CHUNK_SIZE = 1024 * 1024;
 const LARGE_SOURCE_SIZE = 64 * 1024 * 1024;
 /** How far an entry may inflate past the size its central-directory record declares before we call it a bomb. */
 const DECLARED_SIZE_SLACK_BYTES = 4096;
+/** `read()` trusts a declared size this far for its one up-front allocation; a hostile claim costs no more. */
+const MAX_PREALLOCATED_BYTES = 16 * 1024 * 1024;
 
 const nameDecoder = new TextDecoder('utf-8');
 /** `ignoreBOM` keeps a leading U+FEFF in the output so `readText` strips exactly one, never two. */
@@ -269,9 +271,12 @@ export class ZipReader {
 
   /** Whole entry in memory (small parts only); the CRC is verified. */
   async read(name: string): Promise<Uint8Array> {
-    const entry = this.entry(name);
-    // The declared size is almost always exact, so one allocation up front avoids copying the part twice.
-    let declared: Uint8Array | undefined = entry && entry.uncompressedSize > 0 ? new Uint8Array(entry.uncompressedSize) : undefined;
+    // Closed state, a missing part and the declared-size limit are checked before anything is allocated.
+    const entry = this.readableEntry(name);
+    // The declared size is almost always exact, so one allocation up front avoids copying the part twice. It is only
+    // a claim, though, so the up-front allocation is capped; a larger part collects its chunks and joins them.
+    const preallocated = Math.min(entry.uncompressedSize, MAX_PREALLOCATED_BYTES);
+    let declared: Uint8Array | undefined = preallocated > 0 ? new Uint8Array(preallocated) : undefined;
     const overflow: Uint8Array[] = [];
     let total = 0;
 
@@ -324,7 +329,8 @@ export class ZipReader {
     return this.entries.get(normalized) ?? this.entriesByFoldedName.get(asciiLowerCase(normalized));
   }
 
-  private async *streamEntry(name: string): AsyncGenerator<Uint8Array> {
+  /** The entry to read, after the checks that must come before any work: closed, missing, declared too large. */
+  private readableEntry(name: string): ZipEntry {
     if (this.closed) {
       throw closedError();
     }
@@ -339,6 +345,11 @@ export class ZipReader {
         { part: entry.name, declaredSize: entry.uncompressedSize, maxInflatedBytes: this.limits.maxInflatedBytes },
       );
     }
+    return entry;
+  }
+
+  private async *streamEntry(name: string): AsyncGenerator<Uint8Array> {
+    const entry = this.readableEntry(name);
 
     let dataStart: number;
     try {

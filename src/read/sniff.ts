@@ -25,11 +25,13 @@ const MAX_UTF8_SEQUENCE_TAIL = 3;
  */
 const LEGACY_TEXT_CONTROL_RATIO = 0.02;
 /**
- * The share of UTF-16 code units that must be ASCII. Any two bytes make some code point, so printable code points
- * alone prove nothing; delimited text always has its commas, tabs and line breaks, and binary almost never has a
- * high byte of zero (one unit in 256).
+ * Any two bytes make some code point, so printable code points alone prove nothing in UTF-16. Binary gives itself
+ * away differently: random bytes leave about 3% of units as unpaired surrogates and about 10% in the private-use
+ * area, and patterned bytes produce C0 controls, while real text has none of the first, almost none of the second
+ * and only tab, CR and LF of the third. Script is no signal at all: a CSV of long Japanese fields is almost no ASCII.
  */
-const UTF16_MIN_ASCII_RATIO = 0.05;
+const UTF16_MAX_CONTROL_RATIO = 0.01;
+const UTF16_MAX_PRIVATE_USE_RATIO = 0.02;
 
 /** CFB directory entry names are UTF-16LE, so the stream that marks an encrypted package is searched as bytes. */
 const ENCRYPTED_PACKAGE_MARKER: Uint8Array = utf16leBytes('EncryptedPackage');
@@ -216,44 +218,40 @@ function sniffUtf16(head: Uint8Array, littleEndian: boolean): SniffResult {
   }
   const sampleEnd = Math.min(head.length, contentStart + TEXT_SAMPLE_BYTES);
   let units = 0;
-  let textUnits = 0;
-  let asciiUnits = 0;
+  let controlUnits = 0;
+  let privateUseUnits = 0;
   let pendingHighSurrogate = false;
   for (let index = contentStart; index + 1 < sampleEnd; index += 2) {
     const unit = utf16UnitAt(head, index, littleEndian);
     units++;
     const isLowSurrogate = unit >= 0xdc00 && unit <= 0xdfff;
     if (pendingHighSurrogate) {
-      // The high surrogate is text only when its low half follows.
-      textUnits += isLowSurrogate ? 2 : 0;
       pendingHighSurrogate = false;
       if (isLowSurrogate) {
         continue;
       }
+      // A high surrogate without its low half: text never has one.
+      return 'unknown';
     }
     if (unit >= 0xd800 && unit <= 0xdbff) {
       pendingHighSurrogate = true;
       continue;
     }
-    // C0 and C1 controls (other than the three whitespace ones), lone low surrogates and the two noncharacters are
-    // what binary looks like.
-    const isControl =
-      (unit < 0x20 && !isWhitespaceByte(unit)) || (unit >= 0x7f && unit < 0xa0) || isLowSurrogate || unit === 0xfffe || unit === 0xffff;
-    if (!isControl) {
-      textUnits++;
+    if (isLowSurrogate) {
+      return 'unknown';
     }
-    if (unit < 0x80 && !isControl) {
-      asciiUnits++;
+    // C0 and C1 controls (other than the three whitespace ones) and the two noncharacters.
+    if ((unit < 0x20 && !isWhitespaceByte(unit)) || (unit >= 0x7f && unit < 0xa0) || unit === 0xfffe || unit === 0xffff) {
+      controlUnits++;
+    } else if (unit >= 0xe000 && unit <= 0xf8ff) {
+      privateUseUnits++;
     }
   }
-  // A sample cut in the middle of a surrogate pair still counts the half it has.
-  if (pendingHighSurrogate) {
-    textUnits++;
-  }
+  // A sample cut in the middle of a surrogate pair is not evidence either way.
   if (units === 0) {
     return 'unknown';
   }
-  return textUnits / units >= TEXT_BYTE_RATIO && asciiUnits / units >= UTF16_MIN_ASCII_RATIO ? 'text' : 'unknown';
+  return controlUnits / units <= UTF16_MAX_CONTROL_RATIO && privateUseUnits / units <= UTF16_MAX_PRIVATE_USE_RATIO ? 'text' : 'unknown';
 }
 
 /**

@@ -33,8 +33,8 @@ All notable changes to this project will be documented in this file.
 - An error value outside `CellErrorCode` that is still a `#` code (a newer Excel error such as `#SPILL!`, which the
   reader can return) is written as its text instead of as an error cell Excel would repair.
 - A `Date` from another realm is accepted as a cell value and as `properties.created`.
-- Control characters in sheet names become `_`; in the title, creator and number format codes they are dropped, and a
-  font name holding one is refused.
+- Control characters in sheet names become `_` and are dropped from the title and creator; a font name or number
+  format code holding one is refused.
 - A serial past 9999-12-31 in a date-formatted cell reads as a number, and a `Date` after 9999 is written as ISO text.
 - `sniff` classifies Windows-1252, Shift-JIS and UTF-16 (with a byte-order mark) text as `'text'`.
 - `engines.node` is `>=20.12`, the first Node whose `CompressionStream` and `DecompressionStream` accept `deflate-raw`.
@@ -55,6 +55,8 @@ All notable changes to this project will be documented in this file.
   `workbook.close()` throws `ABORTED` for every kind of source.
 - A numeric `<v>` of only whitespace read as 0, radix-prefixed text such as `0x1A` read as a number, and a cell
   reference past column XFD wrapped into the next column (it now fails with `LIMIT_EXCEEDED`).
+- Reading a part whose header declared a huge uncompressed size allocated that much memory before the size limit
+  was checked; the limit now comes first and the up-front allocation is capped at 16 MiB.
 - A test that failed in time zones observing summer time on the day it ran.
 
 ## [0.1.1] - 2026-09-26

@@ -482,6 +482,28 @@ describe('ZipReader.stream', () => {
     expect((await reader.readText('xl/workbook.xml')).includes('<workbook')).toBe(true);
   });
 
+  it('read() checks a declared size against the cap before allocating anything (EC-ZIP-BOMB)', async () => {
+    const archive = buildZip([{ name: 'xl/workbook.xml', data: '<workbook/>' }]);
+    const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+    const centralStart = view.getUint32(archive.byteLength - 6, true);
+    view.setUint32(centralStart + 24, 0xf000_0000, true); // claim 3.75 GiB uncompressed
+    const reader = await ZipReader.open(sourceFrom(archive), DEFAULT_LIMITS);
+    const arrayBuffersBefore = process.memoryUsage().arrayBuffers;
+    await expect(reader.read('xl/workbook.xml')).rejects.toMatchObject({ name: 'XlsxError', code: 'ZIP_BOMB' });
+    // Node allocates lazily, so a 3.75 GiB buffer would not fail here; it would show up in the accounting instead.
+    expect(process.memoryUsage().arrayBuffers - arrayBuffersBefore).toBeLessThan(64 * MIB);
+    await reader.close();
+    await expect(reader.read('xl/workbook.xml'), 'closed is checked first').rejects.toMatchObject({ code: 'ABORTED' });
+  });
+
+  it('read() returns a part larger than its up-front allocation intact', async () => {
+    const data = repetitiveXml(20 * MIB);
+    const reader = await ZipReader.open(sourceFrom(buildZip([{ name: 'xl/sharedStrings.xml', data }])), DEFAULT_LIMITS);
+    const bytes = await reader.read('xl/sharedStrings.xml');
+    expect(bytes.byteLength).toBe(new TextEncoder().encode(data).byteLength);
+    expect(new TextDecoder().decode(bytes.subarray(bytes.byteLength - 64))).toBe(data.slice(-64));
+  });
+
   it('streams the same entry in flat memory when the cap allows it', async () => {
     const reader = await openFixture('hostile-zip-bomb-30mb-sheet', { ...DEFAULT_LIMITS, maxInflatedBytes: 64 * MIB });
     const { total, largestChunk, count } = await collect(reader.stream('xl/worksheets/sheet1.xml'));

@@ -114,13 +114,19 @@ describe('sniff', () => {
     expect(sniff(utf16(' <?xml version="1.0"?><Workbook/>', true))).toBe('xml');
     expect(sniff(utf16('<HTML><table></table></HTML>', false))).toBe('html');
     expect(sniff(bytes(0xff, 0xfe))).toBe('empty');
-    // A byte-order mark in front of binary does not make it text.
+    // Long fields in a non-Latin script are almost no ASCII, and still text.
+    expect(sniff(utf16(`${'東京都千代田区丸の内一丁目'.repeat(40)}\n`, true))).toBe('text');
+    expect(sniff(utf16(`名前,住所\n${'北京市海淀区中关村大街'.repeat(40)}\n`, false))).toBe('text');
+    // A byte-order mark in front of binary does not make it text when the units say binary: control characters,
+    // unpaired surrogates or private-use code points.
     const binary = new Uint8Array(512);
     binary.set([0xff, 0xfe], 0);
     for (let i = 2; i < binary.length; i++) {
-      binary[i] = (i * 31) % 32;
+      binary[i] = i % 2 === 0 ? (i * 7) % 32 : 0;
     }
     expect(sniff(binary)).toBe('unknown');
+    const privateUse = utf16('\uE000\uE123\uF8FF'.repeat(40), true);
+    expect(sniff(privateUse)).toBe('unknown');
     const random = new Uint8Array(512);
     random.set([0xfe, 0xff], 0);
     for (let i = 2; i < random.length; i++) {

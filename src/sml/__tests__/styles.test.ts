@@ -232,6 +232,13 @@ describe('StyleRegistry validation (EC-STYLE-FIELD-RANGE)', () => {
     }
   });
 
+  it('refuses a number format code or font name that holds a control character or would be written empty', () => {
+    for (const numFmt of ['\u0007', '0.00\u0007', '\uD800', '\uDC00\uD800']) {
+      expect(refusedField({ numFmt }), JSON.stringify(numFmt)).toBe('numFmt');
+    }
+    expect(refusedField({ font: { name: '\uD800' } })).toBe('font.name');
+  });
+
   it('refuses a font name that is empty, longer than 31 characters, not text or holds a control character', () => {
     for (const name of ['', 'x'.repeat(32), 42, '\u0001', 'Arial\u0007', 'Tab\tName']) {
       expect(refusedField({ font: { name } }), String(name)).toBe('font.name');
@@ -326,9 +333,9 @@ describe('StyleRegistry date styles (EC-DATE-STYLE-MERGE)', () => {
 });
 
 describe('metadata escaping (EC-XML-CONTROL-CHARS-METADATA)', () => {
-  it('drops characters XML forbids from number format codes and unpaired surrogates from font names', () => {
+  it('drops unpaired surrogates from number format codes and font names', () => {
     const registry = new StyleRegistry();
-    registry.register({ font: { name: 'Ari\uD800al' }, numFmt: '0.00\u0007" units\uD800"' });
+    registry.register({ font: { name: 'Ari\uD800al' }, numFmt: '0.00" units\uD800"' });
     const xml = registry.toXml();
     expect(xml).toContain('<name val="Arial"/>');
     expect(xml).toContain('formatCode="0.00&quot; units&quot;"');
