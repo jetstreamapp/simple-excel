@@ -49,6 +49,8 @@ const LARGE_READ_CHUNK_SIZE = 1024 * 1024;
 const LARGE_SOURCE_SIZE = 64 * 1024 * 1024;
 /** How far an entry may inflate past the size its central-directory record declares before we call it a bomb. */
 const DECLARED_SIZE_SLACK_BYTES = 4096;
+/** `read()` trusts a declared size this far for its one up-front allocation; a hostile claim costs no more. */
+const MAX_PREALLOCATED_BYTES = 16 * 1024 * 1024;
 
 const nameDecoder = new TextDecoder('utf-8');
 /** `ignoreBOM` keeps a leading U+FEFF in the output so `readText` strips exactly one, never two. */
@@ -69,6 +71,47 @@ function normalizeEntryName(name: string): string {
     normalized = normalized.slice(start);
   }
   return normalized;
+}
+
+/**
+ * OPC part names compare ASCII case-insensitively (ECMA-376 Part 2, 6.2.2.3), so `xl/SharedStrings.xml` answers to a
+ * relationship that says `sharedStrings.xml`. Only A-Z fold: a Unicode-aware `toLowerCase` would equate names the
+ * standard keeps apart.
+ */
+function asciiLowerCase(name: string): string {
+  let index = 0;
+  while (index < name.length) {
+    const code = name.charCodeAt(index);
+    if (code >= 0x41 && code <= 0x5a) {
+      break;
+    }
+    index++;
+  }
+  if (index === name.length) {
+    return name;
+  }
+  let lowered = name.slice(0, index);
+  for (; index < name.length; index++) {
+    const code = name.charCodeAt(index);
+    lowered += code >= 0x41 && code <= 0x5a ? String.fromCharCode(code + 0x20) : name.charAt(index);
+  }
+  return lowered;
+}
+
+/** First entry wins for each folded name; the exact name, which `entries` keys by, is always tried first. */
+function foldedIndex(entries: ReadonlyMap<string, ZipEntry>): ReadonlyMap<string, ZipEntry> {
+  const index = new Map<string, ZipEntry>();
+  for (const [name, entry] of entries) {
+    const folded = asciiLowerCase(name);
+    if (!index.has(folded)) {
+      index.set(folded, entry);
+    }
+  }
+  return index;
+}
+
+function closedError(): XlsxError {
+  return new XlsxError('ABORTED', 'This workbook was closed. Open it again to read from it.');
 }
 
 function readUint64(view: DataView, offset: number): number {
@@ -179,15 +222,20 @@ function createChunkChannel(): ChunkChannel {
  * for its own name/extra lengths (they may differ from the central copy).
  */
 export class ZipReader {
+  /** Keyed by the exact (normalized) entry name. `has`, `stream`, `read` and `readText` also match without case. */
   readonly entries: ReadonlyMap<string, ZipEntry>;
 
   private readonly source: RandomAccessSource;
   private readonly limits: ZipReaderLimits;
+  /** `entries` keyed by ASCII-lower-cased name: the fallback when a part name's case does not match (EC-PART-NAME-CASE). */
+  private readonly entriesByFoldedName: ReadonlyMap<string, ZipEntry>;
+  private closed = false;
 
   private constructor(source: RandomAccessSource, limits: ZipReaderLimits, entries: ReadonlyMap<string, ZipEntry>) {
     this.source = source;
     this.limits = limits;
     this.entries = entries;
+    this.entriesByFoldedName = foldedIndex(entries);
   }
 
   static async open(source: RandomAccessSource, limits: ZipReaderLimits): Promise<ZipReader> {
@@ -210,7 +258,7 @@ export class ZipReader {
   }
 
   has(name: string): boolean {
-    return this.entries.has(normalizeEntryName(name));
+    return this.entry(name) !== undefined;
   }
 
   /**
@@ -223,9 +271,12 @@ export class ZipReader {
 
   /** Whole entry in memory (small parts only); the CRC is verified. */
   async read(name: string): Promise<Uint8Array> {
-    const entry = this.entries.get(normalizeEntryName(name));
-    // The declared size is almost always exact, so one allocation up front avoids copying the part twice.
-    let declared: Uint8Array | undefined = entry && entry.uncompressedSize > 0 ? new Uint8Array(entry.uncompressedSize) : undefined;
+    // Closed state, a missing part and the declared-size limit are checked before anything is allocated.
+    const entry = this.readableEntry(name);
+    // The declared size is almost always exact, so one allocation up front avoids copying the part twice. It is only
+    // a claim, though, so the up-front allocation is capped; a larger part collects its chunks and joins them.
+    const preallocated = Math.min(entry.uncompressedSize, MAX_PREALLOCATED_BYTES);
+    let declared: Uint8Array | undefined = preallocated > 0 ? new Uint8Array(preallocated) : undefined;
     const overflow: Uint8Array[] = [];
     let total = 0;
 
@@ -260,12 +311,30 @@ export class ZipReader {
     return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   }
 
+  /**
+   * Release the source. Reading anything afterwards, including a stream that was still open, fails with
+   * `XlsxError('ABORTED')` whatever kind of source it is, rather than with whatever the closed source throws.
+   */
   async close(): Promise<void> {
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
     await this.source.close?.();
   }
 
-  private async *streamEntry(name: string): AsyncGenerator<Uint8Array> {
-    const entry = this.entries.get(normalizeEntryName(name));
+  /** The exact name first, then the same name in any ASCII case. */
+  private entry(name: string): ZipEntry | undefined {
+    const normalized = normalizeEntryName(name);
+    return this.entries.get(normalized) ?? this.entriesByFoldedName.get(asciiLowerCase(normalized));
+  }
+
+  /** The entry to read, after the checks that must come before any work: closed, missing, declared too large. */
+  private readableEntry(name: string): ZipEntry {
+    if (this.closed) {
+      throw closedError();
+    }
+    const entry = this.entry(name);
     if (!entry) {
       throw new XlsxError('NOT_XLSX', `missing part ${name}`, { part: name });
     }
@@ -276,8 +345,18 @@ export class ZipReader {
         { part: entry.name, declaredSize: entry.uncompressedSize, maxInflatedBytes: this.limits.maxInflatedBytes },
       );
     }
+    return entry;
+  }
 
-    const dataStart = await this.findEntryData(entry);
+  private async *streamEntry(name: string): AsyncGenerator<Uint8Array> {
+    const entry = this.readableEntry(name);
+
+    let dataStart: number;
+    try {
+      dataStart = await this.findEntryData(entry);
+    } catch (error) {
+      throw this.closed ? closedError() : error;
+    }
     const declaredCeiling = entry.uncompressedSize + DECLARED_SIZE_SLACK_BYTES;
     const channel = createChunkChannel();
     let inflatedBytes = 0;
@@ -304,6 +383,10 @@ export class ZipReader {
         let position = dataStart;
         let remaining = entry.compressedSize;
         while (remaining > 0) {
+          // Every source kind stops the same way, an in-memory one included.
+          if (this.closed) {
+            throw closedError();
+          }
           const wanted = Math.min(chunkSize, remaining);
           const compressed = await readExactFrom(this.source, position, wanted);
           position += wanted;
@@ -320,7 +403,8 @@ export class ZipReader {
         }
         channel.close();
       } catch (error) {
-        channel.fail(error);
+        // A source closed under a running read fails in its own way (a file handle says EBADF); report the cause.
+        channel.fail(this.closed ? closedError() : error);
       }
     })();
 
@@ -329,6 +413,9 @@ export class ZipReader {
         const chunk = await channel.receive();
         if (chunk === undefined) {
           return;
+        }
+        if (this.closed) {
+          throw closedError();
         }
         yield chunk;
       }

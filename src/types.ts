@@ -12,7 +12,13 @@ export type CellValue = string | number | boolean | Date | null;
 
 export type CellErrorCode = '#NULL!' | '#DIV/0!' | '#VALUE!' | '#REF!' | '#NAME?' | '#NUM!' | '#N/A' | '#GETTING_DATA';
 
-/** An Excel error value (`t="e"`). Written as-is; read back as a string, an object or null per `OpenOptions.errors`. */
+/**
+ * An Excel error value (`t="e"`). The writer writes the `CellErrorCode` literals as error cells, another `#` code (a
+ * newer Excel error such as `#SPILL!`) as its text, and refuses anything else (EC-ERROR-CODE-UNKNOWN). The reader
+ * returns it as a string, an object or null per `OpenOptions.errors`. `error` is typed as the standard codes, but the
+ * reader passes through whatever literal the file holds, so under `errors: 'object'` a newer code (`#SPILL!`,
+ * `#CALC!`, `#FIELD!`, ...) can appear: do not treat `CellErrorCode` as exhaustive when reading.
+ */
 export interface CellError {
   readonly error: CellErrorCode;
 }
@@ -89,12 +95,14 @@ export interface CellStyle {
     readonly italic?: boolean;
     readonly underline?: boolean;
     readonly strike?: boolean;
+    /** Points, 1 to 409. */
     readonly size?: number;
     /** `#RRGGBB` */
     readonly color?: string;
+    /** 1 to 31 characters. */
     readonly name?: string;
   };
-  /** Solid fill only. `#RRGGBB` */
+  /** Solid fill only; `color` (`#RRGGBB`) is required. */
   readonly fill?: { readonly color: string };
   readonly border?:
     | BorderLineStyle
@@ -111,7 +119,10 @@ export interface CellStyle {
     readonly vertical?: 'top' | 'center' | 'bottom';
     readonly wrapText?: boolean;
   };
-  /** A number format code (`'0.00'`, `'yyyy-mm-dd'`) or a built-in numFmt id. */
+  /**
+   * A number format code of 1 to 255 characters (`'0.00'`, `'yyyy-mm-dd'`) or a built-in numFmt id (an integer
+   * 0-163). `registerStyle` validates every field and throws `WRITER_STATE` naming the one it refused.
+   */
   readonly numFmt?: string | number;
 }
 
@@ -128,9 +139,11 @@ export interface SharedStringBudget {
   readonly maxLength?: number;
 }
 
+/** Document properties. Characters XML 1.0 forbids (control characters, unpaired surrogates) are dropped. */
 export interface WorkbookProperties {
   readonly creator?: string;
   readonly title?: string;
+  /** A valid Date in the years 1-9999 (UTC); anything else makes `createWorkbookWriter` throw `WRITER_STATE`. */
   readonly created?: Date;
 }
 
@@ -171,8 +184,13 @@ export interface WorkbookWriterOptions {
   readonly date1904?: boolean;
   /** Cells over 32,767 characters: truncate (default, with `truncationSuffix`) or throw `CELL_TOO_LONG`. */
   readonly cellOverflow?: 'truncate' | 'throw';
-  /** Default `'...(truncated)'`. */
+  /** Default `'...(truncated)'`. The truncated text plus the suffix is at most 32,767 UTF-16 units. */
   readonly truncationSuffix?: string;
+  /**
+   * Called once, when `close()` has finished the file, with the number of cells truncated across the whole workbook.
+   * Not called when nothing was truncated (or with `cellOverflow: 'throw'`).
+   * It runs after the file is complete and the sink has closed; an exception it throws still rejects `close()`.
+   */
   readonly onCellTruncated?: (count: number) => void;
   /** Called every 5,000 rows and at each sheet close. */
   readonly onProgress?: (progress: WriteProgress) => void;
@@ -181,23 +199,32 @@ export interface WorkbookWriterOptions {
 }
 
 export interface ColumnOptions {
-  /** Width in character units (Excel's column width). */
+  /**
+   * Width in character units (Excel's column width). Widths past Excel's maximum of 255 are clamped to 255; a NaN,
+   * negative or infinite width makes `addSheet` throw `WRITER_STATE`.
+   */
   readonly width?: number;
   readonly hidden?: boolean;
+  /** A registered style id (from `registerStyle`); anything else makes `addSheet` throw `WRITER_STATE`. */
   readonly style?: StyleId;
 }
 
 export interface SheetOptions {
   /** Written as row 1 with `headerStyle` (bold by default). */
   readonly header?: readonly CellInput[];
-  /** `false` writes the header unstyled. */
+  /** A registered style id, or `false` to write the header unstyled. */
   readonly headerStyle?: StyleId | false;
   readonly columns?: readonly ColumnOptions[];
   readonly freeze?: { readonly rows?: number; readonly cols?: number };
   /** AutoFilter over the header row and all data columns. */
   readonly autoFilter?: boolean;
+  /** Hidden sheets are allowed as long as at least one sheet in the workbook stays visible. */
   readonly hidden?: boolean;
-  /** Enables `<dimension>` and lets zip64 sizing be decided up-front. Data rows only (excludes the header). */
+  /**
+   * Expected number of data rows (excluding the header): a hint that only decides up front whether the worksheet
+   * part needs zip64 (see `zip64: 'auto'`). Writing more or fewer rows is fine, and it never becomes a `<dimension>`
+   * element. Must be a non-negative safe integer, or `addSheet` throws `WRITER_STATE`.
+   */
   readonly rowCount?: number;
 }
 
@@ -219,10 +246,20 @@ export interface SheetWriter {
   readonly name: string;
   /** 1-based index of the next row that `writeRow` will produce. */
   readonly nextRow: number;
-  /** Write one row. `styles` is one id for every cell or one id per cell (undefined = default). */
+  /**
+   * Write one row. `values` must be an array; `styles` is one id for every cell or one id per cell (undefined =
+   * default), each one a registered style id. A row that is not an array, an unsupported value (plain object,
+   * function, symbol, ...), an unknown error code or an unregistered style id rejects with `WRITER_STATE` naming the
+   * sheet and cell, and - like any failure while writing - aborts the sink and fails every later call with the same
+   * error.
+   */
   writeRow(values: readonly CellInput[], styles?: StyleId | readonly (StyleId | undefined)[]): Promise<void>;
   writeRows(rows: Iterable<readonly CellInput[]> | AsyncIterable<readonly CellInput[]>): Promise<void>;
-  /** Register a merged range in A1 notation (`'A1:C1'`). Emitted at close. */
+  /**
+   * Register a merged range in A1 notation (`'A1:C1'`, either case). Validated immediately: a malformed range, a
+   * single cell, a range outside the grid, or one that overlaps or repeats a range already merged on this sheet
+   * throws `WRITER_STATE` and is not registered. Emitted at close.
+   */
   merge(range: string): void;
   close(): Promise<SheetWriteSummary>;
 }
@@ -231,7 +268,11 @@ export interface WorkbookWriter {
   /** One sheet may be open at a time; close it before adding the next. */
   addSheet(name: string, options?: SheetOptions): SheetWriter;
   registerStyle(style: CellStyle): StyleId;
-  /** Finalize: shared strings, styles, workbook parts, central directory; closes the sink. */
+  /**
+   * Finalize: shared strings, styles, workbook parts, central directory; closes the sink. Rejects with
+   * `WRITER_STATE` and aborts the sink when no sheet was added or every sheet is hidden. After any earlier failure it
+   * rejects with that original error.
+   */
   close(): Promise<WorkbookWriteResult>;
   abort(reason?: unknown): Promise<void>;
 }
@@ -255,6 +296,25 @@ export interface ReadLimits {
   readonly maxTextLength?: number;
 }
 
+/**
+ * What a `ReadWarning` is about:
+ * - `'SST_INDEX_OUT_OF_RANGE'`: a `t="s"` cell points past the end of the shared-string table. It reads as `''`,
+ *   which is what Excel shows (EC-SST-INDEX-OUT-OF-RANGE).
+ * - `'SHARED_STRINGS_MISSING'`: a `t="s"` cell in a workbook that has no shared-string part at all. It reads as `''`
+ *   (EC-SST-ABSENT-INLINE-ONLY).
+ */
+export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING';
+
+/** Something a sheet says that Excel tolerates and the reader repaired, reported through `OpenOptions.onWarning`. */
+export interface ReadWarning {
+  readonly code: ReadWarningCode;
+  readonly message: string;
+  /** Name of the sheet being read. */
+  readonly sheet?: string;
+  /** A1 reference of the first cell that triggered the warning. */
+  readonly ref?: string;
+}
+
 export interface OpenOptions {
   /**
    * `'local'` (default): `new Date(y, m, d, h, mi, s, ms)` from the serial's wall-clock components (what SheetJS +
@@ -265,6 +325,12 @@ export interface OpenOptions {
   readonly errors?: 'string' | 'object' | 'null';
   readonly limits?: ReadLimits;
   readonly signal?: AbortSignal;
+  /**
+   * Called when a sheet holds something the reader repaired instead of rejecting (see `ReadWarningCode`). Each code
+   * is reported at most once per sheet, for the first cell that hit it, however many cells do; the read goes on
+   * either way. Without a callback nothing is collected.
+   */
+  readonly onWarning?: (warning: ReadWarning) => void;
 }
 
 export interface SheetInfo {
@@ -288,8 +354,23 @@ export interface RowsOptions {
   readonly formulas?: 'value' | 'text';
 }
 
+/**
+ * Object mode, the `sheet_to_json` contract. Columns are named from the header row, starting at the first column of
+ * the sheet's `<dimension>` when it declares one (column A otherwise) and running to the wider of the dimension and
+ * the header row. A data row with a value outside those columns still keeps it, under a blank-header name
+ * (`__EMPTY`, ...). `toObjects()` gives every record every column, filling the ones named after a record was built
+ * with `defval`; streaming `rows({ mode: 'object' })` cannot revisit records it already yielded, so there a column
+ * first named by a later row is missing from the records before it.
+ */
 export interface ObjectRowsOptions {
-  /** 1-based row holding the headers. Default `startRow`. */
+  /**
+   * 1-based row holding the headers. By default the header row is the first row at or after `startRow` that holds a
+   * value (an empty-string or error cell counts; a row of blank cells does not), so a sheet whose headers sit below
+   * blank rows still gets them (EC-HEADER-ROW-FIRST-NONEMPTY). That matches SheetJS whenever the sheet's
+   * `<dimension>` is accurate; when it starts at a formatted but empty row, SheetJS names every column `__EMPTY` and
+   * this finds the first row with values instead. Data starts on the next row. Given explicitly, that exact row is
+   * the header row even when it is blank.
+   */
   readonly headerRow?: number;
   /** Value for cells that are absent from a row. Default `''`. */
   readonly defval?: CellValue;

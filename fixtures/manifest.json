@@ -859,11 +859,11 @@
     {
       "id": "golden-canonical-simple-excel",
       "path": "golden/simple-excel/canonical.xlsx",
-      "bytes": 10768,
-      "sha256": "88e878456567a5469bcd223ec3b36f85553d1b0cb8ec38055794a1056a6ec0c2",
+      "bytes": 10715,
+      "sha256": "5e73adddba1ee9b7313c2901354cb40bfa45862964cdc7f0bc9f9c4583434c19",
       "generator": {
         "name": "simple-excel",
-        "version": "0.0.0",
+        "version": "0.2.0-dev",
         "os": "macOS"
       },
       "provenance": "script:generators/canonical-simple-excel.mjs",
@@ -876,11 +876,11 @@
     {
       "id": "golden-canonical-simple-excel-inline",
       "path": "golden/simple-excel/canonical.inline.xlsx",
-      "bytes": 10803,
-      "sha256": "d61f9f9b372fcb6ceb7ff974de6d89192d2ceafb691a67a0350e5998b603e0a5",
+      "bytes": 10747,
+      "sha256": "e8d70c9f2260b2bf985877b0aaf760e46fa7a0d72405a09798c11b38540c3440",
       "generator": {
         "name": "simple-excel",
-        "version": "0.0.0",
+        "version": "0.2.0-dev",
         "os": "macOS"
       },
       "provenance": "script:generators/canonical-simple-excel.mjs",
@@ -893,11 +893,11 @@
     {
       "id": "golden-canonical-simple-excel-zip64",
       "path": "golden/simple-excel/canonical.zip64.xlsx",
-      "bytes": 11124,
-      "sha256": "a05ebebe27b3cb091c219398a153084919230b396d1f68f2e14907c14e8bd2ab",
+      "bytes": 11047,
+      "sha256": "e01c6dfec780efbe0d2277ab2835e7b0cf9be626dc633867da1a7ab7bd5aea9e",
       "generator": {
         "name": "simple-excel",
-        "version": "0.0.0",
+        "version": "0.2.0-dev",
         "os": "macOS"
       },
       "provenance": "script:generators/canonical-simple-excel.mjs",
@@ -1024,6 +1024,57 @@
       "expected": "canonical/canonical.json",
       "generated": false,
       "notes": "Excel for the web re-download of golden-canonical-simple-excel-inline (the inline-strings variant); looked identical to the shared-strings one."
+    },
+    {
+      "id": "golden-header-offset-sheetjs",
+      "path": "golden/header-offset/sheetjs.xlsx",
+      "bytes": 17940,
+      "sha256": "346db671e218ac4a140114dc40e8f303f00ed773fb0e5fae814b142e3fa6d1ca",
+      "generator": {
+        "name": "SheetJS",
+        "version": "0.20.3",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/header-offset.mjs",
+      "license": "MIT",
+      "tags": ["kind:golden", "generator:sheetjs", "EC-HEADER-ROW-FIRST-NONEMPTY", "EC-HEADER-DIMENSION-START-COLUMN"],
+      "expected": null,
+      "generated": false,
+      "notes": "Header row not on row 1: sheet Row2Headers has a blank row 1 (dimension A2:D5); sheet OffsetB3 has blank rows 1-2 and an empty column A (dimension B3:E6). Parity with sheet_to_json checks the header-row default."
+    },
+    {
+      "id": "golden-header-offset-openpyxl",
+      "path": "golden/header-offset/openpyxl.xlsx",
+      "bytes": 5685,
+      "sha256": "788c534508259a3d72889af076718fa3f7213212a88e241723cd2aac90484f03",
+      "generator": {
+        "name": "openpyxl",
+        "version": "3.1.5",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/header-offset.mjs",
+      "license": "MIT",
+      "tags": ["kind:golden", "generator:openpyxl", "EC-HEADER-ROW-FIRST-NONEMPTY", "EC-HEADER-DIMENSION-START-COLUMN"],
+      "expected": null,
+      "generated": false,
+      "notes": "Header row not on row 1: sheet Row2Headers has a blank row 1 (dimension A2:D5); sheet OffsetB3 has blank rows 1-2 and an empty column A (dimension B3:E6). Parity with sheet_to_json checks the header-row default."
+    },
+    {
+      "id": "golden-header-offset-libreoffice",
+      "path": "golden/header-offset/libreoffice.xlsx",
+      "bytes": 5914,
+      "sha256": "7a867640a0122baf15ae4984a9a54940a2ae0ece4e87344bca57b4eafec9b5b6",
+      "generator": {
+        "name": "LibreOffice",
+        "version": "26.2.5.2",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/header-offset.mjs",
+      "license": "MIT",
+      "tags": ["kind:golden", "generator:libreoffice", "EC-HEADER-ROW-FIRST-NONEMPTY", "EC-HEADER-DIMENSION-START-COLUMN"],
+      "expected": null,
+      "generated": false,
+      "notes": "One sheet converted from a CSV whose first two lines are blank and whose first column is empty (dimension B3:E6)."
     }
   ]
 }

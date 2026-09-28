@@ -164,8 +164,22 @@ function relIdNumber(relId: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/** ISO 8601 to the second, the way every producer writes `dcterms:created` (fractions make some readers stumble). */
+/**
+ * ISO 8601 to the second, the way every producer writes `dcterms:created` (fractions make some readers stumble).
+ * Only years 1-9999 have that four-digit form; `toISOString` spells the rest `+010000-...` or throws, so they are
+ * refused here rather than written as a timestamp openpyxl rejects (EC-DOCPROPS-CREATED-RANGE).
+ */
 function w3cdtf(date: Date): string {
+  const year = date.getUTCFullYear();
+  if (!(year >= 1 && year <= 9999)) {
+    throw new XlsxError(
+      'WRITER_STATE',
+      `${String(date)} cannot be written as a document timestamp; use a date between the years 1 and 9999.`,
+      {
+        date,
+      },
+    );
+  }
   return `${date.toISOString().slice(0, 19)}Z`;
 }
 

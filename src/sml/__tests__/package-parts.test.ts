@@ -160,6 +160,35 @@ describe('coreXml', () => {
     expect(xml).toContain('<dcterms:created xsi:type="dcterms:W3CDTF">2020-01-02T03:04:05Z</dcterms:created>');
     expect(xml).toContain('<dcterms:modified xsi:type="dcterms:W3CDTF">2026-09-12T15:04:05Z</dcterms:modified>');
   });
+
+  it('EC-XML-CONTROL-CHARS-METADATA: drops characters XML forbids from the title and creator', () => {
+    const xml = coreXml({ creator: 'Ada\u0000 Lovelace\uD800', title: 'Q3\u0001 report\uFFFF' }, now);
+    expect(xml).toContain('<dc:title>Q3 report</dc:title><dc:creator>Ada Lovelace</dc:creator>');
+  });
+
+  it('EC-DOCPROPS-CREATED-RANGE: refuses a timestamp without a four-digit year instead of writing a bad one', () => {
+    const tenThousand = new Date(Date.UTC(10_000, 0, 1));
+    const negative = new Date(Date.UTC(2000, 0, 1));
+    negative.setUTCFullYear(-1);
+    const yearZero = new Date(Date.UTC(2000, 0, 1));
+    yearZero.setUTCFullYear(0);
+    for (const created of [new Date(Number.NaN), tenThousand, negative, yearZero]) {
+      expect(() => coreXml({ created }, now), String(created)).toThrowError(expect.objectContaining({ code: 'WRITER_STATE' }));
+    }
+    const yearOne = new Date(Date.UTC(2000, 0, 1));
+    yearOne.setUTCFullYear(1);
+    expect(coreXml({ created: yearOne }, now)).toContain(
+      '<dcterms:created xsi:type="dcterms:W3CDTF">0001-01-01T00:00:00Z</dcterms:created>',
+    );
+  });
+});
+
+describe('workbookXml and appXml metadata (EC-XML-CONTROL-CHARS-METADATA)', () => {
+  it('never writes a raw control character, even for a name that skipped sanitizing', () => {
+    const sheets = [sheet({ name: 'Bad\u0001Name\uDC00' })];
+    expect(workbookXml(sheets, false)).toContain('<sheet name="BadName" sheetId="1" r:id="rId1"/>');
+    expect(appXml(sheets)).toContain('<vt:lpstr>BadName</vt:lpstr>');
+  });
 });
 
 describe('appXml', () => {

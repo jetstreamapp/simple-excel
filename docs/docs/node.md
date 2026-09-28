@@ -123,7 +123,8 @@ both do the job. Reach for `/node` when you want:
 
 ## Node version
 
-`package.json` declares `engines.node >= 20`. Node's own `CompressionStream` only accepts the `deflate-raw`
-format from 21.2, so on Node 20 the writer detects that and falls back to stored (uncompressed) parts — pass
-`nodeDeflater()`, which goes through zlib and works everywhere, to keep files compressed. That is the right default for server-side writes regardless, since it is the only way
-to choose a compression level.
+`package.json` declares `engines.node >= 20.12`, because Node's `CompressionStream` and `DecompressionStream` only
+accept the `deflate-raw` format from 20.12 (21.2 on the 21 line). On an older Node the writer detects that and
+falls back to stored (uncompressed) parts, and `openWorkbook` fails with `UNSUPPORTED_ENVIRONMENT` because it cannot
+inflate entries. `nodeDeflater()`, which goes through zlib, keeps written files compressed anywhere, and it is the
+right default for server-side writes regardless, since it is the only way to choose a compression level.

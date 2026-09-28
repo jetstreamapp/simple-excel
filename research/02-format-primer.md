@@ -308,7 +308,7 @@ Index `<v>` values must be `< uniqueCount`; the SST can appear anywhere in the z
 
 ### 4.2 Inline strings and `t="str"`
 
-`<c t="inlineStr"><is><t>text</t></is></c>` (`<is>` accepts the same rich-text children as `<si>`). This is the only string form a single-pass streaming writer can emit without buffering the whole SST. Excel reads inline strings and converts them to SST on save. Old consumers that ignored `inlineStr` (early Numbers, early POI) are essentially gone **(verify)**; SheetJS itself picks `t="str"` with `<v>`, which is also universally readable.
+`<c t="inlineStr"><is><t>text</t></is></c>` (`<is>` accepts the same rich-text children as `<si>`). This is the only string form a single-pass streaming writer can emit without buffering the whole SST. Excel reads inline strings and converts them to SST on save. Numbers 14.4 reads inline strings correctly; it is shared strings it mangles (control characters truncate, `_xHHHH_` mis-decodes; ADR-001 addendum), so inline is the safer shape; SheetJS itself picks `t="str"` with `<v>`, which is also universally readable.
 
 Cost trade-off: SST dedupes repeated values (215 refs → 82 entries in the Google fixture) and shrinks the sheet XML; inline strings make each sheet self-contained and let the writer stream. The pragmatic hybrid is to stream sheets with inline strings and never emit an SST, or to keep a bounded in-memory SST and flush it last (zip entry order is free).
 

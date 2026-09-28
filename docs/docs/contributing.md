@@ -97,6 +97,7 @@ node fixtures/register.mjs golden/my-app/canonical.xlsx \
 | `--id`             | Stable identifier; re-registering the same id replaces the entry                     |
 | `--generator`      | Name and version of whatever produced the file                                       |
 | `--provenance`     | Where it came from: `script:generators/x.mjs`, an application and date, a bug report |
+| `--license`        | SPDX licence of the file; default `MIT`                                              |
 | `--tags`           | Comma-separated, e.g. `kind:hostile`, `generator:excel`, `policy:truncate-32767`     |
 | `--expected`       | Ground-truth dump to compare reads against (usually `canonical/canonical.json`)      |
 | `--expected-error` | For a hostile fixture: the `XlsxErrorCode` reading it must produce                   |
@@ -110,8 +111,8 @@ a new `kind:hostile` fixture has to produce its `--expected-error` classified er
 
 If the fixture demonstrates a behaviour that is not already in the catalog, add an entry to
 `fixtures/edge-cases.json` and run `npm run research:regenerate` — `research/04` is rendered from that file, not
-edited by hand. The same goes for `research/05` (rendered from the newest oracle run) and `research/06`
-(rendered from the newest benchmark run).
+edited by hand. The same goes for `research/05` (rendered from the newest oracle run of each label) and
+`research/06` (rendered from the newest `*-combined` benchmark run).
 
 ## Browser smoke test
 

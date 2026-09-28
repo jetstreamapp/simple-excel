@@ -17,6 +17,12 @@ boundary: on write `new Date(Date.UTC(y, m, d, h, i, s, ms))` from local fields;
 local fields. Time-only values are written as fractions of a day. Dates before 1900-01-01 are written as ISO
 text. The adapter, not the UI, owns this; parity tests run in `TZ=UTC` and in a US timezone.
 
+**Implementation (simple-excel):** no adapter conversion. The library takes the wall clock natively through
+`dates: 'local' | 'utc'` on the writer and `dates: 'local' | 'utc' | 'serial'` on the reader; the default `'local'`
+is this contract. Time-only values sit on 1899-12-30, and pre-1900 dates are written as ISO text. The two-timezone
+parity runs are not in place yet: `test/golden-bytes.test.ts` pins its time zone, and the date unit tests cover
+local versus UTC fields in the machine's zone.
+
 ## Consequences
 
 No engine change is needed for correctness, but the conversion must be covered by the canonical fixture's

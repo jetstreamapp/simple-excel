@@ -59,7 +59,7 @@
     "CHANGELOG.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.12"
   },
   "devDependencies": {
     "@office-kit/xlsx": "^0.23.0",
@@ -101,7 +101,7 @@
   "bugs": {
     "url": "https://github.com/jetstreamapp/simple-excel/issues"
   },
-  "homepage": "https://github.com/jetstreamapp/simple-excel#readme",
+  "homepage": "https://simple-excel.getjetstream.app",
   "allowScripts": {
     "esbuild@0.28.2": true,
     "fsevents@2.3.3": true

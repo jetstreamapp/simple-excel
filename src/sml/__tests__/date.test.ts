@@ -215,6 +215,30 @@ describe('componentsFromSerial', () => {
     expect(componentsFromSerial(Number.POSITIVE_INFINITY, false)).toBeNull();
     expect(componentsFromSerial(-1, true)).toBeNull();
   });
+
+  it('EC-DATE-SERIAL-OVER-9999: 9999-12-31 is the last date; later serials are not dates', () => {
+    expect(componentsFromSerial(2_958_465, false)).toEqual(parts(9999, 12, 31));
+    const lastMillisecond = serialFromComponents(parts(9999, 12, 31, 23, 59, 59, 999), false) ?? Number.NaN;
+    expect(componentsFromSerial(lastMillisecond, false)).toEqual(parts(9999, 12, 31, 23, 59, 59, 999));
+    expect(componentsFromSerial(2_958_466, false)).toBeNull();
+    // A ten-digit phone number typed into a date-formatted column.
+    expect(componentsFromSerial(5_551_234_567, false)).toBeNull();
+    expect(componentsFromSerial(1e10, false)).toBeNull();
+    expect(componentsFromSerial(2_957_003, true)).toEqual(parts(9999, 12, 31));
+    expect(componentsFromSerial(2_957_004, true)).toBeNull();
+    // Rounding the last millisecond of 9999-12-31 up to midnight crosses the limit.
+    expect(componentsFromSerial(2_958_465.999_999_999, false)).toBeNull();
+  });
+});
+
+describe('serialFromComponents limits', () => {
+  it('EC-DATE-SERIAL-OVER-9999: years after 9999 have no serial in either date system', () => {
+    expect(serialFromComponents(parts(9999, 12, 31), false)).toBe(2_958_465);
+    expect(serialFromComponents(parts(9999, 12, 31), true)).toBe(2_957_003);
+    expect(serialFromComponents(parts(10_000, 1, 1), false)).toBeNull();
+    expect(serialFromComponents(parts(10_000, 1, 1), true)).toBeNull();
+    expect(serialFromComponents(parts(275_760, 9, 13), false)).toBeNull();
+  });
 });
 
 describe('dateFromComponents and componentsFromDate', () => {

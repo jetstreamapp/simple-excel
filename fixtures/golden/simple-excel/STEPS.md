@@ -8,11 +8,11 @@ node --import tsx fixtures/generators/canonical-simple-excel.mjs   # all three v
 npm run oracle -- --tag generator:simple-excel --label phase-b-writer
 ```
 
-| Golden                  | What it shows                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| `canonical.xlsx`        | the defaults: bounded shared strings, deflate, zip64 auto                                |
-| `canonical.inline.xlsx` | every string inline, no `sharedStrings` part at all (EC-SST-ABSENT-INLINE-ONLY)          |
-| `canonical.zip64.xlsx`  | zip64 in every local header on a small archive (EC-ZIP64-SMALL) - SheetJS cannot open it |
+| Golden                  | What it shows                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `canonical.xlsx`        | `strings: 'auto'` (the bounded shared-string table), deflate, zip64 auto                                           |
+| `canonical.inline.xlsx` | the default (`strings: 'inline'`): every string inline, no `sharedStrings` part at all (EC-SST-ABSENT-INLINE-ONLY) |
+| `canonical.zip64.xlsx`  | zip64 in every local header on a small archive (EC-ZIP64-SMALL) - SheetJS cannot open it                           |
 
 Automated verdicts (Open XML SDK validator, Excel via AppleScript, LibreOffice, SheetJS, openpyxl, calamine,
 office-kit, and our own reader) are in `research/05-compatibility-matrix.md`, runs `phase-b-writer`,

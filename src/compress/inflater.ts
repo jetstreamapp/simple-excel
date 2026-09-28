@@ -84,6 +84,22 @@ function createStoredInflater(onChunk: (chunk: Uint8Array) => Promise<void>, max
 }
 
 /**
+ * `DecompressionStream` exists without `'deflate-raw'` in some runtimes: Node 20.0-20.11 (it arrived in 20.12.0) and
+ * browsers from before 2023 throw a TypeError for the format, which says nothing about what to do.
+ */
+function createDecompressionStream(): DecompressionStream {
+  try {
+    return new DecompressionStream('deflate-raw');
+  } catch (error) {
+    throw new XlsxError(
+      'UNSUPPORTED_ENVIRONMENT',
+      'Reading xlsx files needs DecompressionStream("deflate-raw"), which this environment does not support. Use Node.js 20.12 or later, or a current browser.',
+      { cause: error },
+    );
+  }
+}
+
+/**
  * Streaming raw-deflate decoder over `DecompressionStream('deflate-raw')`, mirroring `createDeflater`. Enforces
  * `maxBytes` on the actual inflated byte count and aborts the stream when exceeded.
  */
@@ -96,7 +112,7 @@ export function createInflater(onChunk: (chunk: Uint8Array) => Promise<void>, op
     throw new XlsxError('UNSUPPORTED_ENVIRONMENT', 'This environment has no DecompressionStream, which is required to read xlsx files.');
   }
 
-  const stream = new DecompressionStream('deflate-raw');
+  const stream = createDecompressionStream();
   const writer = (stream.writable as WritableStream<Uint8Array>).getWriter();
   const reader = (stream.readable as ReadableStream<Uint8Array>).getReader();
 

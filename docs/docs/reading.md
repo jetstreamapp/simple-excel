@@ -40,17 +40,21 @@ parse error three layers down. A `.docx` and a `.pptx` are named too. See [Error
 
 ### Sources
 
-`SourceInput` is `ArrayBuffer | Uint8Array | Blob | RandomAccessSource`.
+`SourceInput` is `ArrayBuffer | SharedArrayBuffer | ArrayBufferView | Uint8Array | Blob | RandomAccessSource`.
 
-| Input                | How it is read                                                                 |
-| -------------------- | ------------------------------------------------------------------------------ |
-| `Uint8Array`         | Zero-copy subarray views; nothing is duplicated                                |
-| `ArrayBuffer`        | Same, over a view of the buffer                                                |
-| `Blob` / `File`      | `slice().arrayBuffer()` per range, so the bytes never all have to be resident  |
-| `RandomAccessSource` | Anything with `{ size, read(offset, length) }` — including Node's `fromFile()` |
+| Input                           | How it is read                                                                          |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| `Uint8Array` or any typed array | Zero-copy subarray views over the same bytes; nothing is duplicated (`Buffer` included) |
+| `DataView`                      | Same, over the bytes it views                                                           |
+| `ArrayBuffer`                   | Same, over a view of the buffer                                                         |
+| `SharedArrayBuffer`             | Each range is copied as it is read, because the decompressor refuses shared memory      |
+| `Blob` / `File`                 | `slice().arrayBuffer()` per range, so the bytes never all have to be resident           |
+| `RandomAccessSource`            | Anything with `{ size, read(offset, length) }` — including Node's `fromFile()`          |
 
-`Blob` is duck-typed: any object with `size`, `slice` and `arrayBuffer` works, which matters in test environments
-and in Electron.
+The checks work across realms, so a buffer from an iframe, a worker or an Electron bridge is accepted. `Blob` is
+duck-typed: any object with `size`, `slice` and `arrayBuffer` works, which matters in test environments and in
+Electron. Anything else, a string included, is refused with `NOT_XLSX` (`EC-INPUT-TYPE`); a binary string from an
+old API has to become bytes first.
 
 `sourceFrom(input)` is exported if you want the `RandomAccessSource` yourself, and `RandomAccessSource` is the
 extension point for a source that is not bytes in hand:
@@ -77,18 +81,35 @@ const workbook = await openWorkbook(file, {
   errors: 'string',
   limits: { maxInflatedBytes: 256 * 1024 * 1024 },
   signal: controller.signal,
+  onWarning: warning => console.warn(warning.code, warning.sheet, warning.ref),
 });
 ```
 
-| Option   | Values                           | Default    | Meaning                                                                                                                   |
-| -------- | -------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `dates`  | `'local' \| 'utc' \| 'serial'`   | `'local'`  | Which `Date` fields carry the wall clock, or `'serial'` for the raw number. See [Dates and values](./dates-and-values.md) |
-| `errors` | `'string' \| 'object' \| 'null'` | `'string'` | How an error cell comes back: its text (`'#N/A'`), a `{ error }` object, or `null`                                        |
-| `limits` | `ReadLimits`                     | see below  | Caps that make a hostile file fail fast instead of exhausting the host                                                    |
-| `signal` | `AbortSignal`                    | —          | Checked at open and between chunks; an aborted signal ends the read with `ABORTED`                                        |
+| Option      | Values                           | Default    | Meaning                                                                                                                   |
+| ----------- | -------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `dates`     | `'local' \| 'utc' \| 'serial'`   | `'local'`  | Which `Date` fields carry the wall clock, or `'serial'` for the raw number. See [Dates and values](./dates-and-values.md) |
+| `errors`    | `'string' \| 'object' \| 'null'` | `'string'` | How an error cell comes back: its text (`'#N/A'`), a `{ error }` object, or `null`                                        |
+| `limits`    | `ReadLimits`                     | see below  | Caps that make a hostile file fail fast instead of exhausting the host                                                    |
+| `signal`    | `AbortSignal`                    | —          | Checked at open and between chunks; an aborted signal ends the read with `ABORTED`                                        |
+| `onWarning` | `(warning: ReadWarning) => void` | —          | Told about problems the reader repaired instead of rejecting; see below                                                   |
 
 `errors: 'object'` also changes the static type: the workbook becomes `Workbook<CellValue | CellError>` and row
-values widen to include `{ error: '#N/A' }`.
+values widen to include `{ error: '#N/A' }`. The `error` field holds whatever error literal the file has. Newer Excel
+errors such as `#SPILL!` or `#CALC!` come through as they are, although `CellErrorCode` only lists the standard
+ones, so a `switch` over it needs a default branch.
+
+### Warnings
+
+Some damage Excel shrugs off, and so does the reader: the cell reads blank and the read carries on. `onWarning`
+lets you notice. Each `ReadWarning` has a `code`, a `message`, the `sheet` and the `ref` of the first cell that hit
+it, and each code is reported at most once per sheet however many cells hit it.
+
+| `code`                   | What happened                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `SST_INDEX_OUT_OF_RANGE` | A shared-string cell points past the end of the table; it reads as `''`, as in Excel |
+| `SHARED_STRINGS_MISSING` | A shared-string cell in a workbook that has no shared-string part; it reads as `''`  |
+
+A sheet full of blank text cells with one of these warnings usually means a damaged file, not an empty one.
 
 ### Limits
 
@@ -164,15 +185,22 @@ for await (const row of sheet.rows({ mode: 'object' })) {
 
 Object mode takes one row as headers and keys every later row by it.
 
-| `ObjectRowsOptions` | Type                   | Default     | Meaning                                                   |
-| ------------------- | ---------------------- | ----------- | --------------------------------------------------------- |
-| `headerRow`         | number                 | `startRow`  | 1-based row holding the headers                           |
-| `defval`            | `CellValue`            | `''`        | Value for cells absent from a row                         |
-| `headerNaming`      | `'sheetjs' \| 'index'` | `'sheetjs'` | How headers become keys                                   |
-| `dropEmptyHeaders`  | boolean                | `false`     | Drop columns whose header is empty instead of naming them |
+| `ObjectRowsOptions` | Type                   | Default                | Meaning                                                   |
+| ------------------- | ---------------------- | ---------------------- | --------------------------------------------------------- |
+| `headerRow`         | number                 | first row with a value | 1-based row holding the headers                           |
+| `defval`            | `CellValue`            | `''`                   | Value for cells absent from a row                         |
+| `headerNaming`      | `'sheetjs' \| 'index'` | `'sheetjs'`            | How headers become keys                                   |
+| `dropEmptyHeaders`  | boolean                | `false`                | Drop columns whose header is empty instead of naming them |
+
+Without `headerRow`, the header row is the first row at or after `startRow` (default 1) that holds any value, an
+empty string or an error included. A sheet whose first row or two are blank therefore still finds its headers,
+which is what `sheet_to_json` does when the sheet's range starts below row 1 (`EC-HEADER-ROW-FIRST-NONEMPTY`). It
+does better than `sheet_to_json` when row 1 is formatted but empty: SheetJS then names every column `__EMPTY` and
+reads the real header row as data. Pass `headerRow` to pin the row; an explicit `headerRow` on a blank row gives
+`__EMPTY` columns, as before.
 
 `startRow`, `maxRows`, `maxColumns` and `formulas` apply as well. The header row is consumed, not yielded: the
-first object is the row after `headerRow`, or `startRow` if that is later. `blankRows` does not apply — object
+first object is the row after the header row, or `startRow` if that is later. `blankRows` does not apply — object
 mode never yields empty records, which matches SheetJS's `blankrows: false`.
 
 #### Header naming
@@ -181,7 +209,11 @@ mode never yields empty records, which matches SheetJS's `blankrows: false`.
 field in an application:
 
 - A header cell with text becomes that text. Non-string headers are spelled the way Excel spells them (`TRUE` /
-  `FALSE`, an ISO-style timestamp for a date, the code for an error cell).
+  `FALSE`, an ISO-style timestamp for a date, the code for an error cell such as `#N/A`, whatever `errors` says,
+  `EC-HEADER-ERROR-CELL`). Numbers keep their JavaScript spelling (`123456789012`), where SheetJS shows Excel's
+  General format (`1.23457E+11`).
+- Every header becomes an own property of the record, `__proto__` and `constructor` included; the record's
+  prototype never changes (`EC-HEADER-PROTO-KEY`).
 - An **absent** header cell becomes `__EMPTY`, and each later absent header gets a counter: `__EMPTY_1`,
   `__EMPTY_2`, … (the first has no suffix). A header cell that holds an _empty string_ is a different thing: its
   key is the empty string.
@@ -198,7 +230,13 @@ That is usually what you want for a report export with trailing blank columns.
 The column list comes from the widest of the header row, the widest data row and the sheet's declared
 `<dimension>`. Excel, Google Sheets and Numbers all re-save with a dimension wider than the data, so a file from
 one of them can grow trailing `__EMPTY` columns. This is deliberate: it is what `sheet_to_json` does, and object
-mode is built to match it.
+mode is built to match it. The first column is the dimension's first column, so an all-blank column A that Excel
+left out of the range does not become `__EMPTY` either (`EC-HEADER-DIMENSION-START-COLUMN`); a value that turns up
+left of it is still kept, under a blank-header name.
+
+`toObjects()` gives every record every key: a column that only appears in a later, wider row is added to the
+earlier records with `defval`. Streaming `rows({ mode: 'object' })` cannot go back, so there a record only has the
+keys named by the time it was read.
 :::
 
 #### `defval` and blank cells
@@ -278,7 +316,7 @@ For a read you need to cancel from elsewhere, pass a `signal` to `openWorkbook`.
 ends the iteration with `ABORTED`.
 
 Call `workbook.close()` when you are done; it releases the source's handles (for a file-backed source, the file
-descriptor).
+descriptor). Reading any sheet of a closed workbook fails with `ABORTED`, whatever the source.
 
 ## Sniffing before you open
 
@@ -286,9 +324,9 @@ descriptor).
 and want to route CSV to your own parser rather than show an error:
 
 ```ts
-import { sniff } from '@jetstreamapp/simple-excel';
+import { SNIFF_BYTES, sniff } from '@jetstreamapp/simple-excel';
 
-const head = new Uint8Array(await file.slice(0, 65_536).arrayBuffer());
+const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer());
 switch (sniff(head)) {
   case 'zip':
     return openWorkbook(file);
@@ -299,11 +337,16 @@ switch (sniff(head)) {
 }
 ```
 
+`'text'` covers CSV in any common encoding: UTF-8, UTF-16 with a byte-order mark, and legacy single- and multi-byte
+encodings such as Windows-1252 (what Excel for Windows saves CSV as) or Shift-JIS, recognised by the absence of NUL
+and control bytes (`EC-SNIFF-LEGACY-TEXT`). Decoding it is up to your CSV path: try UTF-8 with
+`new TextDecoder('utf-8', { fatal: true })` and fall back to `'windows-1252'`.
+
 It returns `'zip' | 'cfb-encrypted' | 'cfb-legacy' | 'xml' | 'html' | 'text' | 'empty' | 'unknown'`. The
 `SniffResult` type also lists `'xlsx' | 'xlsb' | 'ods'`, which `sniff` itself never returns: all three are zips,
 and only the package contents tell them apart, so `openWorkbook` makes that distinction after opening the
-archive. Pass at least 64 KiB — the encrypted-versus-legacy decision scans all of it for the `EncryptedPackage`
-stream name.
+archive. Pass at least `SNIFF_BYTES` (65,536 bytes): the encrypted-versus-legacy decision scans all of it for the
+`EncryptedPackage` stream name.
 
 ## What the reader tolerates
 
@@ -315,6 +358,10 @@ Real files are not tidy. The reader deliberately accepts things the schema does 
 - Relationship targets that are absolute (`/xl/worksheets/sheet1.xml`) or use backslashes
   (`EC-ABSOLUTE-REL-TARGETS`, `EC-BACKSLASH-REL-TARGETS`).
 - A missing `<dimension>`, or one that disagrees with the cells — it is a hint, never the truth (`EC-NO-DIMENSION`).
+- Part names whose case differs from the relationship that points at them (`xl/SharedStrings.xml`): OPC names are
+  case-insensitive, so the exact name wins and a case-insensitive match is the fallback (`EC-PART-NAME-CASE`).
+- A numeric `<v>` of only whitespace reads as blank (`EC-EMPTY-V-ELEMENT`); numeric text Excel never writes, such
+  as `0x1A`, reads as its text rather than as a number (`EC-NUMBER-RADIX-PREFIX`).
 - A workbook with no `xl/sharedStrings.xml` at all, every string inline (`EC-SST-ABSENT-INLINE-ONLY`).
 - Extra parts with no extension, legacy VML comment parts, `[Content_Types].xml` as the last entry rather than
   the first (`EC-PART-NONSTANDARD-NAMES`, `EC-ZIP-CONTENT-TYPES-LAST`).
@@ -322,4 +369,5 @@ Real files are not tidy. The reader deliberately accepts things the schema does 
   what Salesforce report exports contain (`EC-POI-BOOLEAN-ATTRIBUTE-SPELLING`, `EC-POI-RGB-6-HEX`).
 
 What it does not tolerate is on the [Errors](./errors.md) page: a DOCTYPE, duplicate entries, a CRC mismatch, an
-unsupported compression method, and anything past the limits.
+unsupported compression method, a cell reference past column XFD (`EC-REF-BEYOND-XFD`), and anything past the
+limits.

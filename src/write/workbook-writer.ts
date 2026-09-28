@@ -5,7 +5,7 @@ import { appXml, contentTypesXml, coreXml, rootRelsXml, type SheetPartInfo, work
 import { SharedStringWriter } from '../sml/shared-strings';
 import { sanitizeSheetName } from '../sml/sheet-name';
 import { StyleRegistry } from '../sml/styles';
-import { sheetRange, WorksheetWriter } from '../sml/worksheet-writer';
+import { MergedRanges, NOTHING_TO_FLUSH, sheetRange, validateSheetOptions, WorksheetWriter } from '../sml/worksheet-writer';
 import type {
   ByteSink,
   CellInput,
@@ -15,6 +15,7 @@ import type {
   SheetWriter,
   SheetWriteSummary,
   StyleId,
+  WorkbookProperties,
   WorkbookWriter,
   WorkbookWriteResult,
   WorkbookWriterOptions,
@@ -39,6 +40,9 @@ const UNBOUNDED_SHARED_STRING_BUDGET: Required<SharedStringBudget> = {
 
 /** The timestamp deterministic mode stamps into docProps (the zip entries use the writer's own fixed DOS date). */
 const DETERMINISTIC_NOW = new Date('2026-01-01T00:00:00.000Z');
+/** `dcterms:created` is an xsd:dateTime with a four-digit year; openpyxl and the validator refuse anything else. */
+const FIRST_PROPERTY_YEAR = 1;
+const LAST_PROPERTY_YEAR = 9999;
 const PROGRESS_ROW_INTERVAL = 5000;
 /** Cells above which a worksheet part is assumed to risk the 4 GiB zip32 ceiling and gets a zip64 local header. */
 const ZIP64_CELL_THRESHOLD = 40_000_000;
@@ -90,7 +94,28 @@ function toSheetPartInfo(record: SheetRecord): SheetPartInfo {
   };
 }
 
+/**
+ * `properties.created` becomes `dcterms:created`, an xsd:dateTime with a four-digit year (EC-DOCPROPS-CREATED-RANGE).
+ * An Invalid Date or a year outside 1-9999 is refused before any byte is written rather than producing a
+ * `docProps/core.xml` that openpyxl rejects.
+ */
+function validateCreated(created: WorkbookProperties['created']): void {
+  if (created === undefined) {
+    return;
+  }
+  // The tag, not `instanceof`: a Date from another realm (an iframe, a vm context, an Electron bridge) is still a Date.
+  const year = Object.prototype.toString.call(created) === '[object Date]' ? created.getUTCFullYear() : Number.NaN;
+  if (!(year >= FIRST_PROPERTY_YEAR && year <= LAST_PROPERTY_YEAR)) {
+    throw new XlsxError(
+      'WRITER_STATE',
+      `properties.created must be a valid Date between the years ${FIRST_PROPERTY_YEAR} and ${LAST_PROPERTY_YEAR}; got ${String(created)}.`,
+      { created },
+    );
+  }
+}
+
 function resolveOptions(options: WorkbookWriterOptions): ResolvedOptions {
+  validateCreated(options.properties?.created);
   const strings = options.strings ?? 'inline';
   const budget =
     strings === 'shared'
@@ -117,6 +142,20 @@ function resolveOptions(options: WorkbookWriterOptions): ResolvedOptions {
       ...(options.properties?.title === undefined ? {} : { title: options.properties.title }),
       ...(options.properties?.created === undefined ? {} : { created: options.properties.created }),
     },
+  };
+}
+
+/**
+ * A copy of the options a sheet keeps using after `addSheet` returns (EC-ROW-SNAPSHOT): the header row and the
+ * column definitions are only written once the zip entry opens, so a caller mutating them in between must not change
+ * what lands in the file.
+ */
+function snapshotSheetOptions(options: SheetOptions): SheetOptions {
+  return {
+    ...options,
+    ...(options.header === undefined ? {} : { header: options.header.slice() }),
+    ...(options.columns === undefined ? {} : { columns: options.columns.map(column => ({ ...column })) }),
+    ...(options.freeze === undefined ? {} : { freeze: { ...options.freeze } }),
   };
 }
 
@@ -152,11 +191,19 @@ class WorkbookWriterImpl implements WorkbookWriter {
   private hasVisibleSheet = false;
   private anySheetNeedsZip64 = false;
   private truncatedCells = 0;
-  private reportedTruncatedCells = 0;
   private closed = false;
-  private aborted = false;
+  /**
+   * Latched by the first failure - a sink or deflater error, a refused row, a part that could not be written - or by
+   * an abort (EC-WRITER-FAILURE-STICKY). From then on every call rejects with `failure` itself, never with a derived
+   * error from the half-written archive.
+   */
+  private failed = false;
+  private failure: unknown;
+  /** The one abort the sink ever receives; failure paths wait on it so the sink is torn down before they reject. */
+  private sinkAbort: Promise<void> | undefined;
 
   constructor(sink: ByteSink | WritableStream<Uint8Array>, options: WorkbookWriterOptions) {
+    // Validated before the sink is touched, so a refused option leaves a caller's stream unlocked.
     this.options = resolveOptions(options);
     this.sharedStrings = this.options.strings === 'inline' ? null : new SharedStringWriter(this.options.budget);
 
@@ -174,8 +221,9 @@ class WorkbookWriterImpl implements WorkbookWriter {
     const now = this.options.deterministic ? DETERMINISTIC_NOW : new Date();
     this.tail = Promise.resolve();
     // The package-level relationship and the core properties are fixed, so they lead the archive; the sheet list is
-    // only known at close, which is why `[Content_Types].xml` trails it (EC-ZIP-CONTENT-TYPES-LAST).
-    this.enqueue(async () => {
+    // only known at close, which is why `[Content_Types].xml` trails it (EC-ZIP-CONTENT-TYPES-LAST). Nobody awaits
+    // this step, so a failure here is latched by `enqueue` and reported by the next call, `close()` at the latest.
+    void this.enqueue(async () => {
       await this.zip.writeEntry('_rels/.rels', encode(rootRelsXml()));
       await this.zip.writeEntry('docProps/core.xml', encode(coreXml(this.options.properties, now)));
     });
@@ -190,6 +238,8 @@ class WorkbookWriterImpl implements WorkbookWriter {
         { openSheet: this.openSheet.name },
       );
     }
+    // Everything that can refuse the sheet runs before any state changes, so a refused addSheet can be retried.
+    validateSheetOptions(options, this.styles.count);
     const index = this.sheets.length + 1;
     const record: SheetRecord = {
       name: sanitizeSheetName(name, this.takenNames),
@@ -200,11 +250,13 @@ class WorkbookWriterImpl implements WorkbookWriter {
       autoFilterRange: undefined,
       summary: undefined,
     };
+    // Sheet XML streams out before later sheets exist, so the selected tab is decided now: the first visible sheet
+    // gets `tabSelected`, the same one `workbookXml` makes the active tab (EC-ALL-SHEETS-HIDDEN).
     const tabSelected = !record.hidden && !this.hasVisibleSheet;
     this.hasVisibleSheet ||= !record.hidden;
     this.sheets.push(record);
 
-    const sheet = new SheetWriterImpl(this, record, options, tabSelected);
+    const sheet = new SheetWriterImpl(this, record, snapshotSheetOptions(options), tabSelected);
     this.openSheet = sheet;
     return sheet;
   }
@@ -222,9 +274,20 @@ class WorkbookWriterImpl implements WorkbookWriter {
       });
     }
     this.closed = true;
+    // A package with no sheet fails the validator and SheetJS (EC-WORKBOOK-NO-SHEETS); one whose sheets are all
+    // hidden makes Excel repair it (primer section 12.10, EC-ALL-SHEETS-HIDDEN). Either way the file is not written.
+    if (this.sheets.length === 0) {
+      throw await this.fail(new XlsxError('WRITER_STATE', 'A workbook needs at least one sheet. Add one with addSheet() before close().'));
+    }
+    if (!this.hasVisibleSheet) {
+      throw await this.fail(
+        new XlsxError('WRITER_STATE', 'Every sheet in this workbook is hidden, which Excel refuses. Leave at least one sheet visible.', {
+          sheets: this.sheets.map(record => record.name),
+        }),
+      );
+    }
 
-    return this.enqueue(async () => {
-      this.assertNotAborted();
+    const result = await this.enqueue(async () => {
       const stats = this.sharedStrings?.stats ?? { count: 0, uniqueCount: 0, frozen: false };
       const hasSharedStrings = this.sharedStrings !== null && stats.uniqueCount > 0;
       if (hasSharedStrings && this.sharedStrings !== null) {
@@ -240,8 +303,6 @@ class WorkbookWriterImpl implements WorkbookWriter {
       await this.zip.writeEntry('docProps/app.xml', encode(appXml(parts)));
       await this.zip.writeEntry('[Content_Types].xml', encode(contentTypesXml(parts, hasSharedStrings)));
       const archive = await this.zip.close();
-
-      this.reportTruncatedCells();
       return {
         bytes: archive.bytes,
         sheets: this.sheets.map(record => record.summary ?? { name: record.name, rows: 0, columns: 0 }),
@@ -249,23 +310,35 @@ class WorkbookWriterImpl implements WorkbookWriter {
         sharedStrings: stats,
       };
     });
+    // Once, with the workbook total, and only after the file is complete (EC-CELL-32767-LIMIT).
+    if (result.truncatedCells > 0) {
+      this.options.onCellTruncated?.(result.truncatedCells);
+    }
+    return result;
   }
 
   async abort(reason?: unknown): Promise<void> {
-    if (this.aborted) {
-      return;
+    if (!this.failed) {
+      this.latch(new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.', reason === undefined ? undefined : { reason }));
     }
-    this.aborted = true;
-    this.closed = true;
-    this.openSheet = undefined;
-    await this.zip.abort(reason);
+    await this.abortSink(reason);
   }
 
-  /** Queue one part-producing step; steps run in the order they were queued and never overlap. */
+  /**
+   * Queue one part-producing step; steps run in the order they were queued and never overlap. A step queued behind a
+   * failure rejects with that failure without running, and a step that fails latches its error for everyone after.
+   */
   enqueue<T>(operation: () => Promise<T>): Promise<T> {
-    const running = this.tail.then(operation);
+    const running = this.tail.then(async () => {
+      this.assertUsable();
+      try {
+        return await operation();
+      } catch (reason) {
+        throw await this.fail(reason);
+      }
+    });
     // The chain itself must stay resolvable so a failed step does not strand the ones behind it; the failure is
-    // reported to whoever holds `running`, and the zip writer refuses everything after it anyway.
+    // reported to whoever holds `running` and, through the latch, to every later call.
     this.tail = running.then(
       () => undefined,
       () => undefined,
@@ -273,19 +346,39 @@ class WorkbookWriterImpl implements WorkbookWriter {
     return running;
   }
 
+  /**
+   * Latch `reason` as the workbook's failure (unless an earlier one already is), abort the sink once, and resolve to
+   * the latched failure once the sink has been told. Callers `throw await this.fail(reason)`.
+   */
+  async fail(reason: unknown): Promise<unknown> {
+    if (!this.failed) {
+      this.latch(reason);
+    }
+    await this.abortSink(this.failure);
+    return this.failure;
+  }
+
+  /**
+   * `fail` for the row paths: latch and start the sink abort, but reject at once. The abort is queued behind any
+   * write the sink has not accepted yet, and a sink stalled on back-pressure must not keep a refused row pending; the
+   * abort reaches the sink when it drains.
+   */
+  failWith(reason: unknown): Promise<never> {
+    if (!this.failed) {
+      this.latch(reason);
+    }
+    void this.abortSink(this.failure);
+    return Promise.reject(this.failure);
+  }
+
   /** A sheet stops being the open one the moment `close()` is called, not when its bytes have landed. */
   sheetClosing(): void {
     this.openSheet = undefined;
   }
 
-  sheetClosed(record: SheetRecord, summary: SheetWriteSummary): void {
+  sheetClosed(record: SheetRecord, summary: SheetWriteSummary, truncatedCells: number): void {
     record.summary = summary;
-  }
-
-  /** Every sheet reports its own truncations as it closes; the caller hears the running workbook total. */
-  addTruncatedCells(count: number): void {
-    this.truncatedCells += count;
-    this.reportTruncatedCells();
+    this.truncatedCells += truncatedCells;
   }
 
   markZip64Sheet(): void {
@@ -297,33 +390,34 @@ class WorkbookWriterImpl implements WorkbookWriter {
   }
 
   assertOpen(): void {
-    this.assertNotAborted();
+    this.assertUsable();
     if (this.closed) {
       throw new XlsxError('WRITER_STATE', 'This workbook is closed; nothing more can be written to it.');
     }
   }
 
-  assertNotAborted(): void {
-    if (this.aborted) {
-      throw new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.');
+  /** Throws the latched failure, latching an abort first when the caller's signal has fired. */
+  assertUsable(): void {
+    if (this.failed) {
+      throw this.failure;
     }
     const { signal } = this.options;
     if (signal?.aborted === true) {
       void this.abort(signal.reason);
-      throw new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.', { reason: signal.reason });
+      throw this.failure;
     }
   }
 
-  /**
-   * `onCellTruncated` hears the running workbook total as each sheet closes and once more at workbook close, but only
-   * when the total actually moved, so the same number is never reported twice.
-   */
-  private reportTruncatedCells(): void {
-    if (this.truncatedCells === this.reportedTruncatedCells) {
-      return;
-    }
-    this.reportedTruncatedCells = this.truncatedCells;
-    this.options.onCellTruncated?.(this.truncatedCells);
+  private latch(reason: unknown): void {
+    this.failed = true;
+    this.failure = reason;
+    this.closed = true;
+    this.openSheet = undefined;
+  }
+
+  private abortSink(reason: unknown): Promise<void> {
+    this.sinkAbort ??= this.zip.abort(reason).catch(() => undefined);
+    return this.sinkAbort;
   }
 }
 
@@ -334,12 +428,13 @@ class SheetWriterImpl implements SheetWriter {
   private readonly record: SheetRecord;
   private readonly autoFilter: boolean;
   private readonly headerRows: number;
+  /** Shared with the worksheet writer, so `merge()` validates now even while the zip entry is still opening. */
+  private readonly merges: MergedRanges;
   /** Resolves once the zip entry is open, the prologue is buffered and the header row (if any) is written. */
   private readonly ready: Promise<WorksheetWriter>;
-  /** Ranges merged before the zip entry finished opening, applied in order once it has. */
-  private readonly pendingMerges: string[] = [];
   private worksheet: WorksheetWriter | undefined;
   private rowsIssued = 0;
+  private rowsReported = 0;
   private closeRequested = false;
 
   constructor(workbook: WorkbookWriterImpl, record: SheetRecord, options: SheetOptions, tabSelected: boolean) {
@@ -348,6 +443,7 @@ class SheetWriterImpl implements SheetWriter {
     this.name = record.name;
     this.autoFilter = options.autoFilter === true;
     this.headerRows = options.header === undefined ? 0 : 1;
+    this.merges = new MergedRanges(record.name);
 
     const needsZip64 = sheetNeedsZip64(workbook.options.zip64, options);
     if (needsZip64) {
@@ -364,8 +460,9 @@ class SheetWriterImpl implements SheetWriter {
           dates: workbook.options.dates,
           cellOverflow: workbook.options.cellOverflow,
           truncationSuffix: workbook.options.truncationSuffix,
-          onCellTruncated: (count: number) => workbook.addTruncatedCells(count),
+          sheetName: record.name,
           tabSelected,
+          merges: this.merges,
         },
         options,
       );
@@ -374,16 +471,10 @@ class SheetWriterImpl implements SheetWriter {
         await worksheet.writeRow(options.header, headerStyle);
       }
       this.worksheet = worksheet;
-      // Ranges registered while the entry was still opening are applied here, so an invalid one surfaces on the
-      // next call rather than disappearing into a floating promise.
-      for (const range of this.pendingMerges) {
-        worksheet.merge(range);
-      }
-      this.pendingMerges.length = 0;
       return worksheet;
     });
     // Nobody looks at `ready` until the first row, a close or an abort; marking it handled keeps an abort in between
-    // from surfacing as an unhandled rejection.
+    // from surfacing as an unhandled rejection. A failure is latched by `enqueue` either way.
     void this.ready.catch(() => undefined);
   }
 
@@ -398,10 +489,28 @@ class SheetWriterImpl implements SheetWriter {
     } catch (reason) {
       return Promise.reject(reason);
     }
+    if (!Array.isArray(values)) {
+      // An object row (`{ Id, Name }`) would otherwise write an empty row without a word (EC-ROW-NOT-ARRAY).
+      return this.workbook.failWith(
+        new XlsxError(
+          'WRITER_STATE',
+          `Sheet "${this.name}" row ${this.nextRow}: a row must be an array of cell values, not a ${values === null ? 'null' : typeof values}. ` +
+            'Map each record to an array in column order first.',
+          { row: this.nextRow },
+        ),
+      );
+    }
     this.rowsIssued++;
     const worksheet = this.worksheet;
     if (worksheet === undefined) {
-      return this.ready.then(opened => this.writeRowTo(opened, values, styles));
+      // Queued until the entry opens (bounded: only the rows issued before that). Copy them, so a caller reusing one
+      // array without awaiting does not write its last values N times (EC-ROW-SNAPSHOT).
+      const snapshot = values.slice();
+      const stylesSnapshot = Array.isArray(styles) ? styles.slice() : styles;
+      return this.ready.then(opened => {
+        this.workbook.assertUsable();
+        return this.writeRowTo(opened, snapshot, stylesSnapshot);
+      });
     }
     return this.writeRowTo(worksheet, values, styles);
   }
@@ -420,21 +529,21 @@ class SheetWriterImpl implements SheetWriter {
 
   merge(range: string): void {
     this.assertWritable();
-    if (this.worksheet === undefined) {
-      this.pendingMerges.push(range);
-      return;
-    }
-    this.worksheet.merge(range);
+    this.merges.add(range);
   }
 
   close(): Promise<SheetWriteSummary> {
+    try {
+      this.workbook.assertUsable();
+    } catch (reason) {
+      return Promise.reject(reason);
+    }
     if (this.closeRequested) {
       return Promise.reject(new XlsxError('WRITER_STATE', `The sheet "${this.name}" is already closed.`));
     }
     this.closeRequested = true;
     this.workbook.sheetClosing();
     return this.workbook.enqueue(async () => {
-      this.workbook.assertNotAborted();
       const worksheet = await this.ready;
       const written = await worksheet.close();
       const summary: SheetWriteSummary = { name: this.name, rows: written.rows, columns: written.columns };
@@ -442,7 +551,7 @@ class SheetWriterImpl implements SheetWriter {
         // Excel records the same range as a hidden `_xlnm._FilterDatabase` defined name in workbook.xml.
         this.record.autoFilterRange = sheetRange(written.rows, written.columns);
       }
-      this.workbook.sheetClosed(this.record, summary);
+      this.workbook.sheetClosed(this.record, summary, written.truncatedCells);
       this.reportProgress(written.rows);
       return summary;
     });
@@ -454,11 +563,20 @@ class SheetWriterImpl implements SheetWriter {
     styles: StyleId | readonly (StyleId | undefined)[] | undefined,
   ): Promise<void> {
     const pending = worksheet.writeRow(values, styles);
+    // A flush or a refused row: a failure from either has to reach the workbook, which aborts the sink and makes
+    // every later call report the same error. Only these paths pay for the extra promise.
+    const observed = pending === NOTHING_TO_FLUSH ? pending : pending.then(undefined, (reason: unknown) => this.workbook.failWith(reason));
     const rows = worksheet.nextRow - 1;
-    if (rows % PROGRESS_ROW_INTERVAL === 0) {
-      this.reportProgress(rows);
+    if (rows % PROGRESS_ROW_INTERVAL === 0 && rows > this.rowsReported) {
+      this.rowsReported = rows;
+      try {
+        this.reportProgress(rows);
+      } catch (reason) {
+        void observed.catch(() => undefined);
+        return this.workbook.failWith(reason);
+      }
     }
-    return pending;
+    return observed;
   }
 
   private reportProgress(rows: number): void {
@@ -466,7 +584,7 @@ class SheetWriterImpl implements SheetWriter {
   }
 
   private assertWritable(): void {
-    this.workbook.assertNotAborted();
+    this.workbook.assertUsable();
     if (this.closeRequested) {
       throw new XlsxError('WRITER_STATE', `The sheet "${this.name}" is closed; nothing more can be written to it.`);
     }
@@ -480,6 +598,9 @@ class SheetWriterImpl implements SheetWriter {
  * central directory. Content types come last because they name every worksheet part, and the sheet list is only
  * final once the caller stops adding sheets; Excel resolves parts through the central directory, and Google Sheets
  * writes its own content types last too (EC-ZIP-CONTENT-TYPES-LAST).
+ *
+ * Throws `WRITER_STATE` for an invalid `properties.created` before the sink is touched. After any failure the sink
+ * is aborted once and every later call rejects with that first error (EC-WRITER-FAILURE-STICKY).
  */
 export function createWorkbookWriter(sink: ByteSink | WritableStream<Uint8Array>, options?: WorkbookWriterOptions): WorkbookWriter {
   return new WorkbookWriterImpl(sink, options ?? {});

@@ -21,6 +21,33 @@ const BORDER_SIDES = ['left', 'right', 'top', 'bottom'] as const;
 
 const COLOR_HEX = /^[0-9A-F]{6}(?:[0-9A-F]{2})?$/;
 
+/**
+ * Cap on `cellXfs` entries (EC-STYLE-FIELD-RANGE). Excel documents 65,490 unique cell formats; staying under 64,000
+ * leaves room for the ones Excel adds itself when the file is edited.
+ */
+export const MAX_CELL_STYLES: number = 64_000;
+/** Excel's font size range, in points (the Format Cells dialog refuses anything outside it). */
+const MIN_FONT_SIZE = 1;
+const MAX_FONT_SIZE = 409;
+/** Excel truncates or refuses longer font names. */
+const MAX_FONT_NAME_LENGTH = 31;
+/**
+ * A control character in a font name or number format code is dropped on write and could leave nothing behind, so
+ * it is refused (EC-STYLE-FIELD-RANGE).
+ */
+// eslint-disable-next-line no-control-regex -- the control characters are exactly what this looks for
+const CONTROL_CHARACTER = /[\u0000-\u001F\uFFFE\uFFFF]/;
+
+/** Text that would still say something once written: no control characters, and not only unpaired surrogates. */
+function isWritableText(text: string): boolean {
+  return !CONTROL_CHARACTER.test(text) && escapeAttr(text) !== '';
+}
+/** Excel's Format Cells dialog refuses a longer custom number format code. */
+const MAX_NUMFMT_CODE_LENGTH = 255;
+const HORIZONTAL_ALIGNMENTS: ReadonlySet<string> = new Set(['left', 'center', 'right']);
+const VERTICAL_ALIGNMENTS: ReadonlySet<string> = new Set(['top', 'center', 'bottom']);
+const BORDER_LINE_STYLES: ReadonlySet<string> = new Set<BorderLineStyle>(['thin', 'medium', 'thick', 'dashed', 'dotted', 'double', 'hair']);
+
 type BorderSide = (typeof BORDER_SIDES)[number];
 type BorderSides = { readonly [side in BorderSide]?: BorderLineStyle };
 
@@ -46,12 +73,122 @@ function xfKey(xf: CellXf): string {
  * `#RRGGBB`, `RRGGBB` and `AARRGGBB` all become the `FFRRGGBB` ARGB Excel wants: alpha is ignored on read, so we
  * always write it opaque (primer 7.4).
  */
-function normalizeColor(color: string): string {
-  const hex = (color.startsWith('#') ? color.slice(1) : color).toUpperCase();
+function normalizeColor(color: unknown, field: string): string {
+  const hex = typeof color === 'string' ? (color.startsWith('#') ? color.slice(1) : color).toUpperCase() : '';
   if (!COLOR_HEX.test(hex)) {
-    throw new XlsxError('WRITER_STATE', `"${color}" is not a colour. Use #RRGGBB, RRGGBB or AARRGGBB hex.`, { color });
+    throw invalidStyle(field, color, `${field} ${formatValue(color)} is not a colour. Use #RRGGBB, RRGGBB or AARRGGBB hex.`);
   }
   return `FF${hex.slice(-6)}`;
+}
+
+/** A value quoted for an error message: strings in quotes, everything else as `String()` gives it. */
+/** Strings go through `JSON.stringify`, so a control character in a refused value shows up as `\u0002`. */
+function formatValue(value: unknown): string {
+  return typeof value === 'string' ? JSON.stringify(value) : String(value);
+}
+
+function invalidStyle(field: string, value: unknown, message: string): XlsxError {
+  return new XlsxError('WRITER_STATE', message, { field, value });
+}
+
+function isObject(value: unknown): value is object {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Check every field of a `CellStyle` before anything is registered, so a rejected style leaves no orphan font, fill
+ * or number format behind (EC-STYLE-FIELD-RANGE). Numeric number format ids are checked by `registerNumFmt`, which
+ * runs first.
+ */
+function validateStyle(style: CellStyle): void {
+  if (!isObject(style)) {
+    throw invalidStyle('style', style, `A cell style must be an object; got ${formatValue(style)}.`);
+  }
+  const { font, fill, border, alignment, numFmt } = style;
+  if (font !== undefined) {
+    if (!isObject(font)) {
+      throw invalidStyle('font', font, `font must be an object; got ${formatValue(font)}.`);
+    }
+    const { size, name, color } = font;
+    if (color !== undefined) {
+      normalizeColor(color, 'font.color');
+    }
+    if (size !== undefined && !(typeof size === 'number' && size >= MIN_FONT_SIZE && size <= MAX_FONT_SIZE)) {
+      throw invalidStyle(
+        'font.size',
+        size,
+        `font.size ${formatValue(size)} is not a size Excel accepts. Use ${MIN_FONT_SIZE} to ${MAX_FONT_SIZE} points.`,
+      );
+    }
+    if (
+      name !== undefined &&
+      !(typeof name === 'string' && name.length > 0 && name.length <= MAX_FONT_NAME_LENGTH && isWritableText(name))
+    ) {
+      throw invalidStyle(
+        'font.name',
+        name,
+        `font.name ${formatValue(name)} is not a font name Excel accepts. Use 1 to ${MAX_FONT_NAME_LENGTH} characters and no control characters.`,
+      );
+    }
+  }
+  if (fill !== undefined) {
+    if (!(isObject(fill) && (fill as { color?: unknown }).color !== undefined)) {
+      throw invalidStyle('fill.color', fill, 'fill needs a color, like { color: "#FFFF00" }.');
+    }
+    normalizeColor(fill.color, 'fill.color');
+  }
+  if (border !== undefined) {
+    if (typeof border === 'string') {
+      validateBorderLineStyle('border', border);
+    } else if (isObject(border)) {
+      for (const side of BORDER_SIDES) {
+        if (border[side] !== undefined) {
+          validateBorderLineStyle(`border.${side}`, border[side]);
+        }
+      }
+      if (border.color !== undefined) {
+        normalizeColor(border.color, 'border.color');
+      }
+    } else {
+      throw invalidStyle('border', border, `border must be a line style or an object; got ${formatValue(border)}.`);
+    }
+  }
+  if (alignment !== undefined) {
+    if (!isObject(alignment)) {
+      throw invalidStyle('alignment', alignment, `alignment must be an object; got ${formatValue(alignment)}.`);
+    }
+    const { horizontal, vertical } = alignment;
+    if (horizontal !== undefined && !HORIZONTAL_ALIGNMENTS.has(horizontal)) {
+      throw invalidStyle(
+        'alignment.horizontal',
+        horizontal,
+        `alignment.horizontal ${formatValue(horizontal)} is not one of left, center, right.`,
+      );
+    }
+    if (vertical !== undefined && !VERTICAL_ALIGNMENTS.has(vertical)) {
+      throw invalidStyle('alignment.vertical', vertical, `alignment.vertical ${formatValue(vertical)} is not one of top, center, bottom.`);
+    }
+  }
+  if (typeof numFmt === 'string' && (numFmt.length === 0 || numFmt.length > MAX_NUMFMT_CODE_LENGTH || !isWritableText(numFmt))) {
+    throw invalidStyle(
+      'numFmt',
+      numFmt,
+      `numFmt ${formatValue(numFmt)} is not a format code Excel accepts. Use 1 to ${MAX_NUMFMT_CODE_LENGTH} characters and no control characters.`,
+    );
+  }
+  if (numFmt !== undefined && typeof numFmt !== 'string' && typeof numFmt !== 'number') {
+    throw invalidStyle('numFmt', numFmt, `numFmt must be a format code or a built-in format id; got ${formatValue(numFmt)}.`);
+  }
+}
+
+function validateBorderLineStyle(field: string, lineStyle: unknown): void {
+  if (typeof lineStyle !== 'string' || !BORDER_LINE_STYLES.has(lineStyle)) {
+    throw invalidStyle(
+      field,
+      lineStyle,
+      `${field} ${formatValue(lineStyle)} is not a border style. Use ${[...BORDER_LINE_STYLES].join(', ')}.`,
+    );
+  }
 }
 
 /**
@@ -71,6 +208,12 @@ export class StyleRegistry {
   private readonly numFmtIdByCode = new Map<string, number>();
   private readonly cellXfs: CellXf[] = [DEFAULT_XF];
   private readonly xfIdByKey = new Map<string, number>([[xfKey(DEFAULT_XF), 0]]);
+  /**
+   * The style a Date written under style `i` gets (EC-DATE-STYLE-MERGE): `i` itself when it already has a date
+   * format, otherwise `i` with the default date format swapped in. Filled on first use, so a date column costs one
+   * array read per cell after its first cell.
+   */
+  private readonly dateStyleByStyleId: StyleId[] = [];
   private dateStyleId: StyleId | undefined;
   private boldHeaderStyleId: StyleId | undefined;
 
@@ -79,9 +222,14 @@ export class StyleRegistry {
     return this.cellXfs.length;
   }
 
+  /**
+   * Register a style (deduplicated) and return its id. Every field is validated first (EC-STYLE-FIELD-RANGE) and a
+   * bad one throws `WRITER_STATE` naming the field; so does registering a new style past `MAX_CELL_STYLES`.
+   */
   register(style: CellStyle): StyleId {
+    validateStyle(style);
     const numFmtId = this.registerNumFmt(style.numFmt);
-    const xf: CellXf = {
+    return this.internXf({
       numFmtId,
       fontId: this.registerFont(style.font),
       fillId: this.registerFill(style.fill),
@@ -90,17 +238,18 @@ export class StyleRegistry {
       vertical: style.alignment?.vertical ?? '',
       wrapText: style.alignment?.wrapText === true,
       isDate: this.isDateNumFmt(numFmtId),
-    };
+    });
+  }
 
-    const key = xfKey(xf);
-    const existing = this.xfIdByKey.get(key);
-    if (existing !== undefined) {
-      return existing;
-    }
-    const styleId = this.cellXfs.length;
-    this.cellXfs.push(xf);
-    this.xfIdByKey.set(key, styleId);
-    return styleId;
+  /**
+   * The style id to write a Date under when the caller asked for `styleId` (EC-DATE-STYLE-MERGE): the caller's own
+   * style when it already renders as a date, otherwise a derived style with the caller's font, fill, border and
+   * alignment and the default date format. Derived once per style id and cached; styles are serialized at close,
+   * so registering one mid-stream is safe. `styleId` must be a registered id.
+   */
+  dateStyleFor(styleId: StyleId): StyleId {
+    const cached = this.dateStyleByStyleId[styleId];
+    return cached === undefined ? this.deriveDateStyle(styleId) : cached;
   }
 
   /** The style id the writer uses for JS Dates when the caller did not give one: default xf + DEFAULT_DATE_FORMAT. */
@@ -118,6 +267,39 @@ export class StyleRegistry {
   /** True when the xf carries a date/time number format (the writer needs this to serialize Dates under a caller style). */
   isDateStyle(styleId: StyleId): boolean {
     return this.cellXfs[styleId]?.isDate ?? false;
+  }
+
+  private deriveDateStyle(styleId: StyleId): StyleId {
+    const xf = this.cellXfs[styleId];
+    let derived: StyleId;
+    if (xf === undefined) {
+      derived = this.defaultDateStyle;
+    } else if (xf.isDate) {
+      derived = styleId;
+    } else {
+      derived = this.internXf({ ...xf, numFmtId: this.registerNumFmt(DEFAULT_DATE_FORMAT), isDate: true });
+    }
+    this.dateStyleByStyleId[styleId] = derived;
+    return derived;
+  }
+
+  private internXf(xf: CellXf): StyleId {
+    const key = xfKey(xf);
+    const existing = this.xfIdByKey.get(key);
+    if (existing !== undefined) {
+      return existing;
+    }
+    if (this.cellXfs.length >= MAX_CELL_STYLES) {
+      throw new XlsxError(
+        'WRITER_STATE',
+        `This workbook already has ${MAX_CELL_STYLES} cell styles, the most Excel can load. Reuse the ids registerStyle returned instead of registering a style per cell.`,
+        { limit: MAX_CELL_STYLES },
+      );
+    }
+    const styleId = this.cellXfs.length;
+    this.cellXfs.push(xf);
+    this.xfIdByKey.set(key, styleId);
+    return styleId;
   }
 
   /** Complete `xl/styles.xml`, schema-valid (CT_Font child order, apply* attributes, cellStyles, dxfs, tableStyles). */
@@ -151,9 +333,15 @@ export class StyleRegistry {
       return 0;
     }
     if (typeof numFmt === 'number') {
-      // A cell pointing at a custom id with no `<numFmt>` element is a repair-dialog error, so refuse it here.
-      if (numFmt >= FIRST_CUSTOM_NUMFMT_ID && !this.customNumFmtCodeById.has(numFmt)) {
-        throw new XlsxError('WRITER_STATE', `Number format id ${numFmt} is not a built-in. Register the format code instead.`, { numFmt });
+      // Ids 0-163 are Excel's built-ins (locale-specific ones included). A cell pointing at a custom id with no
+      // `<numFmt>` element is a repair-dialog error (primer section 12.5), and a negative or fractional id is no id.
+      const isBuiltin = Number.isInteger(numFmt) && numFmt >= 0 && numFmt < FIRST_CUSTOM_NUMFMT_ID;
+      if (!isBuiltin && !this.customNumFmtCodeById.has(numFmt)) {
+        throw invalidStyle(
+          'numFmt',
+          numFmt,
+          `numFmt ${numFmt} is not a built-in number format id (0-${FIRST_CUSTOM_NUMFMT_ID - 1}). Register the format code instead.`,
+        );
       }
       return numFmt;
     }
@@ -186,7 +374,7 @@ export class StyleRegistry {
     const strike = font.strike === true;
     const size = font.size;
     const name = font.name;
-    const color = font.color === undefined ? undefined : normalizeColor(font.color);
+    const color = font.color === undefined ? undefined : normalizeColor(font.color, 'font.color');
     if (!bold && !italic && !underline && !strike && size === undefined && name === undefined && color === undefined) {
       return 0;
     }
@@ -230,7 +418,7 @@ export class StyleRegistry {
     if (fill === undefined) {
       return 0;
     }
-    const color = normalizeColor(fill.color);
+    const color = normalizeColor(fill.color, 'fill.color');
     const existing = this.fillIdByKey.get(color);
     if (existing !== undefined) {
       return existing;
@@ -249,7 +437,7 @@ export class StyleRegistry {
       typeof border === 'string'
         ? { left: border, right: border, top: border, bottom: border }
         : { left: border.left, right: border.right, top: border.top, bottom: border.bottom };
-    const color = typeof border === 'string' || border.color === undefined ? undefined : normalizeColor(border.color);
+    const color = typeof border === 'string' || border.color === undefined ? undefined : normalizeColor(border.color, 'border.color');
     if (BORDER_SIDES.every(side => sides[side] === undefined)) {
       return 0;
     }

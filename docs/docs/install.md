@@ -12,10 +12,10 @@ npm install @jetstreamapp/simple-excel
 
 ## Entry points
 
-| Import                            | Contents                                                                                                        |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `@jetstreamapp/simple-excel`      | Everything: `createWorkbookWriter`, `openWorkbook`, the sinks, `sniff`, `sourceFrom`, `XlsxError` and the types |
-| `@jetstreamapp/simple-excel/node` | The same surface re-exported, plus `fromFile`, `toFile`, `toWritable` and `nodeDeflater`. See [Node](./node.md) |
+| Import                            | Contents                                                                                                                                                                                                        |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@jetstreamapp/simple-excel`      | Everything: `createWorkbookWriter`, `openWorkbook`, the sinks, `sniff`, `SNIFF_BYTES`, `sourceFrom`, `hasNativeDeflate`, `createDeflater`, the sheet-name and cell-reference helpers, `XlsxError` and the types |
+| `@jetstreamapp/simple-excel/node` | The same surface re-exported, plus `fromFile`, `toFile`, `toWritable` and `nodeDeflater`. See [Node](./node.md)                                                                                                 |
 
 Both entries ship ESM and CommonJS builds with TypeScript declarations. The core entry is browser-safe: it has no
 `node:` imports and no DOM references beyond `TextEncoder`, `TextDecoder`, `CompressionStream`,
@@ -29,28 +29,30 @@ import type { CellInput, CellStyle, OpenOptions, Workbook, WorkbookWriterOptions
 
 ## Environment requirements
 
-| Feature                              | Used for                              | Minimum                                           |
-| ------------------------------------ | ------------------------------------- | ------------------------------------------------- |
-| Web Streams (`WritableStream`)       | Stream sinks and the compression pump | Chrome 103+, Firefox 113+, Safari 16.4+, Node 20+ |
-| `CompressionStream('deflate-raw')`   | Compressing zip entries on write      | Chrome 103+, Firefox 113+, Safari 16.4+, Node 20+ |
-| `DecompressionStream('deflate-raw')` | Inflating zip entries on read         | same                                              |
-| `TextEncoder` / `TextDecoder`        | UTF-8 on both sides                   | universal on the above                            |
-| `Blob`                               | `collectToBlob()` only                | optional; `collectToBytes()` needs no `Blob`      |
+| Feature                              | Used for                              | Minimum                                                                     |
+| ------------------------------------ | ------------------------------------- | --------------------------------------------------------------------------- |
+| Web Streams (`WritableStream`)       | Stream sinks and the compression pump | Chrome 103+, Firefox 113+, Safari 16.4+, Node 20+                           |
+| `CompressionStream('deflate-raw')`   | Compressing zip entries on write      | Chrome 103+, Firefox 113+, Safari 16.4+, Node 20.12+ (21.2+ on the 21 line) |
+| `DecompressionStream('deflate-raw')` | Inflating zip entries on read         | same; required, there is no fallback                                        |
+| `TextEncoder` / `TextDecoder`        | UTF-8 on both sides                   | universal on the above                                                      |
+| `Blob`                               | `collectToBlob()` only                | optional; `collectToBytes()` needs no `Blob`                                |
 
-`package.json` declares `engines.node >= 20`.
+`package.json` declares `engines.node >= 20.12`.
 
 :::caution
-Node has had `CompressionStream` since 18, but it only accepts the `deflate-raw` format from **21.2**. On an
-earlier Node the writer falls back to stored (uncompressed) parts; pass `nodeDeflater()` from the `/node` entry to
-keep files compressed — it uses zlib and works on every supported version.
-It is a good default for server-side writes anyway, because it lets you pick a compression level.
+Node has had `CompressionStream` since 18, but it only accepts the `deflate-raw` format from **20.12** (21.2 on the
+21 line), which is why that is the floor. On an older Node the writer falls back to stored (uncompressed) parts, and
+`openWorkbook` fails with `UNSUPPORTED_ENVIRONMENT`, because `DecompressionStream` rejects `deflate-raw` too. Pass
+`nodeDeflater()` from the `/node` entry to keep written files compressed; it uses zlib. `nodeDeflater()` is a good
+default for server-side writes anyway, because it lets you pick a compression level.
 :::
 
 ### When `CompressionStream` is missing
 
-`hasNativeDeflate()` tells you whether the platform has it at all. If it does not, the writer stores every part
-uncompressed (zip method 0) instead of failing. The file is a valid `.xlsx` that every reader opens; it is just
-several times larger. In Node you can always get real compression by passing the zlib-backed deflater:
+`hasNativeDeflate()` tells you whether `CompressionStream('deflate-raw')` works here; the class existing is not
+enough, because a Node before 20.12 has it but rejects `deflate-raw`. If it does not work, the writer stores every
+part uncompressed (zip method 0) instead of failing. The file is a valid `.xlsx` that every reader opens; it is
+just several times larger. In Node you can always get real compression by passing the zlib-backed deflater:
 
 ```ts
 import { createWorkbookWriter, hasNativeDeflate } from '@jetstreamapp/simple-excel';

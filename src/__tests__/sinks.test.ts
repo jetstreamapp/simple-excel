@@ -193,6 +193,18 @@ describe('collectToBlob', () => {
     expect((await pending).size).toBe(2);
   });
 
+  it('rejects (not hangs) after an abort, with the XlsxError it was aborted with', async () => {
+    const failure = new XlsxError('WRITER_STATE', 'the writer failed');
+    const blobSink = collectToBlob();
+    const bytesSink = collectToBytes();
+    await blobSink.abort(failure);
+    await bytesSink.abort(failure);
+    const pending = blobSink.result();
+    expect(await isPending(pending)).toBe(false);
+    await expect(pending).rejects.toBe(failure);
+    expect(() => bytesSink.result()).toThrow(failure);
+  });
+
   it('rejects the result after an abort and refuses later writes', async () => {
     const sink = collectToBlob();
     await sink.write(new Uint8Array(4));

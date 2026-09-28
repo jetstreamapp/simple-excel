@@ -1,0 +1,199 @@
+{
+  "label": "audit-fixes-after",
+  "createdAt": "2026-09-27T18:25:39.545Z",
+  "resultsDir": "bench/results/2026-09-27-macbook-air-audit-fixes-after",
+  "machine": {
+    "hostname": "MacBook-Air.local",
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpuModel": "Apple M4",
+    "cpus": 10,
+    "totalMemGB": 32,
+    "nodeVersion": "v24.21.0",
+    "v8": "13.6.233.17-node.53",
+    "loadAvgStart": [2.68115234375, 3.47412109375, 5.2587890625]
+  },
+  "engines": {
+    "simple-excel": {
+      "version": "0.1.1",
+      "supportsStreaming": true
+    },
+    "simple-excel-zlib": {
+      "version": "0.1.1",
+      "supportsStreaming": true
+    }
+  },
+  "options": {
+    "engines": ["simple-excel", "simple-excel-zlib"],
+    "ops": ["write", "read-typed"],
+    "datasets": ["mixed"],
+    "sizes": ["100k"],
+    "runs": 3,
+    "warmup": 1,
+    "source": "materialized",
+    "label": "audit-fixes-after",
+    "timeoutSeconds": 600,
+    "seed": 20260911,
+    "nodeFlags": ["--expose-gc", "--max-old-space-size=12288"],
+    "rebuildFixtures": false,
+    "merge": null,
+    "help": false
+  },
+  "cells": [
+    {
+      "engine": "simple-excel",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 2934.75375,
+        "minMs": 2832.013999999999,
+        "maxMs": 2947.489084,
+        "runsMs": [2832.013999999999, 2947.489084, 2934.75375]
+      },
+      "memory": {
+        "preWarmupRssMB": 586.5,
+        "baselineRssMB": 649.6,
+        "peakRssMB": 694.5,
+        "footprintMB": 108,
+        "peakRssDeltaMB": 44.9,
+        "sampledPeakRssMB": 693.1,
+        "postRunRssMB": 691.5,
+        "highWaterRssMB": 694.5,
+        "highWaterBeforeWarmupMB": 586.5,
+        "samples": 346
+      },
+      "bytes": 45102447,
+      "firstByteMs": 0.34904199999982666,
+      "durationMs": 13505.5305,
+      "exitCode": 0
+    },
+    {
+      "engine": "simple-excel-zlib",
+      "op": "write",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "source": "materialized",
+      "status": "ok",
+      "timing": {
+        "medianMs": 1722.7197499999993,
+        "minMs": 1696.7300000000005,
+        "maxMs": 1734.7605830000002,
+        "runsMs": [1696.7300000000005, 1734.7605830000002, 1722.7197499999993]
+      },
+      "memory": {
+        "preWarmupRssMB": 585.8,
+        "baselineRssMB": 642.4,
+        "peakRssMB": 683.7,
+        "footprintMB": 97.9,
+        "peakRssDeltaMB": 41.3,
+        "sampledPeakRssMB": 683.1,
+        "postRunRssMB": 682.4,
+        "highWaterRssMB": 683.7,
+        "highWaterBeforeWarmupMB": 585.8,
+        "samples": 204
+      },
+      "bytes": 53673529,
+      "firstByteMs": 0.2675410000001648,
+      "durationMs": 8791.478042,
+      "exitCode": 0
+    },
+    {
+      "engine": "simple-excel",
+      "op": "read-typed",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 1608.945875,
+        "minMs": 1606.2537089999996,
+        "maxMs": 1628.0582919999997,
+        "runsMs": [1628.0582919999997, 1608.945875, 1606.2537089999996]
+      },
+      "memory": {
+        "preWarmupRssMB": 243,
+        "baselineRssMB": 1108.3,
+        "peakRssMB": 1152.6,
+        "footprintMB": 909.5,
+        "peakRssDeltaMB": 44.3,
+        "sampledPeakRssMB": 1152.6,
+        "postRunRssMB": 1151.1,
+        "highWaterRssMB": 1152.6,
+        "highWaterBeforeWarmupMB": 243,
+        "samples": 193
+      },
+      "bytes": 99829672,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 2000000,
+      "durationMs": 7326.918417,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+        "producer": "sheetjs",
+        "producerVersion": "0.20.3",
+        "bytes": 99829672
+      }
+    },
+    {
+      "engine": "simple-excel-zlib",
+      "op": "read-typed",
+      "dataset": "mixed",
+      "size": "100k",
+      "rows": 100000,
+      "columns": 20,
+      "cells": 2000000,
+      "runs": 3,
+      "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+      "status": "ok",
+      "timing": {
+        "medianMs": 1661.0842080000002,
+        "minMs": 1612.1833749999996,
+        "maxMs": 1666.2288750000002,
+        "runsMs": [1666.2288750000002, 1661.0842080000002, 1612.1833749999996]
+      },
+      "memory": {
+        "preWarmupRssMB": 242.8,
+        "baselineRssMB": 1115,
+        "peakRssMB": 1144.8,
+        "footprintMB": 902,
+        "peakRssDeltaMB": 29.8,
+        "sampledPeakRssMB": 1144.4,
+        "postRunRssMB": 1143.5,
+        "highWaterRssMB": 1144.8,
+        "highWaterBeforeWarmupMB": 242.8,
+        "samples": 196
+      },
+      "bytes": 99829672,
+      "firstByteMs": null,
+      "rowsRead": 100000,
+      "cellsRead": 2000000,
+      "durationMs": 7439.530208,
+      "exitCode": 0,
+      "fixture": {
+        "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+        "producer": "sheetjs",
+        "producerVersion": "0.20.3",
+        "bytes": 99829672
+      }
+    }
+  ],
+  "loadAvgEnd": [2.9326171875, 3.44287109375, 5.16455078125],
+  "finishedAt": "2026-09-27T18:26:16.819Z"
+}

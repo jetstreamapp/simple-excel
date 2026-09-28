@@ -123,7 +123,9 @@ for 1899 or earlier in the 1900 system. A `Date` before the epoch is therefore *
 stays readable and obviously not a date cell.
 
 On read, a **negative serial in a date-formatted cell comes back as the raw number**, exactly what Excel shows as
-`########`. SheetJS instead re-derives a time of day from it, which matters for files SheetJS itself wrote: its
+`########`. So does a serial past 9999-12-31, Excel's last date: a phone number typed into a date-formatted column
+reads as the number, not as a year-10000 or invalid `Date` (`EC-DATE-SERIAL-OVER-9999`). The writer mirrors it:
+a `Date` after 9999 is written as ISO text (`10000-01-01T00:00:00`), like one before 1900. SheetJS instead re-derives a time of day from it, which matters for files SheetJS itself wrote: its
 time-only cells are negative serials (`EC-DATE-TIME-ONLY-NEGATIVE-SERIAL`), and they read back here as numbers.
 
 `Date`s before roughly 1901 also carry local-mean-time offsets in JavaScript — Los Angeles is `-7:52:58`, not

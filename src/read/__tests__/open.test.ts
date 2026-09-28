@@ -3,11 +3,23 @@
  * and `head()` shapes callers get. Packages are hand-built from raw XML so a single part can be wrong at a time; the
  * real corpus is covered by `test/corpus.test.ts`.
  */
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { fixtureById, readFixture } from '../../../test/helpers/fixtures';
 import { isXlsxError, XlsxError } from '../../errors';
-import type { CellError, CellValue, ObjectRowsOptions, ObjectsResult, RandomAccessSource, RawCell, RowsOptions } from '../../types';
-import { sourceFrom } from '../../zip/source';
+import type {
+  CellError,
+  CellValue,
+  ObjectRowsOptions,
+  ObjectsResult,
+  OpenOptions,
+  RandomAccessSource,
+  RawCell,
+  ReadValue,
+  ReadWarning,
+  RowsOptions,
+} from '../../types';
+import { type SourceInput, sourceFrom } from '../../zip/source';
 import { ZipReader } from '../../zip/zip-reader';
 import { openWorkbook } from '../open';
 
@@ -757,6 +769,421 @@ describe('sheet.toObjects: the sheet_to_json contract', () => {
     } finally {
       await workbook.close();
     }
+  });
+});
+
+async function objectsWith(
+  rows: string,
+  openOptions: OpenOptions,
+  options: RowsOptions & ObjectRowsOptions = {},
+  dimension = '',
+): Promise<ObjectsResult<ReadValue>> {
+  const workbook = await openWorkbook(await sheetOnlyBytes(rows, dimension), openOptions);
+  try {
+    return await workbook.sheet(0).toObjects(options);
+  } finally {
+    await workbook.close();
+  }
+}
+
+async function streamedObjects(
+  rows: string,
+  options: RowsOptions & ObjectRowsOptions = {},
+  dimension = '',
+): Promise<Record<string, CellValue>[]> {
+  const workbook = await openWorkbook(await sheetOnlyBytes(rows, dimension));
+  try {
+    return await collect(workbook.sheet(0).rows({ ...options, mode: 'object' }));
+  } finally {
+    await workbook.close();
+  }
+}
+
+describe('object mode: which row holds the headers', () => {
+  const HEADERS_ON_ROW_2 = `${row(2, ['Id', 'Name'])}${row(3, ['001', 'Zoë'])}${row(4, ['002', 'Bob'])}`;
+
+  it('EC-HEADER-ROW-FIRST-NONEMPTY: a blank row 1 puts the headers on the first row with a value', async () => {
+    // Google Sheets writes no dimension; Excel writes one that starts at the header row. Both read the same.
+    for (const dimension of ['', 'A2:B4']) {
+      const result = await objects(HEADERS_ON_ROW_2, {}, dimension);
+      expect(result.headers, dimension).toEqual(['Id', 'Name']);
+      expect(result.rows, dimension).toEqual([
+        { Id: '001', Name: 'Zoë' },
+        { Id: '002', Name: 'Bob' },
+      ]);
+    }
+  });
+
+  it('EC-HEADER-ROW-FIRST-NONEMPTY: blank rows 1 and 2, and rows of blank cells, are skipped too', async () => {
+    const rows = `<row r="1"><c r="A1" s="1"/><c r="B1"><v/></c></row><row r="2"/>${row(3, ['Id', 'Name'])}${row(4, ['001', 'Zoë'])}`;
+    const result = await objects(rows, {}, 'A3:B4');
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
+    expect(await streamedObjects(rows)).toEqual([{ Id: '001', Name: 'Zoë' }]);
+  });
+
+  it('EC-HEADER-ROW-FIRST-NONEMPTY: an empty-string cell makes its row the header row, as in SheetJS', async () => {
+    const rows = `<row r="1"><c r="A1" t="str"><v></v></c></row>${row(2, ['Id'])}${row(3, ['001'])}`;
+    const result = await objects(rows);
+    expect(result.headers).toEqual(['']);
+    expect(result.rows).toEqual([{ '': 'Id' }, { '': '001' }]);
+  });
+
+  it('EC-HEADER-ROW-FIRST-NONEMPTY: startRow without headerRow looks for the header from startRow on', async () => {
+    const rows = `${row(1, ['Title'])}<row r="3"/>${row(4, ['Id', 'Name'])}${row(5, ['001', 'Zoë'])}`;
+    const result = await objects(rows, { startRow: 2 });
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
+    // A startRow that lands on a row with values uses that row, as before (the wider row 4 adds a blank header).
+    expect((await objects(rows, { startRow: 1 })).headers).toEqual(['Title', '__EMPTY']);
+  });
+
+  it('EC-HEADER-ROW-FIRST-NONEMPTY: an explicit headerRow is that exact row, blank or not', async () => {
+    const result = await objects(HEADERS_ON_ROW_2, { headerRow: 1 });
+    expect(result.headers).toEqual(['__EMPTY', '__EMPTY_1']);
+    expect(result.rows).toEqual([
+      { __EMPTY: 'Id', __EMPTY_1: 'Name' },
+      { __EMPTY: '001', __EMPTY_1: 'Zoë' },
+      { __EMPTY: '002', __EMPTY_1: 'Bob' },
+    ]);
+    expect((await objects(HEADERS_ON_ROW_2, { headerRow: 2 })).headers).toEqual(['Id', 'Name']);
+  });
+
+  it("EC-HEADER-ROW-FIRST-NONEMPTY: Jetstream's options (errors: 'null', dropEmptyHeaders) find the headers below a blank row", async () => {
+    const rows =
+      `${row(3, ['Id', null, 'Name'])}` +
+      `<row r="4"><c r="A4" t="inlineStr"><is><t>001</t></is></c><c r="B4"><v>7</v></c><c r="C4" t="e"><v>#N/A</v></c></row>` +
+      `${row(5, ['002', null, 'Bob'])}`;
+    const result = await objectsWith(rows, { errors: 'null' }, { dropEmptyHeaders: true }, 'A3:C5');
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([
+      { Id: '001', Name: '' },
+      { Id: '002', Name: 'Bob' },
+    ]);
+  });
+});
+
+describe('object mode: which columns get names', () => {
+  it('EC-HEADER-DIMENSION-START-COLUMN: a dimension that starts at B names no column for the empty column A', async () => {
+    const rows =
+      `<row r="2">${'<c r="B2" t="inlineStr"><is><t>Id</t></is></c><c r="C2" t="inlineStr"><is><t>Name</t></is></c>'}</row>` +
+      `<row r="3"><c r="B3" t="inlineStr"><is><t>001</t></is></c><c r="C3" t="inlineStr"><is><t>Zoë</t></is></c></row>`;
+    const result = await objects(rows, {}, 'B2:D3');
+    // The dimension runs to D, so D is a trailing blank header, exactly as SheetJS names it.
+    expect(result.headers).toEqual(['Id', 'Name', '__EMPTY']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë', __EMPTY: '' }]);
+    expect((await objects(rows, { dropEmptyHeaders: true }, 'B2:D3')).headers).toEqual(['Id', 'Name']);
+    expect((await objects(rows, { headerNaming: 'index' }, 'B2:D3')).headers).toEqual(['1', '2', '3']);
+    // Without a dimension the columns start at A.
+    expect((await objects(rows)).headers).toEqual(['__EMPTY', 'Id', 'Name']);
+  });
+
+  it('EC-HEADER-DIMENSION-START-COLUMN: a value left of a wrong dimension is kept under a blank header', async () => {
+    const rows =
+      `<row r="1"><c r="B1" t="inlineStr"><is><t>Id</t></is></c></row>` +
+      `<row r="2"><c r="B2" t="inlineStr"><is><t>001</t></is></c></row>` +
+      `<row r="3"><c r="A3" t="inlineStr"><is><t>stray</t></is></c><c r="B3" t="inlineStr"><is><t>002</t></is></c></row>`;
+    const result = await objects(rows, {}, 'B1:B3');
+    // Sheet order: the stray column A comes before Id in `headers` and in every record's keys.
+    expect(result.headers).toEqual(['__EMPTY', 'Id']);
+    expect(result.rows).toEqual([
+      { __EMPTY: '', Id: '001' },
+      { __EMPTY: 'stray', Id: '002' },
+    ]);
+    expect(result.rows.map(record => Object.keys(record))).toEqual([
+      ['__EMPTY', 'Id'],
+      ['__EMPTY', 'Id'],
+    ]);
+    // Streaming cannot reach back to the record it already yielded.
+    expect(await streamedObjects(rows, {}, 'B1:B3')).toEqual([{ Id: '001' }, { Id: '002', __EMPTY: 'stray' }]);
+  });
+
+  it('EC-HEADER-DIMENSION-START-COLUMN: a header left of a wrong dimension still names its column', async () => {
+    const rows = `${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}`;
+    const result = await objects(rows, {}, 'B1:B2');
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
+  });
+
+  it('EC-HEADER-DIMENSION-START-COLUMN: toObjects gives every record the columns a later, wider row named', async () => {
+    const rows = `${row(1, ['Id'])}${row(2, ['001'])}${row(3, ['002', 'wide'])}${row(4, ['003', null, 'wider'])}`;
+    const result = await objects(rows);
+    expect(result.headers).toEqual(['Id', '__EMPTY', '__EMPTY_1']);
+    expect(result.rows).toEqual([
+      { Id: '001', __EMPTY: '', __EMPTY_1: '' },
+      { Id: '002', __EMPTY: 'wide', __EMPTY_1: '' },
+      { Id: '003', __EMPTY: '', __EMPTY_1: 'wider' },
+    ]);
+    for (const record of result.rows) {
+      expect(Object.keys(record)).toEqual(result.headers);
+    }
+    expect((await objects(rows, { defval: null })).rows[0]).toEqual({ Id: '001', __EMPTY: null, __EMPTY_1: null });
+    // The stream yields each record as it was when built.
+    expect(await streamedObjects(rows)).toEqual([
+      { Id: '001' },
+      { Id: '002', __EMPTY: 'wide' },
+      { Id: '003', __EMPTY: '', __EMPTY_1: 'wider' },
+    ]);
+  });
+});
+
+describe('object mode: header text', () => {
+  it('EC-HEADER-PROTO-KEY: __proto__, constructor, toString and hasOwnProperty are ordinary header names', async () => {
+    const rows =
+      `${row(1, ['__proto__', 'constructor', 'toString', 'hasOwnProperty', '__proto__', 'constructor'])}` +
+      `${row(2, ['a', 'b', 'c', 'd', 'e', 'f'])}` +
+      `<row r="3"><c r="A3" s="1"><v>45351</v></c><c r="B3"><v>2</v></c></row>`;
+    const result = await objects(rows);
+    const names = ['__proto__', 'constructor', 'toString', 'hasOwnProperty', '__proto___1', 'constructor_1'];
+    expect(result.headers).toEqual(names);
+    const [first, second] = result.rows;
+    for (const record of result.rows) {
+      expect(Object.getPrototypeOf(record)).toBe(Object.prototype);
+      expect(Object.keys(record)).toEqual(names);
+    }
+    expect(Object.getOwnPropertyDescriptor(first, '__proto__')).toEqual({
+      value: 'a',
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    expect(first?.constructor).toBe('b');
+    expect(first?.toString).toBe('c');
+    expect(first?.hasOwnProperty).toBe('d');
+    expect(first?.__proto___1).toBe('e');
+    expect(JSON.stringify(first)).toBe(
+      '{"__proto__":"a","constructor":"b","toString":"c","hasOwnProperty":"d","__proto___1":"e","constructor_1":"f"}',
+    );
+    // A Date under __proto__ is a value, not a new prototype for the record.
+    expect(Object.getOwnPropertyDescriptor(second, '__proto__')?.value).toBeInstanceOf(Date);
+    expect(Object.getPrototypeOf(second)).toBe(Object.prototype);
+  });
+
+  it('EC-HEADER-PROTO-KEY: a __proto__ column filled with defval stays an own property', async () => {
+    const result = await objects(`${row(1, ['__proto__'])}${row(2, ['001'])}${row(3, ['002', 'x'])}`, { defval: null });
+    expect(result.headers).toEqual(['__proto__', '__EMPTY']);
+    expect(Object.getOwnPropertyDescriptor(result.rows[0], '__proto__')?.value).toBe('001');
+    expect(Object.getPrototypeOf(result.rows[0])).toBe(Object.prototype);
+    const blankProto = await objects(`${row(1, [null, '__proto__'])}${row(2, [null, null])}${row(3, ['v', null])}`);
+    expect(blankProto.headers).toEqual(['__EMPTY', '__proto__']);
+    expect(Object.getOwnPropertyDescriptor(blankProto.rows[0], '__proto__')?.value).toBe('');
+  });
+
+  it('EC-HEADER-ERROR-CELL: an error header names its column with the error text, whatever errors says', async () => {
+    const rows =
+      `<row r="1"><c r="A1" t="e"><v>#N/A</v></c><c r="B1" t="inlineStr"><is><t>Name</t></is></c></row>` +
+      `<row r="2"><c r="A2" t="e"><v>#DIV/0!</v></c><c r="B2" t="inlineStr"><is><t>Zoë</t></is></c></row>`;
+    const asString = await objectsWith(rows, {});
+    expect(asString.headers).toEqual(['#N/A', 'Name']);
+    expect(asString.rows).toEqual([{ '#N/A': '#DIV/0!', Name: 'Zoë' }]);
+    const asNull = await objectsWith(rows, { errors: 'null' }, { dropEmptyHeaders: true });
+    expect(asNull.headers).toEqual(['#N/A', 'Name']);
+    expect(asNull.rows).toEqual([{ '#N/A': '', Name: 'Zoë' }]);
+    const asObject = await objectsWith(rows, { errors: 'object' });
+    expect(asObject.headers).toEqual(['#N/A', 'Name']);
+    expect(asObject.rows).toEqual([{ '#N/A': { error: '#DIV/0!' }, Name: 'Zoë' }]);
+    // An explicit headerRow gets the same treatment, and a row of nothing but errors can be the header row.
+    expect((await objectsWith(`<row r="1"/>${rows.replaceAll('1"', '5"')}`, { errors: 'null' }, { headerRow: 2 })).headers).toEqual([
+      '__EMPTY',
+      '__EMPTY_1',
+    ]);
+    const errorsOnly = `<row r="2"><c r="A2" t="e"><v>#REF!</v></c></row><row r="3"><c r="A3"><v>1</v></c></row>`;
+    expect(await objectsWith(errorsOnly, { errors: 'null' })).toEqual({ rows: [{ '#REF!': 1 }], headers: ['#REF!'], truncated: false });
+  });
+});
+
+describe('openWorkbook: part names that differ in case', () => {
+  it('EC-PART-NAME-CASE: finds the shared-string part when the relationship and the entry disagree on case', async () => {
+    const bytes = await workbookBytes({
+      'xl/sharedStrings.xml': undefined,
+      'xl/SharedStrings.xml': sharedStrings('Name', 'Amount'),
+      'xl/worksheets/sheet1.xml': sheetXml(`<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>`),
+    });
+    expect(await readRows(bytes)).toEqual([['Name', 'Amount']]);
+  });
+
+  it('EC-PART-NAME-CASE: finds a worksheet, the workbook and its relationships whatever their case', async () => {
+    const bytes = await zip({
+      '[Content_Types].xml': contentTypes({ '/xl/workbook.xml': SPREADSHEET_MAIN }),
+      '_rels/.rels': ROOT_RELS,
+      'XL/Workbook.xml': workbookXml([{ name: 'Data' }]),
+      'XL/_rels/Workbook.xml.rels': relationships(
+        { id: 'rId1', type: 'worksheet', target: 'worksheets/sheet1.xml' },
+        { id: 'rId3', type: 'sharedStrings', target: 'sharedStrings.xml' },
+      ),
+      'XL/sharedstrings.XML': sharedStrings('shared'),
+      'XL/Worksheets/Sheet1.xml': sheetXml(`<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>2</v></c></row>`, 'A1:B1'),
+    });
+    expect(await readRows(bytes)).toEqual([['shared', 2]]);
+    const workbook = await openWorkbook(bytes);
+    try {
+      expect(await workbook.sheet(0).toObjects()).toEqual({ rows: [], headers: ['shared', '2'], truncated: false });
+    } finally {
+      await workbook.close();
+    }
+  });
+
+  it('EC-PART-NAME-CASE: entries that differ only in case are not duplicates, and the exact name wins', async () => {
+    const bytes = await workbookBytes({
+      'xl/worksheets/sheet1.xml': sheetXml(row(1, ['exact'])),
+      'xl/worksheets/Sheet1.xml': sheetXml(row(1, ['other case'])),
+    });
+    expect(await readRows(bytes)).toEqual([['exact']]);
+  });
+});
+
+describe('openWorkbook: warnings', () => {
+  const twoSheets = (): Promise<Uint8Array> =>
+    workbookBytes({
+      'xl/workbook.xml': workbookXml([{ name: 'One' }, { name: 'Two', relId: 'rId4' }]),
+      'xl/_rels/workbook.xml.rels': relationships(
+        { id: 'rId1', type: 'worksheet', target: 'worksheets/sheet1.xml' },
+        { id: 'rId4', type: 'worksheet', target: 'worksheets/sheet2.xml' },
+        { id: 'rId3', type: 'sharedStrings', target: 'sharedStrings.xml' },
+      ),
+      'xl/worksheets/sheet1.xml': sheetXml(
+        `<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>5</v></c></row><row r="2"><c r="A2" t="s"><v>9</v></c></row>`,
+      ),
+      'xl/worksheets/sheet2.xml': sheetXml(`<row r="1"><c r="C1" t="s"><v>7</v></c></row>`),
+    });
+
+  it('EC-SST-INDEX-OUT-OF-RANGE: onWarning hears about an out-of-range index once per sheet, naming the sheet and cell', async () => {
+    const warnings: ReadWarning[] = [];
+    const workbook = await openWorkbook(await twoSheets(), { onWarning: warning => warnings.push(warning) });
+    try {
+      expect(await collect(workbook.sheet(0).rows())).toEqual([['Name', ''], ['']]);
+      // Reading the sheet again repeats nothing; the other sheet reports its own.
+      await collect(workbook.sheet(0).rows());
+      await workbook.sheet(0).toObjects();
+      await workbook.sheet(0).head(2);
+      expect(await collect(workbook.sheet('Two').rows())).toEqual([[null, null, '']]);
+    } finally {
+      await workbook.close();
+    }
+    expect(warnings.map(({ code, sheet, ref }) => ({ code, sheet, ref }))).toEqual([
+      { code: 'SST_INDEX_OUT_OF_RANGE', sheet: 'One', ref: 'B1' },
+      { code: 'SST_INDEX_OUT_OF_RANGE', sheet: 'Two', ref: 'C1' },
+    ]);
+    expect(warnings[0]?.message).toContain('B1');
+  });
+
+  it('EC-SST-INDEX-OUT-OF-RANGE: a t="s" cell in a workbook without a shared-string part warns SHARED_STRINGS_MISSING', async () => {
+    const warnings: ReadWarning[] = [];
+    const bytes = await zip(
+      packageParts({
+        'xl/sharedStrings.xml': undefined,
+        'xl/worksheets/sheet1.xml': sheetXml(`<row r="1"><c r="A1"><v>1</v></c><c r="B1" t="s"><v>0</v></c></row>`),
+      }),
+    );
+    const workbook = await openWorkbook(bytes, { onWarning: warning => warnings.push(warning) });
+    try {
+      expect(await collect(workbook.sheet(0).rows())).toEqual([[1, '']]);
+    } finally {
+      await workbook.close();
+    }
+    expect(warnings.map(({ code, sheet, ref }) => ({ code, sheet, ref }))).toEqual([
+      { code: 'SHARED_STRINGS_MISSING', sheet: 'Data', ref: 'B1' },
+    ]);
+  });
+
+  it('reads the same with no callback', async () => {
+    expect(await readRows(await twoSheets())).toEqual([['Name', ''], ['']]);
+  });
+});
+
+describe('openWorkbook: what it accepts as input', () => {
+  it('EC-INPUT-TYPE: anything that is not bytes is NOT_XLSX, naming what is accepted', async () => {
+    for (const input of [null, undefined, 42, { data: 'x' }, ['P', 'K'], true]) {
+      const error = await caught(() => openWorkbook(input as unknown as SourceInput));
+      expect(error.code, String(input)).toBe('NOT_XLSX');
+      expect(error.message, String(input)).toContain('ArrayBuffer');
+      expect(error.message, String(input)).toContain('Blob');
+    }
+    const text = await caught(() => openWorkbook('PK\u0003\u0004binary string' as unknown as SourceInput));
+    expect(text.code).toBe('NOT_XLSX');
+    expect(text.message).toContain('convert a binary string to bytes');
+    expect(text.detail?.received).toBe('string');
+  });
+
+  it('EC-INPUT-TYPE: any ArrayBufferView or SharedArrayBuffer reads without a copy', async () => {
+    const bytes = await workbookBytes();
+    const expected = [
+      ['Name', 'Amount'],
+      ['Zoë', 12.5],
+    ];
+    const padded = new Uint8Array(bytes.byteLength + 8);
+    padded.set(bytes, 3);
+    const shared = new SharedArrayBuffer(bytes.byteLength);
+    new Uint8Array(shared).set(bytes);
+    for (const input of [
+      new DataView(padded.buffer, 3, bytes.byteLength),
+      new Int8Array(padded.buffer, 3, bytes.byteLength),
+      new Uint8ClampedArray(padded.buffer, 3, bytes.byteLength),
+      shared,
+      new Uint8Array(shared),
+    ]) {
+      expect(await readRows(input as unknown as Uint8Array), input.constructor.name).toEqual(expected);
+    }
+  });
+
+  it('EC-INPUT-TYPE: buffers from another realm (an iframe, a worker, an Electron bridge) are accepted', async () => {
+    const bytes = await workbookBytes();
+    const foreign = runInNewContext(`new ArrayBuffer(${bytes.byteLength})`) as ArrayBuffer;
+    expect(foreign instanceof ArrayBuffer).toBe(false);
+    const foreignView = runInNewContext('buffer => new Uint8Array(buffer)')(foreign) as Uint8Array;
+    foreignView.set(bytes);
+    expect(foreignView instanceof Uint8Array).toBe(false);
+    expect(await readRows(foreign as unknown as Uint8Array)).toEqual([
+      ['Name', 'Amount'],
+      ['Zoë', 12.5],
+    ]);
+    expect(await readRows(foreignView)).toHaveLength(2);
+  });
+});
+
+describe('workbook.close', () => {
+  it('fails every read after close with ABORTED, for in-memory bytes and for any other source', async () => {
+    const bytes = await workbookBytes();
+    let closed = false;
+    const fragile: RandomAccessSource = {
+      size: bytes.byteLength,
+      read: (offset: number, length: number) =>
+        closed ? Promise.reject(new Error('EBADF: bad file descriptor, read')) : Promise.resolve(bytes.subarray(offset, offset + length)),
+      close: () => {
+        closed = true;
+        return Promise.resolve();
+      },
+    };
+    for (const input of [bytes, fragile]) {
+      const workbook = await openWorkbook(input);
+      await workbook.close();
+      const sheet = workbook.sheet(0);
+      for (const read of [
+        () => collect(sheet.rows()),
+        () => sheet.toObjects(),
+        () => sheet.head(1),
+        () => collect(sheet.rows({ mode: 'object' })),
+      ]) {
+        const error = await caught(read);
+        expect(error.code).toBe('ABORTED');
+        expect(error.message).toContain('closed');
+      }
+      // Closing twice is harmless.
+      await workbook.close();
+    }
+  });
+
+  it('fails a read that is still streaming when the workbook closes under it', async () => {
+    // Big enough to inflate in several chunks, so the read has more to pull after the first rows arrive.
+    const rows = Array.from({ length: 20_000 }, (_, index) => row(index + 1, [`row ${index}`, index * 7919])).join('');
+    const bytes = await sheetOnlyBytes(rows);
+    const workbook = await openWorkbook(bytes);
+    const error = await caught(async () => {
+      for await (const _ of workbook.sheet(0).rows()) {
+        await workbook.close();
+      }
+    });
+    expect(error.code).toBe('ABORTED');
   });
 });
 

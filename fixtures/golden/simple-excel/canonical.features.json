@@ -1,5 +1,5 @@
 {
-  "generator": "@jetstreamapp/simple-excel (defaults: bounded shared strings, deflate, zip64 auto)",
+  "generator": "@jetstreamapp/simple-excel (strings: 'auto' (bounded shared-string table), deflate, zip64 auto)",
   "applied": ["freeze", "autoFilter", "merges", "columnWidths", "hiddenSheet", "numFmts"],
   "skipped": [
     {

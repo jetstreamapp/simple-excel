@@ -7,20 +7,19 @@ against the exact SheetJS call Jetstream makes today.
 
 ```bash
 npm run build                                # required once: the simple-excel adapters import dist/
-npm run bench -- -- --help
-npm run bench -- -- --engines sheetjs,exceljs,office-kit,write-excel-file,simple-excel,simple-excel-zlib --ops write,read-typed,read-raw --datasets mixed --sizes 1k,10k,100k --label baseline
-npm run bench -- -- --datasets mixed --sizes 1m,18m-cells --engines sheetjs,simple-excel --ops write --runs 1 --label scale
-npm run bench -- -- --datasets strings-unique,numeric,wide --sizes 100k --engines sheetjs,simple-excel --ops write,read-typed --label shapes
-npm run bench -- -- --merge results/<a>,results/<b> --label combined   # one summary + gates over several runs
+npm run bench -- --help
+npm run bench -- --engines sheetjs,exceljs,office-kit,write-excel-file,simple-excel,simple-excel-zlib --ops write,read-typed,read-raw --datasets mixed --sizes 1k,10k,100k --label baseline
+npm run bench -- --datasets mixed --sizes 1m,18m-cells --engines sheetjs,simple-excel --ops write --runs 1 --label scale
+npm run bench -- --datasets strings-unique,numeric,wide --sizes 100k --engines sheetjs,simple-excel --ops write,read-typed --label shapes
+npm run bench -- --merge results/<a>,results/<b> --label combined   # one summary + gates over several runs
 ```
 
 `npm run bench` deliberately does not build first (a `--merge` needs no build, and a stale rebuild in the
 middle of a measurement session is worse than an explicit step): the `simple-excel` adapters import
 `dist/esm/index.mjs` and `dist/esm/node.mjs`, and report `skipped: dist/ is missing` when they are absent.
 
-Everything here is pure (`node check-purity.mjs`): no `@jetstream/*` imports, so the
-folder can lift into a standalone repository. Engines resolve through pnpm's walk-up: `xlsx` from the
-repo root, the rest from `node_modules`.
+The tooling stays free of `@jetstream/*` imports (`node scripts/check-purity.mjs`, run in CI). Engines resolve from
+the root `node_modules`.
 
 ## Layout
 
@@ -89,8 +88,8 @@ so all engines write the same cell values. `simple-excel` is the exception in fo
 identical rule and suffix internally (`cellOverflow: 'truncate'`), so the adapter does not pre-scan rows and the
 bytes still match — the cost stays inside the engine, where a caller would actually pay it.
 
-To add an engine: create `engines/<name>.mjs` with the interface above, install its dependency in
-`package.json` (never the repo root), run a 1k smoke cell, then add a row to the table above.
+To add an engine: create `engines/<name>.mjs` with the interface above, add its dependency to the root
+`package.json` `devDependencies`, run a 1k smoke cell, then add a row to the table above.
 
 ## What a cell measures (`lib/child.mjs`)
 
@@ -171,17 +170,19 @@ concurrent chain with a grace period), so the `agent-cluster peak` / `worker pea
 
 ## Latest results (2026-09-12, Apple M4 / 32 GB / Node v24.18.0)
 
-| Folder                                             | What                                                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `results/2026-09-12-macbook-air-phase-e-optimized` | mixed 1k/10k/100k × simple-excel, simple-excel-zlib, sheetjs × write, read-typed, read-raw              |
-| `results/2026-09-12-macbook-air-phase-e-others`    | mixed 100k × exceljs, office-kit, write-excel-file, re-measured in the same session                     |
-| `results/2026-09-12-macbook-air-phase-e-scale`     | mixed 1m + 18m-cells writes (sheetjs, simple-excel, simple-excel-zlib) — sheetjs `RangeError` on both   |
-| `results/2026-09-12-macbook-air-phase-e-combined`  | `--merge` of the three above: one summary, gates across all of them. This is what `research/06` renders |
-| `results/2026-09-12-macbook-air-phase-e-chrome`    | Chromium 153 module worker: simple-excel + sheetjs, mixed 100k and 1m                                   |
+| Folder                                             | What                                                                                                                                                                        |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `results/2026-09-12-macbook-air-phase-e-optimized` | mixed 1k/10k/100k × simple-excel, simple-excel-zlib, sheetjs × write, read-typed, read-raw                                                                                  |
+| `results/2026-09-12-macbook-air-phase-e-others`    | mixed 100k × exceljs, office-kit, write-excel-file, re-measured in the same session                                                                                         |
+| `results/2026-09-12-macbook-air-phase-e-scale`     | mixed 1m + 18m-cells writes (sheetjs, simple-excel, simple-excel-zlib) — sheetjs `RangeError` on both                                                                       |
+| `results/2026-09-12-macbook-air-phase-e-combined`  | `--merge` of the three above: one summary, gates across all of them. This is what `research/06` renders                                                                     |
+| `results/2026-09-12-macbook-air-phase-e-chrome`    | Chromium 153 module worker: simple-excel + sheetjs, mixed 100k and 1m                                                                                                       |
+| `results/2026-09-12-macbook-air-inline-default`    | mixed 100k × simple-excel, simple-excel-zlib in the shipped default (`strings: 'inline'`): write 3.08 s / 58 MB (1.73 s with `nodeDeflater(1)`), read-typed 1.64 s / 810 MB |
 
-Headline: simple-excel passes all seven gates on both deflate paths. At mixed 100k it writes in 2.77 s (0.28×
-sheetjs) with a 107 MB RSS footprint (0.03×) and a 0.4 ms first byte, and reads typed in 1.62 s (0.26×) at 882 MB
-(0.48×); `nodeDeflater(1)` takes the write to 1.71 s for a 20% larger file. It writes 1M × 20 in 31.9 s and the
+Headline, measured with the bounded shared-string table (now `strings: 'auto'`; the inline default is in
+`inline-default`): simple-excel passes all seven gates on both deflate paths. At mixed 100k it writes in 2.77 s
+(0.28× sheetjs) with a 107 MB RSS footprint (0.03×) and a 0.4 ms first byte, and reads typed in 1.62 s (0.26×) at
+882 MB (0.48×); `nodeDeflater(1)` takes the write to 1.71 s for a 20% larger file. It writes 1M × 20 in 31.9 s and the
 18M-cell shape in 27.0 s where sheetjs throws `RangeError: Invalid string length`, and completes 1M × 20 in a
 Chrome worker (39.6 s, +254 MB renderer RSS) where sheetjs crashes the renderer. The absolute wall-clock targets
 in `research/11-build-plan.md` §1 (100k written in 1.2 s, read in 1.5 s) are still not met on this dataset; see

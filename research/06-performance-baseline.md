@@ -1,8 +1,8 @@
 # 06 - Performance baseline and targets
 
 Measured engine performance on Jetstream-shaped data, the gates a replacement must clear, and the harness
-that produces the numbers (`bench`, `npm run bench --`). The results section is
-rendered from the newest committed run by `research/regenerate.sh 06`.
+that produces the numbers (`bench`, `npm run bench --`). The results section is rendered from the newest
+`*-combined` run by `research/regenerate.sh 06`; the newer `inline-default` run is summarised by hand below.
 
 _Accurate as of 2026-09-12; the results section is the Phase E run of `@jetstreamapp/simple-excel` itself, taken
 after the hot-path optimisation pass (crc32, cell-text escaping, chunk encoding, attribute parsing)._
@@ -48,7 +48,10 @@ same engine with `nodeDeflater(1)`.
 
 Stretch: write memory ≤ 0.1× (**met**, 0.03×), time ≤ 0.5× (**met**, 0.28× / 0.18×).
 
-The absolute targets in `11-build-plan.md` §1 are a separate set, and two of them are **not met** on this dataset:
+These are `strings: 'auto'` numbers. The shipped default (inline strings) measures 3.08 s (0.32×) / 58 MB (0.02×)
+on write and 1.64 s (0.27×) / 810 MB (0.44×) on read; see "Inline strings as the default" below.
+
+The absolute targets in `11-build-plan.md` §1 are a separate set, and four of them are **not met** on this dataset:
 
 | Target (`11-build-plan.md` §1) | Threshold      | Measured (mixed 100k×20)                    | Verdict  |
 | ------------------------------ | -------------- | ------------------------------------------- | -------- |
@@ -58,7 +61,7 @@ The absolute targets in `11-build-plan.md` §1 are a separate set, and two of th
 | read throughput                | ≥ 150k rows/s  | 61.7k rows/s typed, 68.0k rows/s array mode | **FAIL** |
 | 1M × 20 write heap growth      | < 250 MB       | 77 MB (rows streamed, nothing materialised) | **PASS** |
 | 18M cells                      | < 3 GB         | 76 MB heap growth, 215 MB peak RSS          | **PASS** |
-| core bundle                    | ≤ 40 KB brotli | 24.9 KB (`npm run size`)                    | **PASS** |
+| core bundle                    | ≤ 40 KB brotli | 29.0 KB (`npm run size`)                    | **PASS** |
 
 A `mixed` row carries ~1.7 KB of text, so 100k rows is 170 MB of XML written and 213 MB read; the four time
 targets were written without pinning a dataset. The optimisation pass below closed most of the gap - write is
@@ -348,4 +351,9 @@ per-fragment `encodeInto` was also measured (84 ms vs 86 ms for 20k rows) and dr
   ~250k rows (2026-09-11 `ceiling` run); write-excel-file reads 100k at a 5,290 MB footprint.
 - Load average was 3-10 during the runs (other processes were active); ratios are more trustworthy than absolute
   numbers. Bundle size, the last gate in `11-build-plan.md` §1, is checked by `npm run size`: the core browser
-  entry is **24.9 KB brotli** (84.8 KB minified, 28.1 KB gzip) against a 40 KB budget.
+  entry is **29.0 KB brotli** (99.2 KB minified, 33.1 KB gzip) against a 40 KB budget; it was 24.9 KB in 0.1, before
+  the writer's input validation (2026-09-27).
+- The 0.2 fixes (input validation, header-row detection, failure latching) were measured before and after on
+  mixed 100k × 20 (`bench/results/2026-09-27-macbook-air-audit-fixes-before` and `…-after`, median of three): write
+  2.86 s → 2.93 s with the same 2.83 s best run (zlib 1.74 s → 1.72 s), typed read 1.69 s → 1.61 s (zlib
+  1.60 s → 1.66 s), footprints unchanged. Every difference is inside run-to-run noise.

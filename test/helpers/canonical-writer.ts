@@ -38,8 +38,8 @@ export async function writeCanonicalWorkbook(options: WorkbookWriterOptions = {}
       typeof name === 'string' && sheetSpec.numFmts?.[name] ? workbook.registerStyle({ numFmt: sheetSpec.numFmts[name] }) : undefined,
     );
     const isFeatures = sheetSpec.features !== undefined;
-    // `<dimension>` comes from the declared width and readers clip to it, so declare the widest row rather than the
-    // header: the Hidden sheet's data row ('secret', 42) is one column wider than its header.
+    // Declare the widest row rather than the header: the Hidden sheet's data row ('secret', 42) is one column wider
+    // than its header. This once sized `<dimension>`; the writer no longer emits one (EC-DIMENSION-FROM-HINT).
     const widestRow = Math.max(...rows.map(row => row.length));
     const sheet = workbook.addSheet(sheetSpec.name, {
       hidden: sheetSpec.hidden,

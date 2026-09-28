@@ -368,3 +368,6 @@ coverage/
 .sfdx
 # simple-excel tooling scratch (fixtures generate into it, the oracle/bench spool into it)
 .generated/
+
+# Office owner lock files (they carry the author name)
+~$*

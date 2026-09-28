@@ -482,6 +482,28 @@ describe('ZipReader.stream', () => {
     expect((await reader.readText('xl/workbook.xml')).includes('<workbook')).toBe(true);
   });
 
+  it('read() checks a declared size against the cap before allocating anything (EC-ZIP-BOMB)', async () => {
+    const archive = buildZip([{ name: 'xl/workbook.xml', data: '<workbook/>' }]);
+    const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+    const centralStart = view.getUint32(archive.byteLength - 6, true);
+    view.setUint32(centralStart + 24, 0xf000_0000, true); // claim 3.75 GiB uncompressed
+    const reader = await ZipReader.open(sourceFrom(archive), DEFAULT_LIMITS);
+    const arrayBuffersBefore = process.memoryUsage().arrayBuffers;
+    await expect(reader.read('xl/workbook.xml')).rejects.toMatchObject({ name: 'XlsxError', code: 'ZIP_BOMB' });
+    // Node allocates lazily, so a 3.75 GiB buffer would not fail here; it would show up in the accounting instead.
+    expect(process.memoryUsage().arrayBuffers - arrayBuffersBefore).toBeLessThan(64 * MIB);
+    await reader.close();
+    await expect(reader.read('xl/workbook.xml'), 'closed is checked first').rejects.toMatchObject({ code: 'ABORTED' });
+  });
+
+  it('read() returns a part larger than its up-front allocation intact', async () => {
+    const data = repetitiveXml(20 * MIB);
+    const reader = await ZipReader.open(sourceFrom(buildZip([{ name: 'xl/sharedStrings.xml', data }])), DEFAULT_LIMITS);
+    const bytes = await reader.read('xl/sharedStrings.xml');
+    expect(bytes.byteLength).toBe(new TextEncoder().encode(data).byteLength);
+    expect(new TextDecoder().decode(bytes.subarray(bytes.byteLength - 64))).toBe(data.slice(-64));
+  });
+
   it('streams the same entry in flat memory when the cap allows it', async () => {
     const reader = await openFixture('hostile-zip-bomb-30mb-sheet', { ...DEFAULT_LIMITS, maxInflatedBytes: 64 * MIB });
     const { total, largestChunk, count } = await collect(reader.stream('xl/worksheets/sheet1.xml'));
@@ -574,5 +596,63 @@ describe('ZipReader.readText', () => {
     const reader = await openBuilt([{ name: 'a.xml', data: withBom }]);
     expect(await reader.readText('a.xml')).toBe('<?xml version="1.0"?>');
     expect((await reader.read('a.xml')).byteLength).toBe(withBom.byteLength);
+  });
+});
+
+describe('ZipReader: part names in another case', () => {
+  it('EC-PART-NAME-CASE: has, stream, read and readText fall back to an ASCII case-insensitive match', async () => {
+    const reader = await openBuilt([
+      { name: 'xl/SharedStrings.xml', data: '<sst/>' },
+      { name: 'XL/Worksheets/Sheet1.XML', data: '<worksheet/>' },
+    ]);
+    expect(reader.has('xl/sharedStrings.xml')).toBe(true);
+    expect(await reader.readText('xl/sharedstrings.xml')).toBe('<sst/>');
+    expect(await reader.readText('/xl\\worksheets\\sheet1.xml')).toBe('<worksheet/>');
+    expect((await reader.read('xl/worksheets/sheet1.xml')).byteLength).toBe('<worksheet/>'.length);
+    expect((await collect(reader.stream('XL/SHAREDSTRINGS.XML'))).total).toBe('<sst/>'.length);
+    // `entries` keeps the names exactly as the archive spells them.
+    expect([...reader.entries.keys()]).toEqual(['xl/SharedStrings.xml', 'XL/Worksheets/Sheet1.XML']);
+    expect(reader.has('xl/styles.xml')).toBe(false);
+  });
+
+  it('EC-PART-NAME-CASE: only ASCII letters fold', async () => {
+    const reader = await openBuilt([{ name: 'xl/Ünï.xml', data: 'a' }]);
+    expect(reader.has('XL/Ünï.xml')).toBe(true);
+    expect(reader.has('xl/ünï.xml')).toBe(false);
+  });
+
+  it('EC-PART-NAME-CASE: names that differ only in case are not duplicates; the exact name wins, then the first', async () => {
+    const reader = await openBuilt([
+      { name: 'xl/Sheet.xml', data: 'first' },
+      { name: 'xl/sheet.xml', data: 'second' },
+    ]);
+    expect(await reader.readText('xl/Sheet.xml')).toBe('first');
+    expect(await reader.readText('xl/sheet.xml')).toBe('second');
+    expect(await reader.readText('XL/SHEET.XML')).toBe('first');
+  });
+});
+
+describe('ZipReader.close', () => {
+  it('fails any read after close with ABORTED, and closes the source once', async () => {
+    let closes = 0;
+    const bytes = buildZip([{ name: 'a.xml', data: '<a/>' }]);
+    const source: RandomAccessSource = {
+      size: bytes.byteLength,
+      read: (offset, length) =>
+        closes > 0
+          ? Promise.reject(new Error('EBADF: bad file descriptor, read'))
+          : Promise.resolve(bytes.subarray(offset, offset + length)),
+      close: async () => {
+        closes++;
+      },
+    };
+    const reader = await ZipReader.open(source, DEFAULT_LIMITS);
+    await reader.close();
+    await reader.close();
+    expect(closes).toBe(1);
+    await expect(reader.readText('a.xml')).rejects.toMatchObject({ name: 'XlsxError', code: 'ABORTED' });
+    await expect(collect(reader.stream('a.xml'))).rejects.toMatchObject({ code: 'ABORTED' });
+    // The directory is still there to look at; only reads fail.
+    expect(reader.has('a.xml')).toBe(true);
   });
 });

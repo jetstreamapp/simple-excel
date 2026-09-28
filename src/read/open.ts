@@ -8,7 +8,7 @@ import { MAX_COLUMNS, parseRange } from '../sml/cell-ref';
 import { parseContentTypes, parseRels, parseWorkbook, relTypeIs, type ContentTypes, type Relationship } from '../sml/package-parts';
 import { parseSharedStrings } from '../sml/shared-strings-reader';
 import { parseStyles } from '../sml/styles';
-import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext } from '../sml/worksheet-reader';
+import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext, type WorksheetRowsOptions } from '../sml/worksheet-reader';
 import type {
   ArrayRowsOptions,
   CellError,
@@ -20,6 +20,8 @@ import type {
   RawCell,
   ReadLimits,
   ReadValue,
+  ReadWarning,
+  ReadWarningCode,
   RowsOptions,
   Sheet,
   SheetInfo,
@@ -244,11 +246,14 @@ function rejectForeignMainPart(mainPart: string, contentTypes: ContentTypes | un
 const EMPTY_HEADER_BASE = '__EMPTY';
 /** Stands in for "this call names no columns from a header row", so widening a row allocates nothing. */
 const NO_HEADER_CELLS: readonly ReadValue[] = [];
+/** The one key a plain-object assignment does not store: it runs the `Object.prototype.__proto__` setter instead. */
+const PROTOTYPE_KEY = '__proto__';
 
 /**
  * SheetJS names a blank header `__EMPTY`, then `__EMPTY_1`, `__EMPTY_2`, and disambiguates a repeated header with
  * the same `_1`, `_2` suffixes, skipping any suffix already taken. Reproduced exactly: Jetstream's field mapping
- * keys off these names, so they are part of the contract (01 B2).
+ * keys off these names, so they are part of the contract (01 B2). A `Map`, never a plain object: header text is user
+ * text, and `__proto__`, `constructor` or `toString` must count like any other name (EC-HEADER-PROTO-KEY).
  */
 class HeaderNamer {
   private readonly used = new Map<string, number>();
@@ -276,7 +281,9 @@ function padTwo(value: number): string {
 
 /**
  * The text SheetJS puts in a header is the cell's formatted text. We have no number formatter, so the value's own
- * spelling stands in: identical for strings (every header in practice) and Excel's spelling for the other types.
+ * spelling stands in: identical for strings (every header in practice) and Excel's spelling for the other types. An
+ * error cell names its column with the error text whatever `errors` says (EC-HEADER-ERROR-CELL); the row reader
+ * hands the header row's errors over as text for that reason, and a `CellError` is read the same way.
  */
 function headerTextOf(value: ReadValue): string {
   if (typeof value === 'string') {
@@ -295,49 +302,105 @@ function headerTextOf(value: ReadValue): string {
   return String(value);
 }
 
+/** The first index below `limit` whose cell holds a value, or `limit` when none does. */
+function firstValueIndex(cells: readonly ReadValue[], limit: number): number {
+  const end = Math.min(limit, cells.length);
+  for (let column = 0; column < end; column++) {
+    const value = cells[column];
+    if (value !== undefined && value !== null) {
+      return column;
+    }
+  }
+  return limit;
+}
+
 interface HeaderColumn {
   readonly name: string;
   /** 0-based column the header reads from. */
   readonly column: number;
+  /** The name is `__proto__`, which only `Object.defineProperty` can store as an own property. */
+  readonly definesOwnProperty: boolean;
+  /** How many records were built before this column had a name; `toObjects` backfills those. */
+  readonly firstRecord: number;
+}
+
+/** Store `value` under `column`'s name as an own, enumerable data property of a plain object. */
+function setField(record: Record<string, ReadValue>, column: HeaderColumn, value: ReadValue): void {
+  if (column.definesOwnProperty) {
+    Object.defineProperty(record, column.name, { value, writable: true, enumerable: true, configurable: true });
+    return;
+  }
+  record[column.name] = value;
 }
 
 /** What a `toObjects` call needs back from the row stream it drains. */
 interface ObjectReadState {
   headers: string[];
   truncated: boolean;
+  /** Set once the stream ends, so `toObjects` can give earlier records the columns named after them. */
+  builder: ObjectRowBuilder | undefined;
 }
 
+/** Where the sheet's `<dimension>` puts its columns: both 0 when it declares none. */
+interface DeclaredColumns {
+  /** 0-based first column. */
+  readonly first: number;
+  /** One past the 0-based last column. */
+  readonly end: number;
+}
+
+const NO_DECLARED_COLUMNS: DeclaredColumns = { first: 0, end: 0 };
+
+/** 1-based header row "the first row with a value", as opposed to a row the caller named. */
+const DETECT_HEADER_ROW = 0;
+
 /**
- * Turns rows into `{ header: value }` records: names the header row's columns, skips everything before the first
- * data row, and fills absent cells with `defval`. Blank rows never reach it - the row reader drops them, which is
- * SheetJS's `blankrows: false`.
+ * Turns rows into `{ header: value }` records: finds and names the header row's columns, skips everything before
+ * the first data row, and fills absent cells with `defval`. Blank rows never reach it - the row reader drops them,
+ * which is SheetJS's `blankrows: false` - so without an explicit `headerRow` the first row it sees is the header row
+ * (EC-HEADER-ROW-FIRST-NONEMPTY).
+ *
+ * Columns run from the dimension's first column (EC-HEADER-DIMENSION-START-COLUMN) to the wider of the dimension and
+ * the header row. Values outside that range are never dropped: the columns they sit in are named as the blanks they
+ * are, to the right as a row widens and to the left when a value lies before the dimension's first column.
  */
 class ObjectRowBuilder {
+  /** The caller's `headerRow`, or `DETECT_HEADER_ROW`. */
   private readonly headerRow: number;
-  private readonly firstDataRow: number;
-  private readonly declaredColumns: number;
+  private readonly requestedStartRow: number;
+  private firstDataRow: number;
+  private readonly declared: DeclaredColumns;
   private readonly defval: CellValue;
   private readonly naming: NonNullable<ObjectRowsOptions['headerNaming']>;
   private readonly dropEmptyHeaders: boolean;
   private readonly namer = new HeaderNamer();
   private readonly columns: HeaderColumn[] = [];
-  /** Columns named so far, including any that `dropEmptyHeaders` kept out of `columns`. */
+  /** Columns from `leftmostNamed` up to `namedColumns` have names, including any `dropEmptyHeaders` kept out of `columns`. */
+  private leftmostNamed = 0;
   private namedColumns = 0;
   private headersReady = false;
+  private recordsBuilt = 0;
 
-  constructor(options: RowsOptions & ObjectRowsOptions, declaredColumns: number) {
-    this.headerRow = Math.max(1, options.headerRow ?? options.startRow ?? 1);
-    this.firstDataRow = Math.max(options.startRow ?? 0, this.headerRow + 1);
-    this.declaredColumns = declaredColumns;
+  constructor(options: RowsOptions & ObjectRowsOptions, declared: DeclaredColumns) {
+    this.requestedStartRow = Math.max(1, options.startRow ?? 1);
+    this.headerRow = options.headerRow === undefined ? DETECT_HEADER_ROW : Math.max(1, options.headerRow);
+    this.firstDataRow =
+      this.headerRow === DETECT_HEADER_ROW ? Number.POSITIVE_INFINITY : Math.max(options.startRow ?? 0, this.headerRow + 1);
+    this.declared = declared;
     // `defval: null` is a caller asking for nulls, not for the default.
     this.defval = options.defval === undefined ? '' : options.defval;
     this.naming = options.headerNaming ?? 'sheetjs';
     this.dropEmptyHeaders = options.dropEmptyHeaders === true;
   }
 
-  /** 1-based row the underlying reader must start at: the header row, whatever `startRow` asked for. */
+  /** 1-based row the underlying reader must start at: the header row when the caller named one, else `startRow`. */
   get startRow(): number {
-    return this.headerRow;
+    return this.headerRow === DETECT_HEADER_ROW ? this.requestedStartRow : this.headerRow;
+  }
+
+  /** Which row the reader should hand over with error cells as text: the header row, found or named. */
+  get errorTextRow(): number | 'first' {
+    return this.headerRow === DETECT_HEADER_ROW ? 'first' : this.headerRow;
   }
 
   get headers(): string[] {
@@ -346,38 +409,115 @@ class ObjectRowBuilder {
 
   /** The record for one row, or null when the row is the header row or sits before the first data row. */
   accept(rowIndex: number, cells: readonly ReadValue[]): Record<string, ReadValue> | null {
-    if (!this.headersReady && rowIndex >= this.headerRow) {
-      this.headersReady = true;
-      this.nameColumns(Math.max(this.declaredColumns, cells.length), rowIndex === this.headerRow ? cells : NO_HEADER_CELLS);
+    if (!this.headersReady) {
+      if (this.headerRow === DETECT_HEADER_ROW) {
+        this.firstDataRow = rowIndex + 1;
+        this.nameHeaderRow(cells);
+        return null;
+      }
+      if (rowIndex >= this.headerRow) {
+        this.nameHeaderRow(rowIndex === this.headerRow ? cells : NO_HEADER_CELLS);
+      }
     }
     if (rowIndex < this.firstDataRow) {
       return null;
     }
-    // A row wider than both the header row and the declared dimension still has to keep its values; those columns
-    // have no header cell of their own, so they are named as the blanks they are.
+    if (this.leftmostNamed > 0) {
+      this.nameColumnsBefore(firstValueIndex(cells, this.leftmostNamed));
+    }
     this.nameColumns(cells.length, NO_HEADER_CELLS);
     const record: Record<string, ReadValue> = {};
-    for (const { name, column } of this.columns) {
-      const value = cells[column];
-      record[name] = value === undefined || value === null ? this.defval : value;
+    for (const column of this.columns) {
+      const value = cells[column.column];
+      const resolved = value === undefined || value === null ? this.defval : value;
+      if (column.definesOwnProperty) {
+        setField(record, column, resolved);
+      } else {
+        record[column.name] = resolved;
+      }
     }
+    this.recordsBuilt++;
     return record;
+  }
+
+  /**
+   * Give the records built before a column was named that column too, with `defval`, so every record has every
+   * header in the same key order as `headers`. Only `toObjects` can: a streamed record is already in the caller's
+   * hands. Only the records built before the last late column are rebuilt, which is none on the common path.
+   */
+  backfill(records: Record<string, ReadValue>[]): void {
+    let affected = 0;
+    for (const column of this.columns) {
+      affected = Math.max(affected, Math.min(column.firstRecord, records.length));
+    }
+    for (let index = 0; index < affected; index++) {
+      const previous = records[index];
+      if (previous === undefined) {
+        continue;
+      }
+      const rebuilt: Record<string, ReadValue> = {};
+      for (const column of this.columns) {
+        setField(rebuilt, column, Object.hasOwn(previous, column.name) ? (previous[column.name] as ReadValue) : this.defval);
+      }
+      records[index] = rebuilt;
+    }
+  }
+
+  /**
+   * Name the header row's columns: from the dimension's first column, or from an earlier one when the header row
+   * itself has a value there (a dimension that is wrong about where the data starts), to the wider of the dimension
+   * and the header row.
+   */
+  private nameHeaderRow(headerCells: readonly ReadValue[]): void {
+    this.headersReady = true;
+    const first = firstValueIndex(headerCells, this.declared.first);
+    this.leftmostNamed = first;
+    this.namedColumns = first;
+    this.nameColumns(Math.max(this.declared.end, headerCells.length), headerCells);
   }
 
   /** Name every column that is not named yet, up to `width`, reading each name from `headerCells`. */
   private nameColumns(width: number, headerCells: readonly ReadValue[]): void {
     for (let column = this.namedColumns; column < width; column++) {
-      const value = headerCells[column];
-      const missing = value === undefined || value === null;
-      const text = missing ? '' : headerTextOf(value);
-      // A header cell holding an empty string is an empty name in SheetJS; only an absent cell becomes `__EMPTY`.
-      const name = this.naming === 'index' ? String(column) : this.namer.unique(missing ? EMPTY_HEADER_BASE : text);
-      this.namedColumns = column + 1;
-      if (this.dropEmptyHeaders && text === '') {
-        continue;
+      const named = this.nameColumn(column, headerCells[column]);
+      if (named !== undefined) {
+        this.columns.push(named);
       }
-      this.columns.push({ name, column });
     }
+    if (width > this.namedColumns) {
+      this.namedColumns = width;
+    }
+  }
+
+  /** A data row with a value before the named columns: name the blank columns from that value's up to them. */
+  private nameColumnsBefore(first: number): void {
+    const end = this.leftmostNamed;
+    if (first >= end) {
+      return;
+    }
+    this.leftmostNamed = first;
+    // These columns sit left of every column named so far, so they go in front: `headers` and each record's keys
+    // stay in sheet order.
+    const added: HeaderColumn[] = [];
+    for (let column = first; column < end; column++) {
+      const named = this.nameColumn(column, undefined);
+      if (named !== undefined) {
+        added.push(named);
+      }
+    }
+    this.columns.unshift(...added);
+  }
+
+  /** The named column, or undefined when `dropEmptyHeaders` leaves it out. The caller places it in `columns`. */
+  private nameColumn(column: number, value: ReadValue | undefined): HeaderColumn | undefined {
+    const missing = value === undefined || value === null;
+    const text = missing ? '' : headerTextOf(value);
+    // A header cell holding an empty string is an empty name in SheetJS; only an absent cell becomes `__EMPTY`.
+    const name = this.naming === 'index' ? String(column) : this.namer.unique(missing ? EMPTY_HEADER_BASE : text);
+    if (this.dropEmptyHeaders && text === '') {
+      return undefined;
+    }
+    return { name, column, definesOwnProperty: name === PROTOTYPE_KEY, firstRecord: this.recordsBuilt };
   }
 }
 
@@ -395,8 +535,8 @@ class SheetReader implements Sheet<ReadValue> {
 
   private readonly parts: SheetParts;
   private readonly partName: string;
-  /** `<dimension>` width, resolved once per sheet and only when object mode asks for it. */
-  private declaredColumns: number | undefined;
+  /** `<dimension>` columns, resolved once per sheet and only when object mode asks for them. */
+  private declared: DeclaredColumns | undefined;
 
   constructor(info: SheetInfo, partName: string, parts: SheetParts) {
     this.info = info;
@@ -408,17 +548,19 @@ class SheetReader implements Sheet<ReadValue> {
   rows(options: ObjectModeRowsOptions): AsyncIterable<Record<string, ReadValue>>;
   rows(options: ArrayRowsOptions | ObjectModeRowsOptions = {}): AsyncIterable<ReadValue[] | Record<string, ReadValue>> {
     if (options.mode === 'object') {
-      return this.objectRows(options, { headers: [], truncated: false });
+      return this.objectRows(options, { headers: [], truncated: false, builder: undefined });
     }
     return this.arrayRows(options);
   }
 
   async toObjects(options: RowsOptions & ObjectRowsOptions = {}): Promise<ObjectsResult<ReadValue>> {
-    const state: ObjectReadState = { headers: [], truncated: false };
+    const state: ObjectReadState = { headers: [], truncated: false, builder: undefined };
     const rows: Record<string, ReadValue>[] = [];
     for await (const row of this.objectRows(options, state)) {
       rows.push(row);
     }
+    // Everything is in hand here, unlike a stream: a column a later row named reaches the records before it too.
+    state.builder?.backfill(rows);
     return { rows, headers: state.headers, truncated: state.truncated };
   }
 
@@ -433,9 +575,14 @@ class SheetReader implements Sheet<ReadValue> {
   }
 
   private async *objectRows(options: RowsOptions & ObjectRowsOptions, state: ObjectReadState): AsyncGenerator<Record<string, ReadValue>> {
-    const builder = new ObjectRowBuilder(options, await this.declaredColumnCount());
+    const builder = new ObjectRowBuilder(options, await this.declaredColumns());
     const maxRows = options.maxRows ?? Number.POSITIVE_INFINITY;
-    const rowOptions: RowsOptions = { startRow: builder.startRow, maxColumns: options.maxColumns, formulas: options.formulas };
+    const rowOptions: WorksheetRowsOptions = {
+      startRow: builder.startRow,
+      maxColumns: options.maxColumns,
+      formulas: options.formulas,
+      errorTextRow: builder.errorTextRow,
+    };
     let emitted = 0;
     try {
       for await (const row of readWorksheetRows(this.partStream(), this.parts.context, rowOptions)) {
@@ -453,6 +600,7 @@ class SheetReader implements Sheet<ReadValue> {
       }
     } finally {
       state.headers = builder.headers;
+      state.builder = builder;
     }
   }
 
@@ -467,34 +615,37 @@ class SheetReader implements Sheet<ReadValue> {
   }
 
   /**
-   * How many columns the sheet says it has. SheetJS builds its header list from `<dimension>` when the sheet
-   * declares one, so a file whose dimension is wider than its data (every Excel, Numbers and Sheets re-save)
-   * grows trailing `__EMPTY` columns; reading the prologue is what keeps object mode identical to `sheet_to_json`.
+   * Which columns the sheet says it has. SheetJS builds its header list from `<dimension>` when the sheet declares
+   * one, so a file whose dimension is wider than its data (every Excel, Numbers and Sheets re-save) grows trailing
+   * `__EMPTY` columns, and one whose column A is empty (Excel writes `B2:D9`) starts at B; reading the prologue is
+   * what keeps object mode identical to `sheet_to_json`.
    */
-  private async declaredColumnCount(): Promise<number> {
-    if (this.declaredColumns !== undefined) {
-      return this.declaredColumns;
+  private async declaredColumns(): Promise<DeclaredColumns> {
+    if (this.declared !== undefined) {
+      return this.declared;
     }
-    this.declaredColumns = 0;
-    if (!this.parts.zip.has(this.partName)) {
-      return 0;
-    }
-    const decoder = new TextDecoder('utf-8');
-    let prologue = '';
-    for await (const chunk of this.parts.zip.stream(this.partName)) {
-      prologue += decoder.decode(chunk, { stream: true });
-      const ref = DIMENSION_PATTERN.exec(prologue)?.[1];
-      if (ref !== undefined) {
-        const range = parseRange(ref);
-        this.declaredColumns = range === null ? 0 : Math.min(range.end.col + 1, MAX_COLUMNS);
-        break;
+    let declared: DeclaredColumns = NO_DECLARED_COLUMNS;
+    if (this.parts.zip.has(this.partName)) {
+      const decoder = new TextDecoder('utf-8');
+      let prologue = '';
+      for await (const chunk of this.parts.zip.stream(this.partName)) {
+        prologue += decoder.decode(chunk, { stream: true });
+        const ref = DIMENSION_PATTERN.exec(prologue)?.[1];
+        if (ref !== undefined) {
+          const range = parseRange(ref);
+          if (range !== null) {
+            declared = { first: range.start.col, end: Math.min(range.end.col + 1, MAX_COLUMNS) };
+          }
+          break;
+        }
+        // `<dimension>` is optional, but it always precedes the rows: once they start there is nothing left to find.
+        if (prologue.includes('<sheetData') || prologue.length > DIMENSION_SCAN_CHARS) {
+          break;
+        }
       }
-      // `<dimension>` is optional, but it always precedes the rows: once they start there is nothing left to find.
-      if (prologue.includes('<sheetData') || prologue.length > DIMENSION_SCAN_CHARS) {
-        break;
-      }
     }
-    return this.declaredColumns;
+    this.declared = declared;
+    return declared;
   }
 }
 
@@ -544,10 +695,12 @@ class WorkbookReader implements Workbook<ReadValue> {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Open an xlsx from bytes (`ArrayBuffer`, `Uint8Array`, `Blob`/`File`, or a `RandomAccessSource`). Sniffs the format
- * first and throws a classified `XlsxError` (`ENCRYPTED` with a `password-protected` message, `LEGACY_XLS`, `XLSB`,
- * `ODS`, `NOT_XLSX`) for anything that is not a modern workbook. The workbook lists sheets without touching sheet
- * XML; sheet contents stream on demand. With `errors: 'object'` the row values include `CellError` objects.
+ * Open an xlsx from bytes (`ArrayBuffer`, `SharedArrayBuffer`, any typed array or `DataView`, `Blob`/`File`, or a
+ * `RandomAccessSource`; anything else is `NOT_XLSX`). Sniffs the format first and throws a classified `XlsxError`
+ * (`ENCRYPTED` with a `password-protected` message, `LEGACY_XLS`, `XLSB`, `ODS`, `NOT_XLSX`) for anything that is
+ * not a modern workbook. The workbook lists sheets without touching sheet XML; sheet contents stream on demand, until
+ * `close()`, after which every read fails with `ABORTED`. With `errors: 'object'` the row values include `CellError`
+ * objects.
  */
 export function openWorkbook(
   input: SourceInput,
@@ -625,9 +778,26 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
     };
     // Without a usable relationship the conventional part name is the only lead left (EC-PART-NONSTANDARD-NAMES).
     const partName = target === '' ? `${workbookDirectory}worksheets/sheet${entry.sheetId}.xml` : target;
-    return new SheetReader(info, partName, { zip, context });
+    const onWarning = options.onWarning;
+    const sheetContext = onWarning === undefined ? context : { ...context, onWarning: sheetWarnings(onWarning, info.name) };
+    return new SheetReader(info, partName, { zip, context: sheetContext });
   });
   return new WorkbookReader(zip, parsed.date1904, readers);
+}
+
+/**
+ * The caller's warning callback for one sheet: names the sheet, and passes each code on once however many reads of
+ * the sheet (rows, head, toObjects) run into it. The row reader already reports each code once per read.
+ */
+function sheetWarnings(report: (warning: ReadWarning) => void, sheet: string): (warning: ReadWarning) => void {
+  const reported = new Set<ReadWarningCode>();
+  return (warning: ReadWarning): void => {
+    if (reported.has(warning.code)) {
+      return;
+    }
+    reported.add(warning.code);
+    report({ ...warning, sheet });
+  };
 }
 
 /** Without a styles part nothing is a date: every `isDateByXf` lookup on an empty array is `undefined`. */

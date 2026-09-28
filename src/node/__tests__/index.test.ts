@@ -6,8 +6,9 @@ import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import { inflateRawSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { fixtureById, readFixture } from '../../../test/helpers/fixtures';
 import type { Deflater } from '../../types';
-import { fromFile, nodeDeflater, toFile, toWritable } from '../index';
+import { fromFile, nodeDeflater, openWorkbook, toFile, toWritable } from '../index';
 
 const KIB = 1024;
 const MIB = 1024 * 1024;
@@ -98,6 +99,29 @@ describe('fromFile', () => {
     const source = await fromFile(path);
     await source.close();
     await expect(source.close()).resolves.toBeUndefined();
+  });
+
+  it('refuses a read after close with ABORTED rather than a bare EBADF', async () => {
+    const path = join(workingDirectory, 'read-after-close.bin');
+    await writeFile(path, randomBytes(8));
+    const source = await fromFile(path);
+    await source.close();
+    await expect(source.read(0, 4)).rejects.toMatchObject({ name: 'XlsxError', code: 'ABORTED' });
+  });
+
+  it('fails a sheet read after workbook.close() with ABORTED, as in-memory bytes do', async () => {
+    const path = join(workingDirectory, 'closed-workbook.xlsx');
+    await writeFile(path, readFixture(fixtureById('edge-baseline-minimal')));
+    const workbook = await openWorkbook(await fromFile(path));
+    const sheet = workbook.sheet(0);
+    expect((await sheet.toObjects()).rows.length).toBeGreaterThan(0);
+    await workbook.close();
+    await expect(sheet.toObjects()).rejects.toMatchObject({
+      name: 'XlsxError',
+      code: 'ABORTED',
+      message: expect.stringContaining('closed'),
+    });
+    await expect(sheet.head(1)).rejects.toMatchObject({ code: 'ABORTED' });
   });
 });
 

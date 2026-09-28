@@ -4,7 +4,8 @@ Can `@office-kit/xlsx` (MIT, TypeScript, v0.11.0) replace SheetJS in Jetstream a
 or not at all? Scored against the requirements rubric in 07 using the fixtures (04), the oracle runs (05) and
 the benchmark (06).
 
-_Accurate as of 2026-09-12 (benchmark runs `2026-09-11-macbook-air-*`; user-produced goldens run `2026-09-12-user-goldens`)._
+_Accurate as of 2026-09-12 (benchmark runs `2026-09-11-macbook-air-*`; user-produced goldens run `2026-09-12-user-goldens`).
+Evaluated at 0.11.0; not re-run against 0.23, which the repo now pins._
 
 ## Verdict
 
@@ -23,12 +24,12 @@ shape only:
   (0.40× SheetJS's 2,899 MB; gate ≤ 0.25×). Only the numeric dataset is flat (54 MB, 0.03×).
 
 Fixing this means a streaming zip-entry writer, chunked shared-string serialization and an inline-string or
-bounded-SST mode - the same three pieces that make up Phase B of the hand-rolled design (07 A2). Everything
+bounded-SST mode - the same three pieces that make up Phase B of the hand-rolled design (07 §2). Everything
 else in this document is edge-case work of the kind the maintainer has been shipping same-day. The decision
 is recorded in ADR-008: **dual track, time-boxed** - open the upstream issues below (the streaming claim is a
 documented feature, so a fix is in the maintainer's interest) while prototyping the streaming writer core
 per 07, and decide at the time-box whether office-kit + our patches, or our writer + office-kit's reader, or
-a full hand-roll ships.
+a full hand-roll ships. (Superseded: the ADR-008 addendum chose to build the library, `@jetstreamapp/simple-excel`.)
 
 ## 1. API mapping to Jetstream's contracts
 

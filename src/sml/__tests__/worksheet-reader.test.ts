@@ -3,13 +3,19 @@ import { compareDumps, describeReport, type ExpectedWorkbook } from '../../../te
 import { fixturesWithTag, fixturePolicies, readExpected, readFixture, type Fixture } from '../../../test/helpers/fixtures';
 import { fromJsDate, toTyped, type TypedValue } from '../../../test/helpers/typed';
 import { isXlsxError, XlsxError } from '../../errors';
-import type { CellValue, RawCell, RowsOptions } from '../../types';
+import type { CellValue, RawCell, ReadWarning } from '../../types';
 import { decodeCellText } from '../../xml/escape';
 import { XmlTokenizer } from '../../xml/tokenizer';
 import { sourceFrom } from '../../zip/source';
 import { ZipReader } from '../../zip/zip-reader';
 import { isBuiltinDateId, isDateFormatCode } from '../numfmt';
-import { readWorksheetHead, readWorksheetRows, type SheetRow, type WorksheetReadContext, type WorksheetWarning } from '../worksheet-reader';
+import {
+  readWorksheetHead,
+  readWorksheetRows,
+  type SheetRow,
+  type WorksheetReadContext,
+  type WorksheetRowsOptions,
+} from '../worksheet-reader';
 
 const encoder = new TextEncoder();
 
@@ -53,12 +59,20 @@ async function collect(rows: AsyncIterable<SheetRow>): Promise<SheetRow[]> {
 }
 
 /** Rows of a hand-written sheet, as plain cell arrays. */
-async function readCells(xml: string, options: RowsOptions = {}, overrides: Partial<WorksheetReadContext> = {}): Promise<CellValue[][]> {
+async function readCells(
+  xml: string,
+  options: WorksheetRowsOptions = {},
+  overrides: Partial<WorksheetReadContext> = {},
+): Promise<CellValue[][]> {
   const rows = await collect(readWorksheetRows(bytesOf(xml), context(overrides), options));
   return rows.map(row => row.cells);
 }
 
-async function readRows(xml: string, options: RowsOptions = {}, overrides: Partial<WorksheetReadContext> = {}): Promise<SheetRow[]> {
+async function readRows(
+  xml: string,
+  options: WorksheetRowsOptions = {},
+  overrides: Partial<WorksheetReadContext> = {},
+): Promise<SheetRow[]> {
   return collect(readWorksheetRows(bytesOf(xml), context(overrides), options));
 }
 
@@ -91,6 +105,35 @@ describe('structure', () => {
   it('falls back to the next column when <c r> is malformed', async () => {
     const cells = await readCells(sheet('<row r="1"><c r="A1"><v>1</v></c><c r="nonsense"><v>2</v></c></row>'));
     expect(cells).toEqual([[1, 2]]);
+  });
+
+  it('EC-REF-BEYOND-XFD rejects a well-formed reference past column XFD instead of moving the cell into the grid', async () => {
+    // `XFE2` names a real position, just not one a sheet can hold, so it is not "malformed, use the next column"
+    // (which put its value in B2): it is a cell past the last column, which fails the column limit exactly as a
+    // row past 1,048,576 fails the row limit. The data cannot be placed, and dropping it silently would lose it.
+    for (const ref of ['XFE2', '$XFE$2', 'AAAA2', 'ZZZZZZZZZZ2']) {
+      const error = await readRows(sheet(`<row r="2"><c r="A2"><v>1</v></c><c r="${ref}"><v>2</v></c></row>`)).catch(
+        (thrown: unknown) => thrown,
+      );
+      expect(isXlsxError(error) && error.code, ref).toBe('LIMIT_EXCEEDED');
+      expect(isXlsxError(error) && error.detail?.maxColumns, ref).toBe(16_384);
+    }
+    // A caller's larger maxColumns cannot widen the grid, and head() refuses the cell the same way.
+    const wide = await readRows(sheet('<row r="2"><c r="XFE2"><v>2</v></c></row>'), { maxColumns: 20_000 }).catch(
+      (thrown: unknown) => thrown,
+    );
+    expect(isXlsxError(wide) && wide.code).toBe('LIMIT_EXCEEDED');
+    const head = await readWorksheetHead(bytesOf(sheet('<row r="2"><c r="XFE2"><v>2</v></c></row>')), context(), 5).catch(
+      (thrown: unknown) => thrown,
+    );
+    expect(isXlsxError(head) && head.code).toBe('LIMIT_EXCEEDED');
+    // XFD itself is the last column and reads normally; lower-case or row-less text is still merely malformed.
+    const last = await readRows(sheet('<row r="2"><c r="XFD2"><v>2</v></c></row>'));
+    expect(last[0]?.cells.length).toBe(16_384);
+    expect(last[0]?.cells[16_383]).toBe(2);
+    expect(await readCells(sheet('<row r="1"><c r="A1"><v>1</v></c><c r="xfe1"><v>2</v></c><c r="XFE"><v>3</v></c></row>'))).toEqual([
+      [1, 2, 3],
+    ]);
   });
 
   it('trims trailing empty cells and keeps interior holes', async () => {
@@ -160,6 +203,32 @@ describe('cell values', () => {
     expect(rows).toEqual([{ index: 1, cells: [1, null, null, 4] }]);
   });
 
+  it('EC-EMPTY-V-ELEMENT reads a numeric <v> of only whitespace as blank, never 0', async () => {
+    const cells = await readCells(
+      sheet(
+        '<row r="1"><c r="A1"><v> </v></c><c r="B1" t="n"><v>\t\n </v></c><c r="C1" s="1"><v>  </v></c>' +
+          '<c r="D1"><v>0</v></c><c r="E1"><v> 0 </v></c><c r="F1"><v> 12 </v></c><c r="G1"><v>0.5</v></c></row>',
+      ),
+      {},
+      { isDateByXf: Uint8Array.from([0, 1]) },
+    );
+    // Real zeros, padded or not, stay numbers; so does a padded decimal.
+    expect(cells).toEqual([[null, null, null, 0, 0, 12, 0.5]]);
+  });
+
+  it('EC-NUMBER-RADIX-PREFIX keeps hex, binary and octal spellings as text rather than converting them', async () => {
+    // Unary `+` reads `0x1A` as 26, but Excel only ever writes decimal; like `inf` or `twelve`, text that is not a
+    // decimal number comes back verbatim (EC-NUMBERS-INF-VALUE), whatever the cell's style.
+    const values = ['0x1A', '0X1a', '0b11', '0B11', '0o7', '0O7', ' 0x10', '-0x1A', '+0x1A', '-0b11', '+0o7'];
+    const cellsXml = values.map((value, index) => `<c r="${String.fromCharCode(65 + index)}1" s="1"><v>${value}</v></c>`).join('');
+    const cells = await readCells(sheet(`<row r="1">${cellsXml}</row>`), {}, { isDateByXf: Uint8Array.from([0, 1]) });
+    expect(cells).toEqual([values]);
+    // Decimal text that merely starts with a zero is still a number.
+    expect(await readCells(sheet('<row r="1"><c r="A1"><v>0.25</v></c><c r="B1"><v>0e3</v></c><c r="C1"><v>007</v></c></row>'))).toEqual([
+      [0.25, 0, 7],
+    ]);
+  });
+
   it('EC-NUM-* parses doubles, normalizes -0 and keeps non-finite text verbatim', async () => {
     const cells = await readCells(
       sheet(
@@ -218,6 +287,28 @@ describe('cell values', () => {
       ),
     );
     expect(cells).toEqual([[true, false, true, null, false]]);
+  });
+
+  it('EC-HEADER-ERROR-CELL: the header row named by errorTextRow reads error cells as text whatever errors says', async () => {
+    const xml = sheet(
+      '<row r="2"><c r="A2" t="e"><v>#N/A</v></c><c r="B2" t="inlineStr"><is><t>Name</t></is></c></row>' +
+        '<row r="3"><c r="A3" t="e"><v>#DIV/0!</v></c><c r="B3" t="inlineStr"><is><t>x</t></is></c></row>',
+    );
+    expect(await readCells(xml, { errorTextRow: 'first' }, { errors: 'null' })).toEqual([
+      ['#N/A', 'Name'],
+      [null, 'x'],
+    ]);
+    expect(await readCells(xml, { errorTextRow: 2 }, { errors: 'object' })).toEqual([
+      ['#N/A', 'Name'],
+      [{ error: '#DIV/0!' }, 'x'],
+    ]);
+    // A row of nothing but errors is the first row with a value, as it is in SheetJS, even with errors: 'null'.
+    const errorsOnly = sheet(
+      '<row r="1"><c r="A1" t="e"><v>#REF!</v></c></row><row r="2"><c r="A2" t="e"><v>#REF!</v></c><c r="B2"><v>1</v></c></row>',
+    );
+    expect(await readCells(errorsOnly, { errorTextRow: 'first' }, { errors: 'null' })).toEqual([['#REF!'], [null, 1]]);
+    // Without errorTextRow every row follows errors.
+    expect(await readCells(errorsOnly, {}, { errors: 'null' })).toEqual([[null, 1]]);
   });
 
   it('EC-ERROR-CELL-AS-TEXT returns error cells per the errors option', async () => {
@@ -294,14 +385,49 @@ describe('shared strings', () => {
   });
 
   it('EC-SST-INDEX-OUT-OF-RANGE reads out-of-range indexes as blank text and warns once', async () => {
-    const warnings: WorksheetWarning[] = [];
+    const warnings: ReadWarning[] = [];
     const cells = await readCells(
       sheet('<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>9</v></c><c r="C1" t="s"><v>-1</v></c></row>'),
       {},
       { sharedStrings: () => Promise.resolve(['Name']), onWarning: warning => warnings.push(warning) },
     );
     expect(cells).toEqual([['Name', '', '']]);
-    expect(warnings).toEqual([{ code: 'shared-string-index-out-of-range', ref: 'B1' }]);
+    expect(warnings).toEqual([{ code: 'SST_INDEX_OUT_OF_RANGE', ref: 'B1', message: expect.stringContaining('B1') as unknown }]);
+  });
+
+  it('EC-SST-INDEX-OUT-OF-RANGE reports a deferred cell under its own reference', async () => {
+    // The spaced attribute hides `t="s"` from the pre-scan, so the cell resolves after the chunk, not at `</c>`.
+    const warnings: ReadWarning[] = [];
+    const cells = await readCells(
+      sheet('<row r="3"><c r="C3" t = "s"><v>7</v></c><c r="D3"><v>1</v></c></row><row r="4"><c r="A4"><v>2</v></c></row>'),
+      {},
+      { sharedStrings: () => Promise.resolve(['only']), onWarning: warning => warnings.push(warning) },
+    );
+    expect(cells).toEqual([[null, null, '', 1], [2]]);
+    expect(warnings.map(warning => [warning.code, warning.ref])).toEqual([['SST_INDEX_OUT_OF_RANGE', 'C3']]);
+  });
+
+  it('EC-SST-INDEX-OUT-OF-RANGE: a t="s" cell in a package with no table warns SHARED_STRINGS_MISSING, once', async () => {
+    const warnings: ReadWarning[] = [];
+    const cells = await readCells(
+      sheet('<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="s"><v>0</v></c></row>'),
+      {},
+      { hasSharedStrings: false, onWarning: warning => warnings.push(warning) },
+    );
+    expect(cells).toEqual([['', ''], ['']]);
+    expect(warnings.map(warning => [warning.code, warning.ref])).toEqual([['SHARED_STRINGS_MISSING', 'A1']]);
+    expect(warnings[0]?.message).toContain('has none');
+  });
+
+  it('EC-SST-INDEX-OUT-OF-RANGE: head() warns too', async () => {
+    const warnings: ReadWarning[] = [];
+    const head = await readWorksheetHead(
+      bytesOf(sheet('<row r="1"><c r="A1" t="s"><v>5</v></c></row>')),
+      context({ sharedStrings: () => Promise.resolve(['x']), onWarning: warning => warnings.push(warning) }),
+      1,
+    );
+    expect(head.get('A1')).toEqual({ value: '' });
+    expect(warnings.map(warning => [warning.code, warning.ref])).toEqual([['SST_INDEX_OUT_OF_RANGE', 'A1']]);
   });
 
   it('never loads the table for a sheet without t="s" cells', async () => {
