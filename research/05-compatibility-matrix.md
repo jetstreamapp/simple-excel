@@ -240,6 +240,16 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 | `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev | PASS      | PASS        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | 93% (time-only-has-date-part 24, temporal-mismatch 6) | 99% (dst-gap-shift-1h 5, date-as-text 3) |
 | `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev  | PASS      | PASS        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5) | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5) | ERROR                                                 | 99% (dst-gap-shift-1h 5, date-as-text 3) |
 
+### Run `audit-fixes-excel` (2026-09-28-audit-fixes-excel)
+
+2026-09-28T15:13:11.017Z, macbook-air.lan, Node v24.21.0.
+
+| fixture (generator)                                              | excel |
+| ---------------------------------------------------------------- | ----- |
+| `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev        | PASS  |
+| `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev | PASS  |
+| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev  | PASS  |
+
 Legend: **PASS** every compared cell equal after fixture policies; **n%** share of matching cells with the two largest mismatch categories (04 maps categories to catalog entries); **FAIL: n schema errors** Open XML SDK validator; **REPAIRED** Excel wrote a recovery log while opening (silent repair under automation); **OPENED** no ground truth; **REJECTED/ACCEPTED** hostile fixture outcome (a classified rejection is the goal); **ERROR** the reader threw on a fixture it should read.
 
 <!-- generated:end -->
