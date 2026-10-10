@@ -57,8 +57,9 @@ under `/Applications`, Microsoft Excel with Automation permission (`oracle/excel
 
 **Always run `npm run format` and `npm run lint` after any change** and fix what lint reports. oxfmt settings are in
 `.oxfmtrc.json`, oxlint settings in `.oxlintrc.json` (scoped overrides for `scripts/`, `oracle/`, `bench/`,
-`fixtures/` and tests; prefer fixing code over adding overrides). The `.githooks/pre-commit` hook blocks commits
-that fail either check. Use conventional commit messages.
+`fixtures/` and tests; prefer fixing code over adding overrides). The `.githooks/pre-commit` hook runs both checks
+against a snapshot of the whole index, not the working tree, and blocks the commit if either fails. Use conventional
+commit messages.
 
 ## Types and build
 
