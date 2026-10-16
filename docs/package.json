@@ -34,6 +34,7 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
+    "argparse@^1": "^2.0.1",
     "minimatch@^9": "^9.0.9",
     "postcss-selector-parser": "^7.1.6",
     "serialize-javascript": "^7.0.5",
