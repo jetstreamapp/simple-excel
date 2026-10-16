@@ -379,7 +379,7 @@ Two engine differences, both expected and neither a defect:
 - **`performance.measureUserAgentSpecificMemory()` is Chromium-only, and document-only.** It is not exposed in a
   dedicated worker (it is simply `undefined` there, even in a cross-origin-isolated one), and Playwright's
   headless _shell_ rejects it in the page with `SecurityError: performance.measureUserAgentSpecificMemory is not
-available` - which is why the runner launches Chromium with `channel: 'chromium'`. Where it works, writing
+  available` - which is why the runner launches Chromium with `channel: 'chromium'`. Where it works, writing
   200,000 rows in the worker - a 15.7 MB file - measured an agent-cluster peak of 4.35 MB with 1.72 MB attributed
   to `DedicatedWorkerGlobalScope`. That is the flat-memory design measured in a browser rather than in Node, and
   it is recorded rather than asserted: the number depends on when the engine happened to run a garbage collection.
