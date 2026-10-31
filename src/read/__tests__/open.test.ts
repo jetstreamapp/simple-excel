@@ -905,6 +905,40 @@ describe('object mode: which columns get names', () => {
     expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
   });
 
+  it('EC-DIMENSION-PROLOGUE-REDOS: a prologue of unterminated <dimension starts is scanned in linear time', async () => {
+    // Without a `>` or ` ref="` after any of them, every start used to rescan the whole chunk: quadratic, so a 256 KiB
+    // stored sheet took billions of steps. A stored entry arrives as one chunk, which is the worst case.
+    const hostilePrologue = '<dimension'.repeat(26_000);
+    const sheetPath = 'xl/worksheets/sheet1.xml';
+    const parts = packageParts({
+      'xl/sharedStrings.xml': undefined,
+      [sheetPath]: `${XML}<worksheet xmlns="${NS}">${hostilePrologue}<sheetData>${row(1, ['Id'])}${row(2, ['001'])}</sheetData></worksheet>`,
+    });
+    const { buildZip } = (await import(MINIZIP)) as {
+      buildZip: (entries: { name: string; data: string; method?: 'deflate' | 'store' }[]) => Uint8Array;
+    };
+    const bytes = buildZip(Object.entries(parts).map(([name, data]) => ({ name, data, method: name === sheetPath ? 'store' : 'deflate' })));
+    const workbook = await openWorkbook(bytes);
+    const started = performance.now();
+    // The sheet is not well-formed XML, so the read still fails, with a classified error; what matters is how soon.
+    const error = await caught(() => workbook.sheet(0).toObjects());
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(error.code).toBe('XML_MALFORMED');
+  });
+
+  it('EC-DIMENSION-PROLOGUE-REDOS: a real dimension after an unterminated <dimension fragment is still honoured', async () => {
+    const rows = `<row r="2"><c r="B2" t="inlineStr"><is><t>Id</t></is></c></row><row r="3"><c r="B3" t="inlineStr"><is><t>001</t></is></c></row>`;
+    const bytes = await zip(
+      packageParts({
+        'xl/sharedStrings.xml': undefined,
+        'xl/worksheets/sheet1.xml': `${XML}<worksheet xmlns="${NS}"><dimension<dimension ref="B2:D3"/><sheetData>${rows}</sheetData></worksheet>`,
+      }),
+    );
+    const result = await (await openWorkbook(bytes)).sheet(0).toObjects();
+    // The dimension runs to D, so D is a trailing blank header, exactly as when the fragment is absent.
+    expect(result.headers).toEqual(['Id', '__EMPTY', '__EMPTY_1']);
+  });
+
   it('EC-HEADER-DIMENSION-START-COLUMN: toObjects gives every record the columns a later, wider row named', async () => {
     const rows = `${row(1, ['Id'])}${row(2, ['001'])}${row(3, ['002', 'wide'])}${row(4, ['003', null, 'wider'])}`;
     const result = await objects(rows);

@@ -72,8 +72,14 @@ const PRESENTATION_MAIN_TYPES: ReadonlySet<string> = new Set([
   'application/vnd.ms-powerpoint.slideshow.macroenabled.main+xml',
 ]);
 
-/** `<dimension ref="A1:T31"/>`, prefixed or not. It sits in the worksheet prologue, ahead of `<sheetData>`. */
-const DIMENSION_PATTERN = /<(?:[\w.-]+:)?dimension[^>]*\sref="([^"]+)"/;
+/**
+ * `<dimension ref="A1:T31"/>`, prefixed or not. It sits in the worksheet prologue, ahead of `<sheetData>`.
+ *
+ * The attribute run excludes `<` as well as `>`: a raw `<` cannot appear inside a start tag, and excluding it stops a
+ * hostile prologue of repeated `<dimension` from making every start position rescan the rest of the chunk, which
+ * would be quadratic. Each start now scans only up to the next `<`, so the match is linear in the prologue.
+ */
+const DIMENSION_PATTERN = /<(?:[\w.-]+:)?dimension[^<>]*\sref="([^"]+)"/;
 /** How far into a worksheet part to look for `<dimension>` before giving up on it. */
 const DIMENSION_SCAN_CHARS = 64 * 1024;
 
