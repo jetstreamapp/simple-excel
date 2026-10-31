@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+
+- Object mode (`rows({ mode: 'object' })` and `toObjects()`) no longer takes quadratic time to look for a worksheet's
+  `<dimension>`. A crafted sheet whose prologue was repeated unterminated `<dimension` starts made the pattern rescan
+  the whole chunk from every start (about 4 s for a 256 KiB stored sheet, far worse for larger chunks), blocking the
+  event loop or browser main thread. The match is now linear in the prologue.
+
 ## [0.2.0] - 2026-09-28
 
 ### Added
