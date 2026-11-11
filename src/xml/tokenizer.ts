@@ -80,23 +80,31 @@ function isWhitespaceCode(code: number): boolean {
 }
 
 /**
- * The index of the `>` that closes the tag starting at `start`, or -1 when the buffer does not hold it yet. A `>` is
- * legal inside a quoted attribute value, so quoted runs are skipped rather than searched.
+ * The quote character a tag-end scan stopped inside (0 for none). `findTagEnd` leaves it here when the text ran out
+ * before the `>`, so a scan that resumes on the next chunk knows whether it starts inside an attribute value.
  */
-function findTagEnd(text: string, start: number): number {
-  let openQuote = 0;
+let tagEndScanQuote = 0;
+
+/**
+ * The index of the `>` that closes a tag, scanning from `start`, or -1 when the text does not hold it yet. A `>` is
+ * legal inside a quoted attribute value, so quoted runs are skipped rather than searched; `openQuote` is the quote
+ * the scan starts inside, for a scan that resumes where an earlier one stopped (`tagEndScanQuote`).
+ */
+function findTagEnd(text: string, start: number, openQuote: number): number {
+  let quote = openQuote;
   for (let index = start; index < text.length; index++) {
     const code = text.charCodeAt(index);
-    if (openQuote !== 0) {
-      if (code === openQuote) {
-        openQuote = 0;
+    if (quote !== 0) {
+      if (code === quote) {
+        quote = 0;
       }
     } else if (code === CHAR_DOUBLE_QUOTE || code === CHAR_SINGLE_QUOTE) {
-      openQuote = code;
+      quote = code;
     } else if (code === CHAR_GREATER_THAN) {
       return index;
     }
   }
+  tagEndScanQuote = quote;
   return -1;
 }
 
@@ -282,6 +290,17 @@ export class XmlTokenizer {
   private readonly openElements: string[] = [];
   /** Input that could not be consumed yet: a partial tag, reference or `]]>` marker. */
   private buffer = '';
+  /**
+   * The chunks of a tag whose `>` has not arrived, oldest first, once the buffer is nothing but that tag. Each new
+   * chunk is scanned on its own, from the quote state the last scan stopped in, and the pieces are joined once when
+   * the `>` turns up: rescanning and re-concatenating the whole partial tag on every chunk made a long tag cost its
+   * length squared (EC-XML-LONG-TAG-RESCAN).
+   */
+  private partialTag: string[] = [];
+  private partialTagLength = 0;
+  private partialTagQuote = 0;
+  /** Where the `>` of the tag at the start of the buffer is, when the partial-tag path already found it; else -1. */
+  private knownTagEnd = -1;
   /** Character data seen so far in the current run, delivered when the next tag arrives or at `end()`. */
   private pendingText = '';
   private mode: number = MODE_TEXT;
@@ -319,8 +338,43 @@ export class XmlTokenizer {
     if (text.length === 0) {
       return;
     }
+    if (this.partialTagLength > 0) {
+      if (this.continuePartialTag(text)) {
+        this.scan(false);
+      }
+      return;
+    }
     this.buffer = this.buffer.length === 0 ? text : this.buffer + text;
     this.scan(false);
+  }
+
+  /**
+   * Feed a chunk to the tag waiting for its `>`. Returns false while the tag is still open (the chunk is kept as a
+   * piece); true once the buffer holds the tag and the rest of the chunk, with `knownTagEnd` pointing at its `>`.
+   */
+  private continuePartialTag(text: string): boolean {
+    const end = findTagEnd(text, 0, this.partialTagQuote);
+    if (end < 0) {
+      this.partialTagQuote = tagEndScanQuote;
+      this.partialTagLength += text.length;
+      if (this.partialTagLength > MAX_TAG_LENGTH) {
+        throw malformed(`a tag longer than ${MAX_TAG_LENGTH} characters`);
+      }
+      this.partialTag.push(text);
+      return false;
+    }
+    this.knownTagEnd = this.partialTagLength + end;
+    this.partialTag.push(text);
+    this.takePartialTag();
+    return true;
+  }
+
+  /** Move the pieces of the partial tag back into the buffer as one string. */
+  private takePartialTag(): void {
+    this.buffer = this.partialTag.join('');
+    this.partialTag = [];
+    this.partialTagLength = 0;
+    this.partialTagQuote = 0;
   }
 
   /**
@@ -338,6 +392,9 @@ export class XmlTokenizer {
 
   /** Flush trailing text and verify every element was closed. */
   end(): void {
+    if (this.partialTagLength > 0) {
+      this.takePartialTag();
+    }
     this.scan(true);
     if (this.mode !== MODE_TEXT) {
       throw malformed('a comment, CDATA section or processing instruction that never ended');
@@ -445,6 +502,11 @@ export class XmlTokenizer {
     while (position < buffer.length && !this.needMoreInput) {
       position = this.mode === MODE_TEXT ? this.stepText(buffer, position, isFinal) : this.stepSkipped(buffer, position, isFinal);
     }
+    if (this.partialTagLength > 0) {
+      // The rest of the buffer is an open tag, now held in `partialTag`.
+      this.buffer = '';
+      return;
+    }
     this.buffer = position === 0 ? buffer : buffer.slice(position);
   }
 
@@ -498,12 +560,23 @@ export class XmlTokenizer {
       return position + 2;
     }
 
-    const tagEnd = findTagEnd(buffer, position + 1);
+    let tagEnd = this.knownTagEnd;
+    if (tagEnd >= 0) {
+      // Only ever set with the tag at the start of a fresh buffer, which is where the first step lands.
+      this.knownTagEnd = -1;
+    } else {
+      tagEnd = findTagEnd(buffer, position + 1, 0);
+    }
     if (tagEnd < 0) {
       if (available > MAX_TAG_LENGTH) {
         throw malformed(`a tag longer than ${MAX_TAG_LENGTH} characters`);
       }
-      return this.wantMore(position, isFinal, 'a tag was never closed');
+      const result = this.wantMore(position, isFinal, 'a tag was never closed');
+      // From here the buffer is only this tag: later chunks go to `partialTag` and are scanned once each.
+      this.partialTag.push(buffer.slice(position));
+      this.partialTagLength = available;
+      this.partialTagQuote = tagEndScanQuote;
+      return result;
     }
     if (tagEnd - position > MAX_TAG_LENGTH) {
       throw malformed(`a tag longer than ${MAX_TAG_LENGTH} characters`);

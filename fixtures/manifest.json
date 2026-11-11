@@ -1147,6 +1147,24 @@
       "generated": false,
       "expectedError": "LIMIT_EXCEEDED",
       "notes": "One t=\"str\" cell whose value is two 600,000-character runs split by <b/>: each run passes the 1 Mi default maxTextLength, the cell does not."
+    },
+    {
+      "id": "hostile-long-tags-unclosed",
+      "path": "hostile/long-tags-unclosed.xlsx",
+      "bytes": 8588,
+      "sha256": "ba5cbff411d52eddbdfec1d2795cbfb80aec7e671be420cd7cd80e3f6dfd7f78",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-XML-LONG-TAG-RESCAN"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "XML_MALFORMED",
+      "notes": "Five 1 MiB tags inside sheetData, then one that never closes and runs past the 1 MiB tag limit (6 MiB of XML). Each tag spans dozens of 16 KiB inflate chunks."
     }
   ]
 }

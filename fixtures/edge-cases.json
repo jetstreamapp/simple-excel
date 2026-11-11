@@ -480,6 +480,14 @@
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {
+    "id": "EC-XML-LONG-TAG-RESCAN",
+    "family": "Security",
+    "symptom": "Tags close to the 1 MiB tag limit (one huge attribute) spanning many 16 KiB inflate chunks. The tokenizer rescanned the whole partial tag on every chunk, so a 1 MB upload of such tags cost about 69 s of CPU against about 3 s for a benign file of the same inflated size.",
+    "seenIn": "Hostile uploads only.",
+    "expected": "The tag-end scan resumes where it stopped, quote state included, so a long tag costs O(length); one longer than 1 MiB is XML_MALFORMED.",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
     "id": "EC-ZIP64-LOCAL-SIZES-BIT3",
     "family": "Container",
     "symptom": "A zip64 entry written with bit 3 (data descriptor) whose local header carries 0xFFFFFFFF in the size fields (as several writers do) makes Excel silently repair the workbook.",

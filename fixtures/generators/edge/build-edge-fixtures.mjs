@@ -238,6 +238,19 @@ write(
     }),
   }),
 );
+// Five tags just under the 1 MiB tag limit, then one that never closes: each spans dozens of inflate chunks, which
+// the tokenizer used to rescan from the start of the tag on every chunk.
+const longTag = `<x a="${'A'.repeat(1024 * 1024 - 64)}"/>`;
+write(
+  HOSTILE,
+  'long-tags-unclosed.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      rows: `<row r="1"><c r="A1"><v>1</v></c></row>${longTag.repeat(5)}<x a="${'A'.repeat(1024 * 1024 + 64)}`,
+      dimension: '',
+    }),
+  }),
+);
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [
