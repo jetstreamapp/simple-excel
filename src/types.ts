@@ -284,8 +284,14 @@ export interface WorkbookWriter {
 export type SniffResult = 'xlsx' | 'xlsb' | 'ods' | 'zip' | 'cfb-encrypted' | 'cfb-legacy' | 'xml' | 'html' | 'empty' | 'text' | 'unknown';
 
 export interface ReadLimits {
-  /** Per part. Default 1 GiB. */
+  /** Per part, streamed or not. Default 1 GiB. */
   readonly maxInflatedBytes?: number;
+  /**
+   * Per part the reader holds whole: `[Content_Types].xml`, the relationship parts, the workbook part and the styles
+   * part (worksheets and the shared-string table are streamed and only `maxInflatedBytes` applies to them).
+   * Default 32 MiB.
+   */
+  readonly maxPartBytes?: number;
   /** Default 256 Mi UTF-16 units. */
   readonly maxSharedStringChars?: number;
   /** Default 10,000. */

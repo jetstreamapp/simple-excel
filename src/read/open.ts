@@ -4,6 +4,7 @@
  * eagerly beyond the workbook, its relationships and the styles part.
  */
 import { isXlsxError, XlsxError } from '../errors';
+import { isStringLengthError } from '../internal/string-length';
 import { MAX_COLUMNS, parseRange } from '../sml/cell-ref';
 import {
   DEFAULT_MAX_PACKAGE_ENTRIES,
@@ -37,7 +38,7 @@ import type {
   Workbook,
 } from '../types';
 import { sourceFrom, type SourceInput } from '../zip/source';
-import { ZipReader } from '../zip/zip-reader';
+import { DEFAULT_MAX_PART_BYTES, ZipReader } from '../zip/zip-reader';
 import { SNIFF_BYTES, sniff } from './sniff';
 
 const DEFAULT_MAX_INFLATED_BYTES = 1024 * 1024 * 1024;
@@ -93,6 +94,7 @@ const DIMENSION_SCAN_CHARS = 64 * 1024;
 interface ResolvedLimits {
   readonly maxEntries: number;
   readonly maxInflatedBytes: number;
+  readonly maxPartBytes: number;
   readonly maxSharedStringChars: number;
   readonly maxXmlDepth: number;
   readonly maxTextLength: number;
@@ -102,6 +104,7 @@ function resolveLimits(limits: ReadLimits | undefined): ResolvedLimits {
   return {
     maxEntries: limits?.maxEntries ?? DEFAULT_MAX_PACKAGE_ENTRIES,
     maxInflatedBytes: limits?.maxInflatedBytes ?? DEFAULT_MAX_INFLATED_BYTES,
+    maxPartBytes: limits?.maxPartBytes ?? DEFAULT_MAX_PART_BYTES,
     maxSharedStringChars: limits?.maxSharedStringChars ?? DEFAULT_MAX_SHARED_STRING_CHARS,
     maxXmlDepth: limits?.maxXmlDepth ?? DEFAULT_MAX_XML_DEPTH,
     maxTextLength: limits?.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH,
@@ -138,8 +141,17 @@ function rejectSniffedFormat(format: SniffResult): never {
   }
 }
 
-/** Parsers throw `XlsxError` for everything they anticipate; anything else means the part is damaged. */
+/**
+ * Parsers throw `XlsxError` for everything they anticipate. A string past the engine's limit means the caller raised
+ * a limit further than one string can go (EC-CELL-TEXT-RUN-SPLIT); anything else means the part is damaged.
+ */
 function damagedPart(partName: string, cause: unknown): XlsxError {
+  if (isStringLengthError(cause)) {
+    return new XlsxError('LIMIT_EXCEEDED', `The part ${partName} holds more text than one string can, so it was not read.`, {
+      part: partName,
+      cause,
+    });
+  }
   return new XlsxError('XML_MALFORMED', `The part ${partName} could not be read; this file may be damaged.`, {
     part: partName,
     cause,
@@ -178,7 +190,7 @@ async function readRels(zip: ZipReader, partName: string, limits: ResolvedLimits
   if (!zip.has(relsPart)) {
     return [];
   }
-  const xml = await zip.readText(relsPart);
+  const xml = await zip.readText(relsPart, limits.maxPartBytes);
   return parsePart(relsPart, () => parseRels(xml, directoryOf(partName), limits.maxEntries));
 }
 
@@ -190,11 +202,11 @@ function relationshipTarget(rels: readonly Relationship[], suffix: string): stri
  * An OpenDocument package announces itself with a `mimetype` entry, which is the only thing about it a
  * SpreadsheetML reader can recognize: it has no `[Content_Types].xml` at all.
  */
-async function rejectOpenDocument(zip: ZipReader): Promise<void> {
+async function rejectOpenDocument(zip: ZipReader, limits: ResolvedLimits): Promise<void> {
   if (!zip.has(ODS_MIMETYPE_ENTRY)) {
     return;
   }
-  const mimetype = (await zip.readText(ODS_MIMETYPE_ENTRY)).trim();
+  const mimetype = (await zip.readText(ODS_MIMETYPE_ENTRY, limits.maxPartBytes)).trim();
   if (mimetype.startsWith(ODS_MIMETYPE_PREFIX)) {
     throw new XlsxError('ODS', 'This is an OpenDocument (.ods) spreadsheet. Open it in Excel or LibreOffice and save it as .xlsx.', {
       mimetype,
@@ -746,11 +758,11 @@ async function openPackage(input: SourceInput, options: OpenOptions): Promise<Wo
 
 async function readPackage(zip: ZipReader, options: OpenOptions, limits: ResolvedLimits): Promise<Workbook<ReadValue>> {
   throwIfAborted(options.signal);
-  await rejectOpenDocument(zip);
+  await rejectOpenDocument(zip, limits);
 
   let contentTypes: ContentTypes | undefined;
   if (zip.has(CONTENT_TYPES_PART)) {
-    const xml = await zip.readText(CONTENT_TYPES_PART);
+    const xml = await zip.readText(CONTENT_TYPES_PART, limits.maxPartBytes);
     contentTypes = parsePart(CONTENT_TYPES_PART, () => parseContentTypes(xml, limits.maxEntries));
   }
 
@@ -761,7 +773,7 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   }
   rejectForeignMainPart(workbookPart, contentTypes);
 
-  const workbookXml = await zip.readText(workbookPart);
+  const workbookXml = await zip.readText(workbookPart, limits.maxPartBytes);
   const parsed = parsePart(workbookPart, () => parseWorkbook(workbookXml, limits.maxEntries));
   const workbookRels = await readRels(zip, workbookPart, limits);
   const workbookDirectory = directoryOf(workbookPart);
@@ -770,7 +782,7 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   const context: WorksheetReadContext = {
     sharedStrings: sharedStringLoader(zip, sharedStringsPart, limits),
     hasSharedStrings: zip.has(sharedStringsPart),
-    isDateByXf: await readDateStyles(zip, workbookRels, workbookDirectory),
+    isDateByXf: await readDateStyles(zip, workbookRels, workbookDirectory, limits),
     date1904: parsed.date1904,
     dates: options.dates ?? 'local',
     errors: options.errors ?? 'string',
@@ -814,12 +826,17 @@ function sheetWarnings(report: (warning: ReadWarning) => void, sheet: string): (
 }
 
 /** Without a styles part nothing is a date: every `isDateByXf` lookup on an empty array is `undefined`. */
-async function readDateStyles(zip: ZipReader, workbookRels: readonly Relationship[], workbookDirectory: string): Promise<Uint8Array> {
+async function readDateStyles(
+  zip: ZipReader,
+  workbookRels: readonly Relationship[],
+  workbookDirectory: string,
+  limits: ResolvedLimits,
+): Promise<Uint8Array> {
   const stylesPart = relationshipTarget(workbookRels, 'styles') ?? `${workbookDirectory}styles.xml`;
   if (!zip.has(stylesPart)) {
     return new Uint8Array(0);
   }
-  const xml = await zip.readText(stylesPart);
+  const xml = await zip.readText(stylesPart, limits.maxPartBytes);
   return parsePart(stylesPart, () => parseStyles(xml)).isDateByXf;
 }
 

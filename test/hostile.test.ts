@@ -25,11 +25,12 @@ const EXPECTED_CODES: Record<string, XlsxErrorCode[]> = {
 /** The budget a host application sets for untrusted uploads. */
 const TIGHT_LIMITS: OpenOptions['limits'] = {
   maxInflatedBytes: 8 * 1024 * 1024,
+  maxPartBytes: 4 * 1024 * 1024,
   maxSharedStringChars: 4 * 1024 * 1024,
 };
 
 /** The reader DoS family: these must hold with the limits a caller gets by default, not only with tight ones. */
-const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = ['EC-PACKAGE-ELEMENT-FLOOD'];
+const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = ['EC-PACKAGE-ELEMENT-FLOOD', 'EC-PART-SIZE-PADDING'];
 
 /** Read options that make a read-flat fixture hostile, by catalog id. */
 const ROW_OPTIONS_BY_CATALOG_ID: Readonly<Record<string, ArrayRowsOptions>> = {

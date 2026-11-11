@@ -218,6 +218,14 @@ write(
     'xl/styles.xml': styles.replace('</cellXfs>', `${'<xf numFmtId="0"/>'.repeat(70000)}</cellXfs>`),
   }),
 );
+// styles.xml padded with 33 MiB of whitespace: past the 32 MiB default maxPartBytes for a part read whole.
+write(
+  HOSTILE,
+  'styles-part-padding.xlsx',
+  parts({
+    'xl/styles.xml': styles.replace('</styleSheet>', `${' '.repeat(33 * 1024 * 1024)}</styleSheet>`),
+  }),
+);
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [

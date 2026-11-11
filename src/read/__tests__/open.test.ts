@@ -312,6 +312,28 @@ describe('openWorkbook: inputs that are not a modern workbook', () => {
     expect(error.detail?.maxEntries).toBe(3);
   });
 
+  it('EC-PACKAGE-ELEMENT-FLOOD: the entry limit also caps the sheets a workbook part lists', async () => {
+    const sheets = Array.from({ length: 11 }, (_, index) => ({ name: `S${index}` }));
+    const bytes = await workbookBytes({ 'xl/workbook.xml': workbookXml(sheets) });
+    const error = await caught(() => openWorkbook(bytes, { limits: { maxEntries: 10 } }));
+    expect(error).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { element: 'sheet', maxEntries: 10 } });
+    expect((await openWorkbook(bytes, { limits: { maxEntries: 11 } })).sheets).toHaveLength(11);
+  });
+
+  it('EC-PART-SIZE-PADDING: applies maxPartBytes to every part it reads whole, but not to streamed sheets', async () => {
+    const padded = (xml: string): string => xml.replace(/<\/(\w+)>$/, `${' '.repeat(4096)}</$1>`);
+    for (const part of ['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml']) {
+      const parts = packageParts();
+      const bytes = await zip({ ...parts, [part]: padded(parts[part] ?? '') });
+      const error = await caught(() => openWorkbook(bytes, { limits: { maxPartBytes: 4096 } }));
+      expect(error, part).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { part, maxPartBytes: 4096 } });
+      await expect(openWorkbook(bytes, { limits: { maxPartBytes: 8192 } }), part).resolves.toBeDefined();
+    }
+    const bigSheet = await sheetOnlyBytes(row(1, ['x'.repeat(8192)]));
+    const workbook = await openWorkbook(bigSheet, { limits: { maxPartBytes: 4096 } });
+    expect(await collect(workbook.sheet(0).rows())).toEqual([['x'.repeat(8192)]]);
+  });
+
   it('reports a damaged part as XML_MALFORMED rather than a bare error', async () => {
     const bytes = await workbookBytes({ 'xl/workbook.xml': `${XML}<workbook><sheets>` });
     const error = await caught(() => openWorkbook(bytes));

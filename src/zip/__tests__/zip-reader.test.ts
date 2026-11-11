@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { RandomAccessSource } from '../../types';
 import { crc32 } from '../crc32';
 import { sourceFrom } from '../source';
-import { ZipReader, type ZipReaderLimits } from '../zip-reader';
+import { DEFAULT_MAX_PART_BYTES, ZipReader, type ZipReaderLimits } from '../zip-reader';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 const MIB = 1024 * 1024;
@@ -489,7 +489,8 @@ describe('ZipReader.stream', () => {
     view.setUint32(centralStart + 24, 0xf000_0000, true); // claim 3.75 GiB uncompressed
     const reader = await ZipReader.open(sourceFrom(archive), DEFAULT_LIMITS);
     const arrayBuffersBefore = process.memoryUsage().arrayBuffers;
-    await expect(reader.read('xl/workbook.xml')).rejects.toMatchObject({ name: 'XlsxError', code: 'ZIP_BOMB' });
+    // With no part cap in the way, the per-entry inflate cap is what refuses it.
+    await expect(reader.read('xl/workbook.xml', Number.POSITIVE_INFINITY)).rejects.toMatchObject({ name: 'XlsxError', code: 'ZIP_BOMB' });
     // Node allocates lazily, so a 3.75 GiB buffer would not fail here; it would show up in the accounting instead.
     expect(process.memoryUsage().arrayBuffers - arrayBuffersBefore).toBeLessThan(64 * MIB);
     await reader.close();
@@ -582,6 +583,42 @@ describe('ZipReader.read', () => {
   it('accepts a name written with backslashes or a leading slash', async () => {
     const reader = await openFixture('edge-baseline-minimal');
     expect((await reader.read('/xl\\workbook.xml')).byteLength).toBe(295);
+  });
+
+  it('EC-PART-SIZE-PADDING: refuses a part whose declared size passes the part cap, before inflating it', async () => {
+    const archive = buildZip([{ name: 'xl/styles.xml', data: '<styleSheet/>' }]);
+    const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+    const centralStart = view.getUint32(archive.byteLength - 6, true);
+    view.setUint32(centralStart + 24, DEFAULT_MAX_PART_BYTES + 1, true);
+    const reader = await ZipReader.open(sourceFrom(archive), DEFAULT_LIMITS);
+    const arrayBuffersBefore = process.memoryUsage().arrayBuffers;
+    await expect(reader.read('xl/styles.xml')).rejects.toMatchObject({
+      name: 'XlsxError',
+      code: 'LIMIT_EXCEEDED',
+      detail: { part: 'xl/styles.xml', maxPartBytes: DEFAULT_MAX_PART_BYTES, declaredSize: DEFAULT_MAX_PART_BYTES + 1 },
+    });
+    await expect(reader.readText('xl/styles.xml')).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED' });
+    expect(process.memoryUsage().arrayBuffers - arrayBuffersBefore).toBeLessThan(16 * MIB);
+    // The part cap applies to whole reads only: the same part still streams under maxInflatedBytes.
+    expect((await collect(reader.stream('xl/styles.xml'))).total).toBe('<styleSheet/>'.length);
+  });
+
+  it('EC-PART-SIZE-PADDING: holds the cap on the running count when the declared size understates the part', async () => {
+    const cap = 64 * 1024;
+    const data = repetitiveXml(cap + 100);
+    const archive = buildZip([{ name: 'xl/workbook.xml', data }]);
+    const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+    const centralStart = view.getUint32(archive.byteLength - 6, true);
+    // Under the cap, and close enough to the truth that the 4 KB declared-size slack does not catch it first.
+    view.setUint32(centralStart + 24, cap - 100, true);
+    const reader = await ZipReader.open(sourceFrom(archive), DEFAULT_LIMITS);
+    await expect(reader.read('xl/workbook.xml', cap)).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { maxPartBytes: cap } });
+  });
+
+  it('EC-PART-SIZE-PADDING: reads a part of exactly the cap', async () => {
+    const reader = await openBuilt([{ name: 'a.xml', data: repetitiveXml(1000 - 7) }]);
+    expect((await reader.read('a.xml', 1000)).byteLength).toBe(1000);
+    await expect(reader.read('a.xml', 999)).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED' });
   });
 });
 

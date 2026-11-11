@@ -1,5 +1,6 @@
 import { createInflater } from '../compress/inflater';
 import { XlsxError } from '../errors';
+import { isStringLengthError } from '../internal/string-length';
 import type { RandomAccessSource } from '../types';
 import { crc32, CRC32_INITIAL } from './crc32';
 
@@ -51,6 +52,12 @@ const LARGE_SOURCE_SIZE = 64 * 1024 * 1024;
 const DECLARED_SIZE_SLACK_BYTES = 4096;
 /** `read()` trusts a declared size this far for its one up-front allocation; a hostile claim costs no more. */
 const MAX_PREALLOCATED_BYTES = 16 * 1024 * 1024;
+/**
+ * Default cap on a part read whole (`read`, `readText`): the reader's `limits.maxPartBytes`. Package parts are KB to
+ * a few MB; the per-entry `maxInflatedBytes` (1 GiB) is sized for streamed worksheets, and a whole read of that much
+ * is what exhausts memory (EC-PART-SIZE-PADDING).
+ */
+export const DEFAULT_MAX_PART_BYTES: number = 32 * 1024 * 1024;
 
 const nameDecoder = new TextDecoder('utf-8');
 /** `ignoreBOM` keeps a leading U+FEFF in the output so `readText` strips exactly one, never two. */
@@ -108,6 +115,15 @@ function foldedIndex(entries: ReadonlyMap<string, ZipEntry>): ReadonlyMap<string
     }
   }
   return index;
+}
+
+function partTooLarge(part: string, size: number, maxPartBytes: number, declared: boolean): XlsxError {
+  const what = declared ? `declares ${size} bytes` : 'inflates';
+  return new XlsxError(
+    'LIMIT_EXCEEDED',
+    `The part ${part} ${what}, more than the ${maxPartBytes} bytes a part read whole may hold, so it was not read.`,
+    { part, maxPartBytes, ...(declared ? { declaredSize: size } : {}) },
+  );
 }
 
 function closedError(): XlsxError {
@@ -269,10 +285,14 @@ export class ZipReader {
     return this.streamEntry(name);
   }
 
-  /** Whole entry in memory (small parts only); the CRC is verified. */
-  async read(name: string): Promise<Uint8Array> {
-    // Closed state, a missing part and the declared-size limit are checked before anything is allocated.
-    const entry = this.readableEntry(name);
+  /**
+   * Whole entry in memory (small parts only); the CRC is verified. A part that declares, or inflates to, more than
+   * `maxBytes` is `LIMIT_EXCEEDED`, checked before inflating and again on the running count (EC-PART-SIZE-PADDING).
+   */
+  async read(name: string, maxBytes: number = DEFAULT_MAX_PART_BYTES): Promise<Uint8Array> {
+    // Closed state, a missing part and the declared-size limits are checked before anything is allocated. The part
+    // cap comes first: it is the tighter of the two for a whole read, and the one that names the problem.
+    const entry = this.readableEntry(name, maxBytes);
     // The declared size is almost always exact, so one allocation up front avoids copying the part twice. It is only
     // a claim, though, so the up-front allocation is capped; a larger part collects its chunks and joins them.
     const preallocated = Math.min(entry.uncompressedSize, MAX_PREALLOCATED_BYTES);
@@ -281,6 +301,11 @@ export class ZipReader {
     let total = 0;
 
     for await (const chunk of this.stream(name)) {
+      // The declared size is only a claim: the running count holds the cap whatever the header said. Throwing here
+      // ends the loop, which cancels the inflate.
+      if (total + chunk.byteLength > maxBytes) {
+        throw partTooLarge(entry.name, total + chunk.byteLength, maxBytes, false);
+      }
       if (declared && total + chunk.byteLength <= declared.byteLength) {
         declared.set(chunk, total);
       } else {
@@ -305,9 +330,16 @@ export class ZipReader {
     return joined;
   }
 
-  /** Whole entry decoded as UTF-8 text (BOM stripped). */
-  async readText(name: string): Promise<string> {
-    const text = textDecoder.decode(await this.read(name));
+  /** Whole entry decoded as UTF-8 text (BOM stripped), under the same `maxBytes` cap as `read`. */
+  async readText(name: string, maxBytes: number = DEFAULT_MAX_PART_BYTES): Promise<string> {
+    const bytes = await this.read(name, maxBytes);
+    let text: string;
+    try {
+      text = textDecoder.decode(bytes);
+    } catch (error) {
+      // Only reachable with a cap raised past what one string can hold.
+      throw isStringLengthError(error) ? partTooLarge(name, bytes.byteLength, maxBytes, false) : error;
+    }
     return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   }
 
@@ -329,14 +361,20 @@ export class ZipReader {
     return this.entries.get(normalized) ?? this.entriesByFoldedName.get(asciiLowerCase(normalized));
   }
 
-  /** The entry to read, after the checks that must come before any work: closed, missing, declared too large. */
-  private readableEntry(name: string): ZipEntry {
+  /**
+   * The entry to read, after the checks that must come before any work: closed, missing, declared too large (for a
+   * whole read, `maxPartBytes` first).
+   */
+  private readableEntry(name: string, maxPartBytes?: number): ZipEntry {
     if (this.closed) {
       throw closedError();
     }
     const entry = this.entry(name);
     if (!entry) {
       throw new XlsxError('NOT_XLSX', `missing part ${name}`, { part: name });
+    }
+    if (maxPartBytes !== undefined && entry.uncompressedSize > maxPartBytes) {
+      throw partTooLarge(entry.name, entry.uncompressedSize, maxPartBytes, true);
     }
     if (entry.uncompressedSize > this.limits.maxInflatedBytes) {
       throw new XlsxError(

@@ -1111,6 +1111,24 @@
       "generated": false,
       "expectedError": "LIMIT_EXCEEDED",
       "notes": "styles.xml lists 70,000 cellXfs entries, past Excel's 65,490 unique cell formats."
+    },
+    {
+      "id": "hostile-styles-part-padding",
+      "path": "hostile/styles-part-padding.xlsx",
+      "bytes": 36164,
+      "sha256": "807dfe2b4936345fd01348bb97f2f043f63e23f76d28c04542f85f4f1a20e88e",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-PART-SIZE-PADDING"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "styles.xml padded with 33 MiB of whitespace (33 KB on disk): past the 32 MiB default maxPartBytes for a part the reader holds whole."
     }
   ]
 }
