@@ -16,6 +16,7 @@ import {
   type Relationship,
 } from '../sml/package-parts';
 import { parseSharedStrings } from '../sml/shared-strings-reader';
+import { formatGeneralNumber } from '../sml/numfmt';
 import { parseStyles, type ParsedStyles } from '../sml/styles';
 import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext, type WorksheetRowsOptions } from '../sml/worksheet-reader';
 import type {
@@ -318,7 +319,8 @@ function padTwo(value: number): string {
 
 /**
  * The text SheetJS puts in a header is the cell's formatted text. We have no number formatter, so the value's own
- * spelling stands in: identical for strings (every header in practice) and Excel's spelling for the other types. An
+ * spelling stands in: identical for strings (every header in practice) and Excel's spelling for the other types, a
+ * number in the General format whatever format the cell has (EC-HEADER-NUMBER-GENERAL). An
  * error cell names its column with the error text whatever `errors` says (EC-HEADER-ERROR-CELL); the row reader
  * hands the header row's errors over as text for that reason, and a `CellError` is read the same way.
  */
@@ -342,7 +344,8 @@ function headerTextOf(value: ReadValue, utcDates: boolean): string {
   if (typeof value === 'object' && value !== null) {
     return value.error;
   }
-  return String(value);
+  // General's spelling, as Excel shows the cell and SheetJS names the key: no float noise (EC-HEADER-NUMBER-GENERAL).
+  return typeof value === 'number' ? formatGeneralNumber(value) : String(value);
 }
 
 /** The first index below `limit` whose cell holds a value, or `limit` when none does. */

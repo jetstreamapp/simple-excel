@@ -112,3 +112,66 @@ export function isDateFormatCode(code: string): boolean {
 export function builtinIdForCode(code: string): number {
   return BUILTIN_ID_BY_CODE.get(code) ?? -1;
 }
+
+const CODE_ZERO = 48;
+const CODE_DOT = 46;
+/** Characters Excel's General format shows a number in, a minus sign aside. */
+const GENERAL_WIDTH = 11;
+
+/** `1.2300` -> `1.23`, `5.000` -> `5`; text with no decimal point comes back as it is. */
+function stripTrailingZeros(text: string): string {
+  if (text.indexOf('.') < 0) {
+    return text;
+  }
+  let end = text.length;
+  while (text.charCodeAt(end - 1) === CODE_ZERO) {
+    end--;
+  }
+  if (text.charCodeAt(end - 1) === CODE_DOT) {
+    end--;
+  }
+  return end === text.length ? text : text.slice(0, end);
+}
+
+/** `1.23450e+11` -> `1.2345E+11`, `1.00000e-5` -> `1E-05`: General trims the mantissa and shows two exponent digits. */
+function normalizeExponent(text: string): string {
+  const marker = text.indexOf('e');
+  if (marker < 0) {
+    return stripTrailingZeros(text);
+  }
+  const mantissa = stripTrailingZeros(text.slice(0, marker));
+  const sign = text.charAt(marker + 1);
+  const digits = text.slice(marker + 2);
+  return `${mantissa}E${sign}${digits.length < 2 ? `0${digits}` : digits}`;
+}
+
+/**
+ * A number the way Excel's General format shows it in a cell (EC-HEADER-NUMBER-GENERAL): at most 11 characters
+ * (12 with a minus sign), so float noise goes (`4.2728917499999985` -> `4.27289175`) and very large or very small
+ * magnitudes turn exponential (`1.23457E-07`). The rules follow SheetJS's `SSF_general_num`, which is what
+ * `sheet_to_json` names a numeric header with. Integers keep every digit (`String(value)`), as they always have here.
+ */
+export function formatGeneralNumber(value: number): string {
+  if (Number.isInteger(value) || !Number.isFinite(value)) {
+    return String(value);
+  }
+  const width = value < 0 ? GENERAL_WIDTH + 1 : GENERAL_WIDTH;
+  // The same expression SheetJS uses, so the two agree on which branch a power of ten falls in.
+  const exponent = Math.floor(Math.log(Math.abs(value)) * Math.LOG10E);
+  if (exponent >= -4 && exponent <= -1) {
+    return stripTrailingZeros(value.toPrecision(10 + exponent));
+  }
+  if (Math.abs(exponent) <= 9) {
+    const fixed = stripTrailingZeros(value.toFixed(12));
+    if (fixed.length <= width) {
+      return fixed;
+    }
+    const precise = value.toPrecision(10);
+    return precise.length <= width ? normalizeExponent(precise) : normalizeExponent(value.toExponential(5));
+  }
+  if (exponent === 10) {
+    return stripTrailingZeros(value.toFixed(10).slice(0, 12));
+  }
+  const fixed = stripTrailingZeros(value.toFixed(11));
+  return fixed.length > width || fixed === '0' || fixed === '-0' ? normalizeExponent(value.toPrecision(6)) : fixed;
+}

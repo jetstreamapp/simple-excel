@@ -230,8 +230,10 @@ field in an application:
 
 - A header cell with text becomes that text. Non-string headers are spelled the way Excel spells them (`TRUE` /
   `FALSE`, an ISO-style timestamp for a date, the code for an error cell such as `#N/A`, whatever `errors` says,
-  `EC-HEADER-ERROR-CELL`). Numbers keep their JavaScript spelling (`123456789012`), where SheetJS shows Excel's
-  General format (`1.23457E+11`).
+  `EC-HEADER-ERROR-CELL`). A number is spelled the way Excel's General format shows it, as SheetJS names it:
+  `4.27289175` for a stored `4.2728917499999985`, `1.23457E-07` for a very small one (`EC-HEADER-NUMBER-GENERAL`).
+  Integers keep every digit (`123456789012`, where SheetJS shows `1.23457E+11`). A header cell with any other number
+  format (currency, percentage, fixed decimals) is still spelled as General, since there is no number formatter.
 - Every header becomes an own property of the record, `__proto__` and `constructor` included; the record's
   prototype never changes (`EC-HEADER-PROTO-KEY`).
 - An **absent** header cell becomes `__EMPTY`, and each later absent header gets a counter: `__EMPTY_1`,

@@ -1137,6 +1137,15 @@ describe('object mode: header text', () => {
     expect(Object.getOwnPropertyDescriptor(blankProto.rows[0], '__proto__')?.value).toBe('');
   });
 
+  it('EC-HEADER-NUMBER-GENERAL: a numeric header is named as General shows it, without float noise', async () => {
+    const rows =
+      '<row r="1"><c r="A1"><v>4.2728917499999985</v></c><c r="B1"><v>2024</v></c><c r="C1"><v>0.000012345</v></c>' +
+      '<c r="D1"><v>-123456789012.5</v></c></row><row r="2"><c r="A2"><v>1</v></c><c r="B2"><v>2</v></c><c r="C2"><v>3</v></c><c r="D2"><v>4</v></c></row>';
+    const result = await objects(rows);
+    expect(result.headers).toEqual(['4.27289175', '2024', '0.000012345', '-1.23457E+11']);
+    expect(result.rows).toEqual([{ '4.27289175': 1, '2024': 2, '0.000012345': 3, '-1.23457E+11': 4 }]);
+  });
+
   it('EC-HEADER-ERROR-CELL: an error header names its column with the error text, whatever errors says', async () => {
     const rows =
       `<row r="1"><c r="A1" t="e"><v>#N/A</v></c><c r="B1" t="inlineStr"><is><t>Name</t></is></c></row>` +

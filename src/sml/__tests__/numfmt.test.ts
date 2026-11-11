@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { builtinIdForCode, BUILTIN_NUMFMTS, DEFAULT_DATE_FORMAT, isBuiltinDateId, isDateFormatCode } from '../numfmt';
+import { builtinIdForCode, BUILTIN_NUMFMTS, DEFAULT_DATE_FORMAT, formatGeneralNumber, isBuiltinDateId, isDateFormatCode } from '../numfmt';
 
 /** ECMA-376 §18.8.30, "All Languages"; ids 5-8, 23-26 and 41-44 are locale-defined and have no fixed code. */
 const EXPECTED_BUILTINS: readonly (readonly [number, string])[] = [
@@ -126,5 +126,41 @@ describe('isDateFormatCode (EC-DATE-DETECTION-VIA-NUMFMT)', () => {
     for (const [id, code] of BUILTIN_NUMFMTS) {
       expect(isDateFormatCode(code), `built-in ${id} (${code})`).toBe(isBuiltinDateId(id));
     }
+  });
+});
+
+describe('formatGeneralNumber (EC-HEADER-NUMBER-GENERAL)', () => {
+  it('drops float noise to the 11 characters General shows', () => {
+    expect(formatGeneralNumber(4.2728917499999985)).toBe('4.27289175');
+    expect(formatGeneralNumber(0.30000000000000004)).toBe('0.3');
+    expect(formatGeneralNumber(7.123456789123)).toBe('7.123456789');
+    expect(formatGeneralNumber(2.5)).toBe('2.5');
+  });
+
+  it('keeps small numbers fixed while they fit and turns exponential with two exponent digits after', () => {
+    expect(formatGeneralNumber(0.000012345)).toBe('0.000012345');
+    expect(formatGeneralNumber(0.0123)).toBe('0.0123');
+    expect(formatGeneralNumber(1.23456789e-7)).toBe('1.23457E-07');
+    expect(formatGeneralNumber(1e-12)).toBe('1E-12');
+  });
+
+  it('turns large non-integers exponential past 11 characters', () => {
+    expect(formatGeneralNumber(12345678901.5)).toBe('12345678901');
+    expect(formatGeneralNumber(123456789012.5)).toBe('1.23457E+11');
+    expect(formatGeneralNumber(1234567.891)).toBe('1234567.891');
+  });
+
+  it('allows one more character for the minus sign of a negative', () => {
+    expect(formatGeneralNumber(-4.2728917499999985)).toBe('-4.27289175');
+    expect(formatGeneralNumber(-0.000012345)).toBe('-0.000012345');
+    expect(formatGeneralNumber(-1234567890.12)).toBe('-1234567890');
+    expect(formatGeneralNumber(-123456789012.5)).toBe('-1.23457E+11');
+  });
+
+  it('spells integers in full, as before', () => {
+    expect(formatGeneralNumber(2024)).toBe('2024');
+    expect(formatGeneralNumber(-7)).toBe('-7');
+    expect(formatGeneralNumber(0)).toBe('0');
+    expect(formatGeneralNumber(123456789012)).toBe('123456789012');
   });
 });

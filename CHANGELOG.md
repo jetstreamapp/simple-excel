@@ -107,6 +107,11 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Object-mode header keys built from a non-integer number are spelled the way Excel's General format shows them
+  (`4.27289175`), as SheetJS names them, instead of with `String(value)`, which leaked float noise
+  (`4.2728917499999985`). Integers are unchanged. Header keys are part of the `sheet_to_json` contract this restores,
+  so this is a fix rather than a breaking change; only keys that carried float noise or more than 11 characters of
+  fraction change.
 - `toWritable` no longer hangs when the stream is destroyed without an error (an HTTP client disconnecting
   mid-download): a write waiting for `'drain'` or a close waiting for `'finish'` now settles on `'close'` and rejects
   with `IO_ERROR`, a write to a destroyed or ended stream is refused at once, and `close()` resolves for a stream that

@@ -864,6 +864,14 @@
     "status": "verified 2026-09-27 (readiness audit)"
   },
   {
+    "id": "EC-HEADER-NUMBER-GENERAL",
+    "family": "Cells",
+    "symptom": "A header cell holding a non-integer number: `<c r=\"R1\" s=\"7\"><v>4.2728917499999985</v></c>`, where xf 7 is General. simple-excel 0.2.1 named the column with String(value), `4.2728917499999985`, float noise included.",
+    "seenIn": "Excel displays `4.27289175` (General shows at most 11 characters) and SheetJS sheet_to_json names the key the same; found by a real-Excel corpus run.",
+    "expected": "Spell a numeric header the way General does (SheetJS SSF_general_num: up to 11 characters, 12 with a minus sign; toFixed, toPrecision(10) or exponential with a two-digit exponent; trailing zeros stripped), so `4.27289175`, `0.000012345`, `1.23457E-07`, `-1.23457E+11`. Integers keep every digit (`2024`; `123456789012` where Excel and SheetJS show `1.23457E+11`). There is no number formatter, so a header cell with any other number format (currency, percentage, a fixed number of decimals) is still spelled as General and does not match what Excel shows; it does match SheetJS read without cellNF.",
+    "status": "verified 2026-11-11 (real-Excel corpus run; 200k random non-integers agree with SheetJS SSF General)"
+  },
+  {
     "id": "EC-PART-NAME-CASE",
     "family": "Container",
     "symptom": "A part name whose case differs from the relationship target (xl/SharedStrings.xml for sharedStrings.xml).",
