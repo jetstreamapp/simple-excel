@@ -59,8 +59,9 @@ through its index. `src/index.ts` re-exports only the public surface.
 > under `docs/docs/`. The sketch below was the target the modules were built to; where it differs, the code won:
 > `SheetWriter.close()` returns a `SheetWriteSummary`, `Workbook.close()` is async, `defval` lives on
 > `ObjectRowsOptions`, the empty-header option is `dropEmptyHeaders`, `ReadLimits` carries `maxXmlDepth` /
-> `maxTextLength` while `maxRows` / `maxColumns` are per-read `RowsOptions`, `openWorkbook` also accepts a
-> `RandomAccessSource`, `sniff` returns `'zip' | 'html' | 'empty'` too, and the error codes include
+> `maxTextLength` (and, since the reader DoS fixes, `maxPartBytes` / `maxRowChars`) while `maxRows` / `maxColumns` are
+> per-read `RowsOptions`, `openWorkbook` also accepts a `RandomAccessSource`, `sniff` returns `'zip' | 'html' | 'empty'`
+> too, and the error codes include
 > `ZIP_UNSUPPORTED`, `ZIP_CRC_MISMATCH`, `CELL_TOO_LONG`, `ABORTED` and `UNSUPPORTED_ENVIRONMENT`. Cell-ref and
 > sheet-name helpers are exported for callers that key data by sheet name or build ranges (08 §6).
 
@@ -269,7 +270,10 @@ rule "touch only your module's files and tests". The lead integrates, runs the f
 - **Golden bytes** (`test/golden-bytes.test.ts`): deterministic writer output for the canonical workbook and the
   bench `mixed` 1k dataset, sha256-pinned; updating requires `UPDATE_GOLDENS=1` and a validator + oracle pass.
 - **Round trip**: write → read for every canonical column and every style; property tests for escapes/dates.
-- **Hostile**: every `kind:hostile` fixture → classified error, and a 30 MB bomb under the byte cap.
+- **Hostile**: every `kind:hostile` fixture with an `expectedError` → that classified error, under tight limits and, for
+  the reader DoS family (`EC-PACKAGE-ELEMENT-FLOOD` and the five after it), under the defaults too; one without an
+  `expectedError` is a legal file shaped to exhaust memory and must read to the end with a small live heap; and a
+  30 MB bomb under the byte cap.
 - **Parity**: our object-mode read vs the SheetJS dump for every golden (SheetJS installed as a devDependency).
 - **Memory/perf** (`test/memory.test.ts`, Node with `--expose-gc`, opt-in via `RUN_PERF=1`): 200k-row write heap
   growth < 64 MB; 100k read heap < 150 MB.

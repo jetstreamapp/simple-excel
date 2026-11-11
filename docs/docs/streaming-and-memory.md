@@ -35,8 +35,16 @@ why it is off by default and budgeted when turned on.
 ## How the reader stays flat
 
 A sheet is a zip entry; the reader opens it as a stream, inflates a chunk, pushes the decoded text through a
-tokenizer and yields the rows that completed. The parser keeps one row at a time. Breaking out of the loop
-cancels the inflate stream, so `head()` and an early `break` cost only what was already read.
+tokenizer and yields the rows that completed. The parser keeps one row at a time, and the rows waiting to be yielded
+are capped at about a million cell slots (8 MB): a chunk whose rows would hold more — every row a 16,384-slot array
+because of one cell at column XFD, or a `blankRows` gap of a million empty rows — pauses the tokenizer mid-chunk
+until the batch is in your hands. Breaking out of the loop cancels the inflate stream, so `head()` and an early
+`break` cost only what was already read.
+
+The package parts the reader holds whole (`[Content_Types].xml`, the relationships, `workbook.xml`, `styles.xml`)
+are capped by `limits.maxPartBytes` (32 MiB), the text of one cell by `limits.maxTextLength` (1 Mi characters) and
+of one row by `limits.maxRowChars` (64 Mi), so a hostile upload fails with `LIMIT_EXCEEDED` instead of building
+strings the size of the heap.
 
 The one structure proportional to the file is the **shared-string table**, which cells index into by number; it
 has to be resident while a sheet is being read. It is parsed lazily — only when a sheet actually contains a
@@ -161,6 +169,9 @@ on the way out.
 - Use `head(n)` to inspect headers or template metadata before committing to a full read.
 - `break` out of the loop as soon as you know enough — the rest of the sheet is never inflated.
 - Lower `limits` for untrusted uploads; raise `maxInflatedBytes` deliberately for a large file you trust.
+- Object mode gives every record every named column (the `sheet_to_json` contract), so a sheet whose header row
+  or data reaches column XFD builds 16,384-key records: its cost is rows times named columns however few cells the
+  rows hold. Stream such a sheet in array mode, or pass `maxColumns` to refuse it.
 - Prefer a `Blob`/`File` or a `RandomAccessSource` over materializing an `ArrayBuffer`: the reader only pulls the
   ranges it needs.
 

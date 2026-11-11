@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `limits.maxPartBytes` (default 32 MiB): the most a part the reader holds whole may declare or inflate to. That is
+  `[Content_Types].xml`, the package and workbook relationships, the workbook part and `styles.xml`; worksheets and
+  the shared-string table are streamed and stay under `maxInflatedBytes`.
+- `limits.maxRowChars` (default 64 Mi UTF-16 units): the most text one row of a sheet may hold, all its cells
+  together.
+
+### Changed
+
+- **Breaking:** `limits.maxTextLength` defaults to 1,048,576 characters instead of 64 Mi, and now caps what one
+  cell's value, inline string or formula text, or one shared-string item, accumulates however many text runs build
+  it, not only each run. Excel holds 32,767 characters in a cell and Salesforce's longest text field 131,072; pass a
+  larger `maxTextLength` to read generated files with longer text.
+
+### Security
+
+- `openWorkbook()` refuses a package part that lists more `<sheet>`, `<Relationship>`, `<Override>` or `<Default>`
+  elements than `limits.maxEntries`, or a `styles.xml` with more than 65,490 `cellXfs` or `numFmts` entries (Excel's
+  own ceiling), with `LIMIT_EXCEEDED`. A 58 KB file listing 5M `<sheet/>` elements reached 1.9 GB and ran Node out
+  of memory.
+- The parts read whole are capped by the new `maxPartBytes` before they are inflated and again as they inflate. A
+  698 KB file with 700 MiB of whitespace in `styles.xml` reached 2.2 GB and then failed with a bare
+  `ERR_STRING_TOO_LONG` instead of an `XlsxError`.
+- `maxTextLength` holds for a whole cell and shared-string item, and `maxRowChars` for a row, so text split into
+  many runs or spread over many cells no longer builds unbounded strings (about 1.4 GB from 1 MB of upload). A
+  string past the engine's maximum length now surfaces as `LIMIT_EXCEEDED` rather than a `RangeError`.
+- The XML tokenizer no longer rescans a tag from its start on every chunk while it waits for the `>`: a 1 MB file of
+  1 MiB tags cost about 69 s of CPU per read, against about 3 s for a benign file of the same inflated size.
+- Rows are yielded in batches bounded by the cells they hold (about 1M slots) rather than one batch per decoded
+  chunk, so rows with a cell at column XFD (a 16,384-slot array each) no longer pile up before the first yield: a
+  146 KB file reached 1.26 GB. `maxColumns` still defaults to 16,384, so a stray far-right cell reads as before.
+- With `blankRows: true`, a jump in row numbers is filled under the same batch budget instead of queuing every blank
+  row first (about 1M rows from a 1.8 KB file).
+
 ## [0.2.1] - 2026-10-31
 
 ### Security

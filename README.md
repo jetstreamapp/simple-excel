@@ -123,6 +123,12 @@ await workbook.close();
 `rows()` streams; nothing but the shared-string table stays resident. `sheet.head(5)` returns the first rows as an
 A1-keyed map without inflating the rest of the sheet, which is how you inspect a template before reading it.
 
+The defaults are set for untrusted uploads: a file past one of them fails fast with `LIMIT_EXCEEDED` (or `ZIP_BOMB`)
+instead of exhausting the host. `limits` caps each part's inflated size (`maxInflatedBytes`, 1 GiB), the parts read
+whole (`maxPartBytes`, 32 MiB), the number of parts and package entries (`maxEntries`, 10,000), the shared-string table
+(`maxSharedStringChars`, 256 Mi), one cell's text (`maxTextLength`, 1 Mi characters) and one row's (`maxRowChars`,
+64 Mi), and XML nesting (`maxXmlDepth`, 256); see [Reading](docs/docs/reading.md#limits).
+
 ## Node
 
 ```ts

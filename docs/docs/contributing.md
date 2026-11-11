@@ -107,7 +107,9 @@ Size and sha256 are always recomputed from disk, so `npm run fixtures:check` wil
 drifts.
 
 Then run `npm run test:corpus`. A new fixture with an `--expected` dump has to read at its recorded verdict, and
-a new `kind:hostile` fixture has to produce its `--expected-error` classified error rather than a crash.
+a new `kind:hostile` fixture has to produce its `--expected-error` classified error rather than a crash. A hostile
+fixture registered without `--expected-error` is a legal workbook shaped to exhaust memory (`EC-WIDE-SPARSE-ROWS`);
+`test/hostile.test.ts` reads it to the end and checks the live heap stays small.
 
 If the fixture demonstrates a behaviour that is not already in the catalog, add an entry to
 `fixtures/edge-cases.json` and run `npm run research:regenerate` — `research/04` is rendered from that file, not

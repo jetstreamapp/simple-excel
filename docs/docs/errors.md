@@ -126,16 +126,21 @@ character references and nothing else, so there is no entity-expansion surface t
 
 `LIMIT_EXCEEDED` covers every configurable cap, with the limit and the observed value in `detail`:
 
-| Hit                                          | Configured by                  |
-| -------------------------------------------- | ------------------------------ |
-| Too many parts in the archive                | `limits.maxEntries`            |
-| Shared-string table too large                | `limits.maxSharedStringChars`  |
-| XML nested too deep                          | `limits.maxXmlDepth`           |
-| One text node too long                       | `limits.maxTextLength`         |
-| A cell past the column cap for this read     | `RowsOptions.maxColumns`       |
-| A cell reference past column XFD             | — (`EC-REF-BEYOND-XFD`)        |
-| More bytes than a memory sink allows         | `collectToBytes({ maxBytes })` |
-| A declared size beyond what can be addressed | —                              |
+| Hit                                                                      | Configured by                        |
+| ------------------------------------------------------------------------ | ------------------------------------ |
+| Too many parts in the archive                                            | `limits.maxEntries`                  |
+| Too many sheets, relationships or content types listed in a package part | `limits.maxEntries`                  |
+| More than 65,490 `cellXfs` or `numFmts` entries in `styles.xml`          | — (`EC-PACKAGE-ELEMENT-FLOOD`)       |
+| A part read whole is too large                                           | `limits.maxPartBytes`                |
+| Shared-string table too large                                            | `limits.maxSharedStringChars`        |
+| XML nested too deep                                                      | `limits.maxXmlDepth`                 |
+| One cell, shared string or text node too long                            | `limits.maxTextLength`               |
+| One row holds too much text                                              | `limits.maxRowChars`                 |
+| A string longer than the JavaScript engine can build                     | — (only with limits raised that far) |
+| A cell past the column cap for this read                                 | `RowsOptions.maxColumns`             |
+| A cell reference past column XFD                                         | — (`EC-REF-BEYOND-XFD`)              |
+| More bytes than a memory sink allows                                     | `collectToBytes({ maxBytes })`       |
+| A declared size beyond what can be addressed                             | —                                    |
 
 Raising a limit is a deliberate act: the defaults are sized so a hostile upload fails fast rather than taking the
 process with it. See [Reading](./reading.md#limits).

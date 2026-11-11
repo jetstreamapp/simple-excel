@@ -113,16 +113,27 @@ A sheet full of blank text cells with one of these warnings usually means a dama
 
 ### Limits
 
-| `ReadLimits`           | Default             | Guards                                               |
-| ---------------------- | ------------------- | ---------------------------------------------------- |
-| `maxInflatedBytes`     | 1 GiB per part      | Zip bombs; exceeded raises `ZIP_BOMB`                |
-| `maxSharedStringChars` | 256 Mi UTF-16 units | A shared-string table designed to exhaust memory     |
-| `maxEntries`           | 10,000              | Archives with an absurd number of parts              |
-| `maxXmlDepth`          | 256                 | Deeply nested rich-text runs (`EC-XML-DEEP-NESTING`) |
-| `maxTextLength`        | 64 Mi UTF-16 units  | One text node swallowing the heap                    |
+| `ReadLimits`           | Default                | Guards                                                                                                                                                                          |
+| ---------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxInflatedBytes`     | 1 GiB per part         | Zip bombs; exceeded raises `ZIP_BOMB`. The cap that applies to streamed parts: worksheets and the shared-string table                                                           |
+| `maxPartBytes`         | 32 MiB per part        | A part the reader holds whole — `[Content_Types].xml`, the package and workbook relationships, `workbook.xml`, `styles.xml` — padded to exhaust memory (`EC-PART-SIZE-PADDING`) |
+| `maxSharedStringChars` | 256 Mi UTF-16 units    | A shared-string table designed to exhaust memory                                                                                                                                |
+| `maxEntries`           | 10,000                 | Archives with an absurd number of parts, and package parts that list more sheets, relationships or content types than that (`EC-PACKAGE-ELEMENT-FLOOD`)                         |
+| `maxXmlDepth`          | 256                    | Deeply nested rich-text runs (`EC-XML-DEEP-NESTING`)                                                                                                                            |
+| `maxTextLength`        | 1,048,576 UTF-16 units | One cell's value, inline string or formula text, one shared-string item, or one text node, however many runs build it (`EC-CELL-TEXT-RUN-SPLIT`)                                |
+| `maxRowChars`          | 64 Mi UTF-16 units     | The text of one row, all its cells together                                                                                                                                     |
 
 Raise them for a legitimately huge file you trust; lower them for user uploads. Exceeding a limit raises
 `LIMIT_EXCEEDED` (or `ZIP_BOMB` for the inflate caps), and the message names what was hit.
+
+A few caps are fixed rather than configurable, because Excel never writes past them: more than 65,490 `cellXfs` or
+`numFmts` entries in `styles.xml` (Excel's ceiling on unique cell formats) and a single tag longer than 1 Mi
+characters. Excel holds 32,767 characters in a cell, so the `maxTextLength` default leaves 32 times that; raise it
+if your files carry longer generated text.
+
+Rows are yielded in batches as the sheet is parsed, and a batch is bounded by the cells it holds rather than by
+the input it came from: a sheet whose rows each hold one cell at column XFD, or a `blankRows` read across a jump of
+a million rows, streams in a few megabytes (`EC-WIDE-SPARSE-ROWS`, `EC-BLANK-ROWS-GAP-FILL`).
 
 ## Listing sheets
 
