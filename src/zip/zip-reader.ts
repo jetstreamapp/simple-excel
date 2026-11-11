@@ -485,7 +485,17 @@ async function findCentralDirectory(source: RandomAccessSource): Promise<Central
     const centralOffset = tailView.getUint32(index + 16, true);
     const needsZip64 = entryCount === UINT16_MARKER || centralSize === UINT32_MARKER || centralOffset === UINT32_MARKER;
     if (needsZip64) {
-      return readZip64Location(source, tailStart + index);
+      const zip64Location = await readZip64Location(source, tailStart + index);
+      if (zip64Location !== undefined) {
+        return zip64Location;
+      }
+      // A marker value with no zip64 locator behind it is a field that really held 65,535 (or 0xFFFFFFFF): what
+      // earlier versions of this library wrote for exactly 65,535 parts, and some other writers still do. Python and
+      // Info-ZIP read the 32-bit values then, as long as they describe a directory inside the file.
+      if (centralOffset + centralSize > size) {
+        throw truncated('the zip64 locator is missing');
+      }
+      return { offset: centralOffset, size: centralSize, entryCount };
     }
     if (centralOffset + centralSize > size) {
       continue;
@@ -495,14 +505,15 @@ async function findCentralDirectory(source: RandomAccessSource): Promise<Central
   throw truncated('no end-of-central-directory record was found');
 }
 
-async function readZip64Location(source: RandomAccessSource, eocdOffset: number): Promise<CentralDirectoryLocation> {
+/** The zip64 directory location, or `undefined` when no zip64 locator precedes the end record. */
+async function readZip64Location(source: RandomAccessSource, eocdOffset: number): Promise<CentralDirectoryLocation | undefined> {
   if (eocdOffset < ZIP64_LOCATOR_SIZE) {
-    throw truncated('the zip64 locator is missing');
+    return undefined;
   }
   const locator = await readExactFrom(source, eocdOffset - ZIP64_LOCATOR_SIZE, ZIP64_LOCATOR_SIZE);
   const locatorView = new DataView(locator.buffer, locator.byteOffset, locator.byteLength);
   if (locatorView.getUint32(0, true) !== ZIP64_LOCATOR_SIGNATURE) {
-    throw truncated('the zip64 locator is missing');
+    return undefined;
   }
 
   const recordOffset = readUint64(locatorView, 8);

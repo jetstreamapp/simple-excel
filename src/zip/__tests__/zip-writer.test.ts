@@ -716,9 +716,11 @@ describe('ZipWriter', () => {
   });
 
   describe('32-bit limits', () => {
-    it('assertFits accepts anything a 32-bit field can hold', () => {
+    it('assertFits accepts anything a 32-bit field can hold below the 0xFFFFFFFF zip64 marker', () => {
       expect(() => assertFits(0, 'the size of "a.txt"')).not.toThrow();
-      expect(() => assertFits(MAX_UINT32, 'the size of "a.txt"')).not.toThrow();
+      expect(() => assertFits(MAX_UINT32 - 1, 'the size of "a.txt"')).not.toThrow();
+      // 0xFFFFFFFF in a 32-bit field means "see the zip64 record", so the value itself does not fit.
+      expect(() => assertFits(MAX_UINT32, 'the size of "a.txt"')).toThrow(expect.objectContaining({ code: 'ENTRY_TOO_LARGE' }));
     });
 
     it('assertFits throws ENTRY_TOO_LARGE one byte past the limit', () => {
@@ -736,6 +738,33 @@ describe('ZipWriter', () => {
       });
       expect(String(thrown)).toContain('xl/worksheets/sheet1.xml');
     });
+
+    /** A stored archive of `count` one-byte entries. */
+    async function archiveOf(count: number): Promise<ParsedZip> {
+      const { writer, sink } = createWriter({ compression: 'store' });
+      const one = new Uint8Array([0x61]);
+      for (let index = 0; index < count; index++) {
+        await writer.writeEntry(`p${index}`, one);
+      }
+      await writer.close();
+      return parseZip(sink.bytes());
+    }
+
+    it('EC-ZIP64-EOCD-SENTINELS: exactly 65,535 entries get the zip64 end records, because 0xFFFF is the marker', async () => {
+      const parsed = await archiveOf(0xffff);
+      expect(parsed.zip64Locator, 'a 16-bit count of 0xFFFF must point at a zip64 record').toBeDefined();
+      expect(parsed.zip64End?.entryCount).toBe(0xffff);
+      expect(parsed.eocd.entryCount).toBe(0xffff);
+      expect(parsed.eocd.centralDirectoryOffset).toBe(MAX_UINT32);
+      expect(parsed.entries).toHaveLength(0xffff);
+    }, 60_000);
+
+    it('keeps 65,534 entries a plain 32-bit archive', async () => {
+      const parsed = await archiveOf(0xfffe);
+      expect(parsed.zip64Locator).toBeUndefined();
+      expect(parsed.eocd.entryCount).toBe(0xfffe);
+      expect(parsed.entries).toHaveLength(0xfffe);
+    }, 60_000);
   });
 
   it.skipIf(!hasUnzip)('produces archives that Info-ZIP accepts', async () => {
