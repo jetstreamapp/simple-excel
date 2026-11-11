@@ -1182,6 +1182,23 @@
       "expected": null,
       "generated": false,
       "notes": "A legal sheet of 2,000 rows with one cell at column XFD each, so every row is a 16,384-slot array. No expectedError: it must read to the end in bounded memory."
+    },
+    {
+      "id": "hostile-blank-rows-gap",
+      "path": "hostile/blank-rows-gap.xlsx",
+      "bytes": 2389,
+      "sha256": "ebc8f08abfe9ffca5d1205039b12a32b2ee2fe9b53904d3c68b2205e9414c845",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-BLANK-ROWS-GAP-FILL"],
+      "expected": null,
+      "generated": false,
+      "notes": "Row 1, then row 1,048,576. Read with blankRows: true every row between is yielded as []. No expectedError: it must read to the end in bounded memory."
     }
   ]
 }

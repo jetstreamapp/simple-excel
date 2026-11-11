@@ -827,7 +827,7 @@ describe('streaming', () => {
   });
 });
 
-describe('EC-WIDE-SPARSE-ROWS: batches are bounded by the slots they hold', () => {
+describe('EC-WIDE-SPARSE-ROWS / EC-BLANK-ROWS-GAP-FILL: batches are bounded by the slots they hold', () => {
   /** The rows yielded before the read failed, and how it failed. The malformed tail sits in the same chunk. */
   async function rowsBeforeError(
     xml: string,
@@ -890,6 +890,33 @@ describe('EC-WIDE-SPARSE-ROWS: batches are bounded by the slots they hold', () =
       }
     }
     expect(seen).toBe(65);
+  });
+
+  it('EC-BLANK-ROWS-GAP-FILL: fills a gap across batches rather than in one', async () => {
+    const gap = '<row r="1"><c r="A1"><v>1</v></c></row><row r="1048576"><c r="A1048576"><v>2</v></c></row>';
+    const { rows, error } = await rowsBeforeError(`<worksheet><sheetData>${gap}</sheetData></bogus>`, { blankRows: true });
+    // Every full batch of 131,072 blank rows reaches the caller before the error: the gap no longer has to fit in one.
+    expect(rows).toBe(7 * 131_072);
+    expect(error).toMatchObject({ code: 'XML_MALFORMED' });
+  });
+
+  it('EC-BLANK-ROWS-GAP-FILL: keeps every index aligned through a gap that spans batches', async () => {
+    const gap =
+      '<row r="1"><c r="A1"><v>1</v></c></row><row r="400000"><c r="A400000"><v>2</v></c></row><row r="400002"><c r="A400002"><v>3</v></c></row>';
+    let expected = 1;
+    let aligned = true;
+    const values: CellValue[] = [];
+    for await (const row of readWorksheetRows(bytesOf(sheet(gap)), context(), { blankRows: true })) {
+      aligned &&= row.index === expected;
+      expected++;
+      if (row.cells.length > 0) {
+        values.push(row.cells[0] ?? null);
+      }
+    }
+    expect(aligned).toBe(true);
+    expect(expected - 1).toBe(400_002);
+    expect(values).toEqual([1, 2, 3]);
+    expect(await readRows(sheet(gap), { blankRows: true, maxRows: 300_000 })).toHaveLength(300_000);
   });
 });
 

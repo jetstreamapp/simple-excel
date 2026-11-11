@@ -77,9 +77,9 @@ const SHARED_TYPE_SCAN_TAIL = 4;
 /**
  * What one batch of rows may materialize before it is yielded, in array slots: each row costs its cells plus
  * `ROW_SLOT_OVERHEAD` for the row object and its array. Rows used to be batched per decoded chunk, and a 16 KiB chunk
- * of rows with one cell at XFD is 300-odd 16,384-slot arrays, about 40 MB before the first yield (EC-WIDE-SPARSE-ROWS).
- * About 8 MB of slots per batch holds whatever the sheet looks like, and ordinary rows never come near it: a chunk of
- * them is a few hundred slots.
+ * of rows with one cell at XFD is 300-odd 16,384-slot arrays, about 40 MB before the first yield (EC-WIDE-SPARSE-ROWS);
+ * a `blankRows` gap of a million rows was a million objects (EC-BLANK-ROWS-GAP-FILL). About 8 MB of slots per batch
+ * holds whatever the sheet looks like, and ordinary rows never come near it: a chunk of them is a few hundred slots.
  */
 const BATCH_SLOT_BUDGET = 1024 * 1024;
 /** A yielded row's own cost in slots beyond its cells: the row object, the array header, the index. */
@@ -719,6 +719,11 @@ class RowsParser extends WorksheetParser {
   private batch: SheetRow[] = [];
   /** Slots the rows in `batch` hold; see `BATCH_SLOT_BUDGET`. */
   private batchSlots = 0;
+  /**
+   * With `blankRows`, a row that ended while the gap before it was still being filled when the batch filled up: the
+   * rest of the gap and then this row are emitted on `resume()`.
+   */
+  private pendingRow: SheetRow | undefined;
   private emitted = 0;
   /** No row with a value has been emitted yet: with `errorTextRow: 'first'`, the next one is the header row. */
   private awaitingFirstRow = true;
@@ -750,6 +755,18 @@ class RowsParser extends WorksheetParser {
     return batch;
   }
 
+  /** Finish a gap the last batch cut short, then let the tokenizer continue the input. */
+  override resume(): void {
+    const pending = this.pendingRow;
+    if (pending !== undefined) {
+      this.pendingRow = undefined;
+      if (!this.emitWithGap(pending)) {
+        return;
+      }
+    }
+    super.resume();
+  }
+
   protected override onRowStart(rowNumber: number): void {
     this.collecting = rowNumber >= this.startRow;
     if (this.collecting) {
@@ -774,16 +791,28 @@ class RowsParser extends WorksheetParser {
     if (end === 0 && !this.blankRows) {
       return;
     }
+    this.emitWithGap({ index: rowNumber, cells });
+  }
+
+  /**
+   * Emit `row`, after the blank rows that keep a `blankRows` read aligned with the sheet when row numbers jump.
+   * False when the batch filled up first: the row waits in `pendingRow` and the tokenizer is paused.
+   */
+  private emitWithGap(row: SheetRow): boolean {
     if (this.blankRows) {
-      // Row numbers can jump; the blank rows in between keep the yielded sequence aligned with the sheet.
-      for (let index = this.nextIndex; index < rowNumber; index++) {
+      for (let index = this.nextIndex; index < row.index; index++) {
         this.emit({ index, cells: [] });
         if (this.stopped) {
-          return;
+          return false;
+        }
+        if (this.batchSlots >= BATCH_SLOT_BUDGET) {
+          this.pendingRow = row;
+          return false;
         }
       }
     }
-    this.emit({ index: rowNumber, cells });
+    this.emit(row);
+    return true;
   }
 
   protected override onCell(value: CellValue): void {

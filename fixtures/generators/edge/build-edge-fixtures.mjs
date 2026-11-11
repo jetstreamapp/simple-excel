@@ -258,6 +258,17 @@ for (let index = 1; index <= 2000; index++) {
   wideRows.push(`<row r="${index}"><c r="XFD${index}"><v>${index}</v></c></row>`);
 }
 write(HOSTILE, 'wide-sparse-rows.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: wideRows.join(''), dimension: '' }) }));
+// Row 1, then row 1,048,576: with blankRows every row between is yielded as [].
+write(
+  HOSTILE,
+  'blank-rows-gap.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      rows: '<row r="1"><c r="A1"><v>1</v></c></row><row r="1048576"><c r="A1048576"><v>2</v></c></row>',
+      dimension: '',
+    }),
+  }),
+);
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [

@@ -496,6 +496,14 @@
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {
+    "id": "EC-BLANK-ROWS-GAP-FILL",
+    "family": "Security",
+    "symptom": "With blankRows: true, a row number jump (`<row r=\"1048576\">` after row 1) is filled with empty rows; all of them (about 1M from a 1.8 KB upload) were queued before the first yield.",
+    "seenIn": "Hostile uploads; also any sheet with a stray cell far down (a cleared but formatted row).",
+    "expected": "The gap is filled under the same batch budget as the rows, so memory stays flat however far the next row is.",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
     "id": "EC-ZIP64-LOCAL-SIZES-BIT3",
     "family": "Container",
     "symptom": "A zip64 entry written with bit 3 (data descriptor) whose local header carries 0xFFFFFFFF in the size fields (as several writers do) makes Excel silently repair the workbook.",

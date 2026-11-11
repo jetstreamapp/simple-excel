@@ -38,6 +38,7 @@ const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = [
   'EC-CELL-TEXT-RUN-SPLIT',
   'EC-XML-LONG-TAG-RESCAN',
   'EC-WIDE-SPARSE-ROWS',
+  'EC-BLANK-ROWS-GAP-FILL',
 ];
 
 /** Read options that make a read-flat fixture hostile, by catalog id. */
@@ -48,7 +49,8 @@ const ROW_OPTIONS_BY_CATALOG_ID: Readonly<Record<string, ArrayRowsOptions>> = {
 const MB = 1024 * 1024;
 /**
  * Live heap a read-flat fixture may hold at any point of its read, measured after a full collection. A batch is
- * bounded at about 8 MB of row slots; before that budget, one inflate chunk of `wide-sparse-rows` held 40 MB of rows.
+ * bounded at about 8 MB of row slots; before that budget, one inflate chunk of `wide-sparse-rows` held 40 MB of rows
+ * and the `blank-rows-gap` gap over 100 MB.
  */
 const READ_FLAT_LIVE_HEAP_BUDGET = 32 * MB;
 /** A fixture that must fail fast does so in well under this, whatever machine runs the suite. */
