@@ -93,7 +93,8 @@ function dosTimestampFrom(when: Date): DosTimestamp {
  * Exported so the limit can be tested without producing four gigabytes of data.
  */
 export function assertFits(value: number, what: string): void {
-  if (value > MAX_UINT32) {
+  // 0xFFFFFFFF itself is the "see the zip64 record" marker, so a 32-bit field can hold at most one less.
+  if (value >= MAX_UINT32) {
     throw new XlsxError(
       'ENTRY_TOO_LARGE',
       `This spreadsheet is too large for a standard zip file: ${what} passes 4 GB. Write it with zip64 enabled or split it across sheets.`,
@@ -227,7 +228,15 @@ export class ZipWriter {
   }
 
   async abort(reason?: unknown): Promise<void> {
-    this.failure ??= new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.', reason === undefined ? undefined : { reason });
+    this.failure ??=
+      reason instanceof XlsxError
+        ? reason
+        : new XlsxError(
+            'ABORTED',
+            'Writing the spreadsheet was cancelled.',
+            undefined,
+            reason === undefined ? undefined : { cause: reason },
+          );
     if (this.aborted) {
       return;
     }
@@ -358,7 +367,7 @@ export class ZipWriter {
     for (const { nameBytes, method, timestamp, zip64, summary } of this.records) {
       // A 32-bit entry in a zip64 archive stays 32-bit unless one of its own values actually overflows.
       const needsZip64 =
-        zip64 || summary.compressedSize > MAX_UINT32 || summary.uncompressedSize > MAX_UINT32 || summary.offset > MAX_UINT32;
+        zip64 || summary.compressedSize >= MAX_UINT32 || summary.uncompressedSize >= MAX_UINT32 || summary.offset >= MAX_UINT32;
       const version = needsZip64 ? VERSION_ZIP64 : VERSION_BASE;
       builder.uint32(CENTRAL_HEADER_SIGNATURE);
       builder.uint16(version); // version made by
@@ -395,9 +404,9 @@ export class ZipWriter {
     const needsZip64 =
       this.options.zip64 ||
       this.anyEntryZip64 ||
-      entryCount > MAX_UINT16 ||
-      centralDirectoryOffset > MAX_UINT32 ||
-      centralDirectorySize > MAX_UINT32;
+      entryCount >= MAX_UINT16 ||
+      centralDirectoryOffset >= MAX_UINT32 ||
+      centralDirectorySize >= MAX_UINT32;
 
     if (needsZip64) {
       const zip64EndOffset = this.offset;

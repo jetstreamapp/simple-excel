@@ -3,7 +3,7 @@
  * that stream rows on demand. Nothing here parses sheet XML - `sml/worksheet-reader` does - and nothing is read
  * eagerly beyond the workbook, its relationships and the styles part.
  */
-import { isXlsxError, XlsxError } from '../errors';
+import { classifyError, isXlsxError, XlsxError } from '../errors';
 import { isStringLengthError } from '../internal/string-length';
 import { MAX_COLUMNS, parseRange } from '../sml/cell-ref';
 import {
@@ -19,8 +19,8 @@ import { parseSharedStrings } from '../sml/shared-strings-reader';
 import { parseStyles } from '../sml/styles';
 import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext, type WorksheetRowsOptions } from '../sml/worksheet-reader';
 import type {
+  AnyModeRowsOptions,
   ArrayRowsOptions,
-  CellError,
   CellValue,
   ObjectModeRowsOptions,
   ObjectRowsOptions,
@@ -37,7 +37,7 @@ import type {
   SniffResult,
   Workbook,
 } from '../types';
-import { sourceFrom, type SourceInput } from '../zip/source';
+import { guardSource, sourceFrom, type SourceInput } from '../zip/source';
 import { DEFAULT_MAX_PART_BYTES, ZipReader } from '../zip/zip-reader';
 import { SNIFF_BYTES, sniff } from './sniff';
 
@@ -151,15 +151,14 @@ function rejectSniffedFormat(format: SniffResult): never {
  */
 function damagedPart(partName: string, cause: unknown): XlsxError {
   if (isStringLengthError(cause)) {
-    return new XlsxError('LIMIT_EXCEEDED', `The part ${partName} holds more text than one string can, so it was not read.`, {
-      part: partName,
-      cause,
-    });
+    return new XlsxError(
+      'LIMIT_EXCEEDED',
+      `The part ${partName} holds more text than one string can, so it was not read.`,
+      { part: partName },
+      { cause },
+    );
   }
-  return new XlsxError('XML_MALFORMED', `The part ${partName} could not be read; this file may be damaged.`, {
-    part: partName,
-    cause,
-  });
+  return new XlsxError('XML_MALFORMED', `The part ${partName} could not be read; this file may be damaged.`, { part: partName }, { cause });
 }
 
 function parsePart<T>(partName: string, parse: () => T): T {
@@ -314,7 +313,7 @@ function padTwo(value: number): string {
  * error cell names its column with the error text whatever `errors` says (EC-HEADER-ERROR-CELL); the row reader
  * hands the header row's errors over as text for that reason, and a `CellError` is read the same way.
  */
-function headerTextOf(value: ReadValue): string {
+function headerTextOf(value: ReadValue, utcDates: boolean): string {
   if (typeof value === 'string') {
     return value;
   }
@@ -322,6 +321,12 @@ function headerTextOf(value: ReadValue): string {
     return value ? 'TRUE' : 'FALSE';
   }
   if (value instanceof Date) {
+    // The wall clock the cell shows lives in the UTC fields under `dates: 'utc'` and in the local ones otherwise, so
+    // the key does not move with the server's time zone.
+    if (utcDates) {
+      const date = `${value.getUTCFullYear()}-${padTwo(value.getUTCMonth() + 1)}-${padTwo(value.getUTCDate())}`;
+      return `${date}T${padTwo(value.getUTCHours())}:${padTwo(value.getUTCMinutes())}:${padTwo(value.getUTCSeconds())}`;
+    }
     const date = `${value.getFullYear()}-${padTwo(value.getMonth() + 1)}-${padTwo(value.getDate())}`;
     return `${date}T${padTwo(value.getHours())}:${padTwo(value.getMinutes())}:${padTwo(value.getSeconds())}`;
   }
@@ -402,6 +407,7 @@ class ObjectRowBuilder {
   private readonly defval: CellValue;
   private readonly naming: NonNullable<ObjectRowsOptions['headerNaming']>;
   private readonly dropEmptyHeaders: boolean;
+  private readonly utcDates: boolean;
   private readonly namer = new HeaderNamer();
   private readonly columns: HeaderColumn[] = [];
   /** Columns from `leftmostNamed` up to `namedColumns` have names, including any `dropEmptyHeaders` kept out of `columns`. */
@@ -410,7 +416,7 @@ class ObjectRowBuilder {
   private headersReady = false;
   private recordsBuilt = 0;
 
-  constructor(options: RowsOptions & ObjectRowsOptions, declared: DeclaredColumns) {
+  constructor(options: RowsOptions & ObjectRowsOptions, declared: DeclaredColumns, dates: WorksheetReadContext['dates']) {
     this.requestedStartRow = Math.max(1, options.startRow ?? 1);
     this.headerRow = options.headerRow === undefined ? DETECT_HEADER_ROW : Math.max(1, options.headerRow);
     this.firstDataRow =
@@ -420,6 +426,7 @@ class ObjectRowBuilder {
     this.defval = options.defval === undefined ? '' : options.defval;
     this.naming = options.headerNaming ?? 'sheetjs';
     this.dropEmptyHeaders = options.dropEmptyHeaders === true;
+    this.utcDates = dates === 'utc';
   }
 
   /** 1-based row the underlying reader must start at: the header row when the caller named one, else `startRow`. */
@@ -540,7 +547,7 @@ class ObjectRowBuilder {
   /** The named column, or undefined when `dropEmptyHeaders` leaves it out. The caller places it in `columns`. */
   private nameColumn(column: number, value: ReadValue | undefined): HeaderColumn | undefined {
     const missing = value === undefined || value === null;
-    const text = missing ? '' : headerTextOf(value);
+    const text = missing ? '' : headerTextOf(value, this.utcDates);
     // A header cell holding an empty string is an empty name in SheetJS; only an absent cell becomes `__EMPTY`.
     const name = this.naming === 'index' ? String(column) : this.namer.unique(missing ? EMPTY_HEADER_BASE : text);
     if (this.dropEmptyHeaders && text === '') {
@@ -575,7 +582,8 @@ class SheetReader implements Sheet<ReadValue> {
 
   rows(options?: ArrayRowsOptions): AsyncIterable<ReadValue[]>;
   rows(options: ObjectModeRowsOptions): AsyncIterable<Record<string, ReadValue>>;
-  rows(options: ArrayRowsOptions | ObjectModeRowsOptions = {}): AsyncIterable<ReadValue[] | Record<string, ReadValue>> {
+  rows(options: AnyModeRowsOptions): AsyncIterable<ReadValue[] | Record<string, ReadValue>>;
+  rows(options: AnyModeRowsOptions = {}): AsyncIterable<ReadValue[] | Record<string, ReadValue>> {
     if (options.mode === 'object') {
       return this.objectRows(options, { headers: [], truncated: false, builder: undefined });
     }
@@ -597,14 +605,14 @@ class SheetReader implements Sheet<ReadValue> {
     return readWorksheetHead(this.partStream(), this.parts.context, rowCount);
   }
 
-  private async *arrayRows(options: ArrayRowsOptions): AsyncGenerator<ReadValue[]> {
+  private async *arrayRows(options: RowsOptions): AsyncGenerator<ReadValue[]> {
     for await (const row of readWorksheetRows(this.partStream(), this.parts.context, options)) {
       yield row.cells as ReadValue[];
     }
   }
 
   private async *objectRows(options: RowsOptions & ObjectRowsOptions, state: ObjectReadState): AsyncGenerator<Record<string, ReadValue>> {
-    const builder = new ObjectRowBuilder(options, await this.declaredColumns());
+    const builder = new ObjectRowBuilder(options, await this.declaredColumns(), this.parts.context.dates);
     const maxRows = options.maxRows ?? Number.POSITIVE_INFINITY;
     const rowOptions: WorksheetRowsOptions = {
       startRow: builder.startRow,
@@ -729,33 +737,44 @@ class WorkbookReader implements Workbook<ReadValue> {
  * (`ENCRYPTED` with a `password-protected` message, `LEGACY_XLS`, `XLSB`, `ODS`, `NOT_XLSX`) for anything that is
  * not a modern workbook. The workbook lists sheets without touching sheet XML; sheet contents stream on demand, until
  * `close()`, after which every read fails with `ABORTED`. With `errors: 'object'` the row values include `CellError`
- * objects.
+ * objects; when `errors` is not a literal the values are typed `ReadValue` (`CellValue | CellError`).
+ *
+ * `openWorkbook` takes ownership of a `RandomAccessSource` (`fromFile` in Node): if opening fails for any reason the
+ * source is closed before the promise rejects, and once it succeeds `workbook.close()` closes it. A source that
+ * fails to read is reported as `IO_ERROR` with the source's own error as the `cause`.
  */
-export function openWorkbook(
-  input: SourceInput,
-  options: OpenOptions & { readonly errors: 'object' },
-): Promise<Workbook<CellValue | CellError>>;
-export function openWorkbook(input: SourceInput, options?: OpenOptions): Promise<Workbook>;
-export function openWorkbook(input: SourceInput, options: OpenOptions = {}): Promise<Workbook<CellValue | CellError>> {
+export function openWorkbook(input: SourceInput, options: OpenOptions & { readonly errors: 'object' }): Promise<Workbook<ReadValue>>;
+export function openWorkbook(input: SourceInput, options?: OpenOptions & { readonly errors?: 'string' | 'null' }): Promise<Workbook>;
+export function openWorkbook(input: SourceInput, options?: OpenOptions): Promise<Workbook<ReadValue>>;
+export function openWorkbook(input: SourceInput, options: OpenOptions = {}): Promise<Workbook<ReadValue>> {
   return openPackage(input, options);
 }
 
+/**
+ * Takes ownership of the source: once `sourceFrom` accepted the input, any failure closes it (a close that fails as
+ * well is swallowed, so the caller sees the failure that mattered), and success hands it to the workbook.
+ */
 async function openPackage(input: SourceInput, options: OpenOptions): Promise<Workbook<ReadValue>> {
-  throwIfAborted(options.signal);
-  const source = sourceFrom(input);
-  const headLength = Math.min(source.size, SNIFF_BYTES);
-  const head = headLength > 0 ? await source.read(0, headLength) : new Uint8Array(0);
-  const format = sniff(head);
-  if (format !== 'zip') {
-    rejectSniffedFormat(format);
-  }
-
-  const limits = resolveLimits(options.limits);
-  const zip = await ZipReader.open(source, { maxEntries: limits.maxEntries, maxInflatedBytes: limits.maxInflatedBytes });
+  const source = guardSource(sourceFrom(input));
+  let zip: ZipReader | undefined;
   try {
+    throwIfAborted(options.signal);
+    const headLength = Math.min(source.size, SNIFF_BYTES);
+    const head = headLength > 0 ? await source.read(0, headLength) : new Uint8Array(0);
+    const format = sniff(head);
+    if (format !== 'zip') {
+      rejectSniffedFormat(format);
+    }
+
+    const limits = resolveLimits(options.limits);
+    zip = await ZipReader.open(source, { maxEntries: limits.maxEntries, maxInflatedBytes: limits.maxInflatedBytes });
     return await readPackage(zip, options, limits);
   } catch (error) {
-    await zip.close();
+    try {
+      await (zip === undefined ? source.close?.() : zip.close());
+    } catch {
+      // The failure that got us here is the one worth reporting.
+    }
     throw error;
   }
 }
@@ -826,7 +845,12 @@ function sheetWarnings(report: (warning: ReadWarning) => void, sheet: string): (
       return;
     }
     reported.add(warning.code);
-    report({ ...warning, sheet });
+    try {
+      report({ ...warning, sheet });
+    } catch (error) {
+      // Like every caller callback: a throw stops the read as IO_ERROR, with the callback's error as the cause.
+      throw classifyError(error, 'IO_ERROR', 'The onWarning callback threw, so reading the spreadsheet stopped.');
+    }
   };
 }
 

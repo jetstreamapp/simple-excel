@@ -115,9 +115,12 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
   } catch (error) {
     // Only reachable with limits raised past what one string can hold; still a limit, not a crash.
     if (isStringLengthError(error)) {
-      throw new XlsxError('LIMIT_EXCEEDED', "This workbook's shared text holds more than a string can, so it was not read further.", {
-        cause: error,
-      });
+      throw new XlsxError(
+        'LIMIT_EXCEEDED',
+        "This workbook's shared text holds more than a string can, so it was not read further.",
+        undefined,
+        { cause: error },
+      );
     }
     throw error;
   }

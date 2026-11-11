@@ -1,4 +1,4 @@
-import { XlsxError } from '../errors';
+import { classifyError, XlsxError } from '../errors';
 import type { RandomAccessSource } from '../types';
 
 /**
@@ -125,4 +125,35 @@ export function sourceFrom(input: SourceInput): RandomAccessSource {
     return sourceFromBlob(candidate);
   }
   throw unsupportedInput(candidate);
+}
+
+function toSourceError(error: unknown): XlsxError {
+  return classifyError(error, 'IO_ERROR', 'The spreadsheet could not be read from its source.');
+}
+
+function readFailed(error: unknown): never {
+  throw toSourceError(error);
+}
+
+/**
+ * Classify a source's own failures: a `read` that throws or rejects with anything but an `XlsxError` (a file that
+ * vanished, a Blob whose file changed on disk, a network range request that failed) is reported as `IO_ERROR` with
+ * the original as the `cause`. `close` passes through unchanged.
+ */
+export function guardSource(source: RandomAccessSource): RandomAccessSource {
+  const guarded: RandomAccessSource = {
+    size: source.size,
+    read(offset: number, length: number): Promise<Uint8Array> {
+      try {
+        return source.read(offset, length).then(undefined, readFailed);
+      } catch (error) {
+        return Promise.reject(toSourceError(error));
+      }
+    },
+  };
+  if (source.close !== undefined) {
+    const close = source.close.bind(source);
+    return { ...guarded, close: (): Promise<void> => close() };
+  }
+  return guarded;
 }

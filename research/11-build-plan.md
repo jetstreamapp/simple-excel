@@ -62,8 +62,9 @@ through its index. `src/index.ts` re-exports only the public surface.
 > `maxTextLength` (and, since the reader DoS fixes, `maxPartBytes` / `maxRowChars`) while `maxRows` / `maxColumns` are
 > per-read `RowsOptions`, `openWorkbook` also accepts a `RandomAccessSource`, `sniff` returns `'zip' | 'html' | 'empty'`
 > too, and the error codes include
-> `ZIP_UNSUPPORTED`, `ZIP_CRC_MISMATCH`, `CELL_TOO_LONG`, `ABORTED` and `UNSUPPORTED_ENVIRONMENT`. Cell-ref and
-> sheet-name helpers are exported for callers that key data by sheet name or build ranges (08 §6).
+> `ZIP_UNSUPPORTED`, `ZIP_CRC_MISMATCH`, `CELL_TOO_LONG`, `ABORTED`, `IO_ERROR` (a sink, stream, source, compressor
+> or callback failed; the original is `Error.cause`) and `UNSUPPORTED_ENVIRONMENT`. Cell-ref and sheet-name helpers
+> are exported for callers that key data by sheet name or build ranges (08 §6).
 
 ```ts
 // values

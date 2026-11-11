@@ -1,5 +1,5 @@
 import { createDeflater, hasNativeDeflate } from '../compress/deflater';
-import { XlsxError } from '../errors';
+import { classifyError, XlsxError } from '../errors';
 import { fromWritableStream, guardSink } from '../sinks';
 import { appXml, contentTypesXml, coreXml, rootRelsXml, type SheetPartInfo, workbookRelsXml, workbookXml } from '../sml/package-parts';
 import { SharedStringWriter } from '../sml/shared-strings';
@@ -198,7 +198,7 @@ class WorkbookWriterImpl implements WorkbookWriter {
    * error from the half-written archive.
    */
   private failed = false;
-  private failure: unknown;
+  private failure: XlsxError | undefined;
   /** The one abort the sink ever receives; failure paths wait on it so the sink is torn down before they reject. */
   private sinkAbort: Promise<void> | undefined;
 
@@ -312,14 +312,16 @@ class WorkbookWriterImpl implements WorkbookWriter {
     });
     // Once, with the workbook total, and only after the file is complete (EC-CELL-32767-LIMIT).
     if (result.truncatedCells > 0) {
-      this.options.onCellTruncated?.(result.truncatedCells);
+      this.callBack('onCellTruncated', () => this.options.onCellTruncated?.(result.truncatedCells));
     }
     return result;
   }
 
   async abort(reason?: unknown): Promise<void> {
     if (!this.failed) {
-      this.latch(new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.', reason === undefined ? undefined : { reason }));
+      this.latch(
+        new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.', undefined, reason === undefined ? undefined : { cause: reason }),
+      );
     }
     await this.abortSink(reason);
   }
@@ -358,11 +360,7 @@ class WorkbookWriterImpl implements WorkbookWriter {
     return this.failure;
   }
 
-  /**
-   * `fail` for the row paths: latch and start the sink abort, but reject at once. The abort is queued behind any
-   * write the sink has not accepted yet, and a sink stalled on back-pressure must not keep a refused row pending; the
-   * abort reaches the sink when it drains.
-   */
+  /** `fail` for the row paths: latch and start the sink abort, but reject at once rather than wait for the teardown. */
   failWith(reason: unknown): Promise<never> {
     if (!this.failed) {
       this.latch(reason);
@@ -386,7 +384,16 @@ class WorkbookWriterImpl implements WorkbookWriter {
   }
 
   reportProgress(progress: WriteProgress): void {
-    this.options.onProgress?.(progress);
+    this.callBack('onProgress', () => this.options.onProgress?.(progress));
+  }
+
+  /** A callback that throws stops the write like any other failure underneath the writer: `IO_ERROR`, with its error as the `cause`. */
+  private callBack(name: 'onProgress' | 'onCellTruncated', call: () => void): void {
+    try {
+      call();
+    } catch (error) {
+      throw classifyError(error, 'IO_ERROR', `The ${name} callback threw, so writing the spreadsheet stopped.`);
+    }
   }
 
   assertOpen(): void {
@@ -408,9 +415,13 @@ class WorkbookWriterImpl implements WorkbookWriter {
     }
   }
 
+  /**
+   * The one place a writer failure is classified: an `XlsxError` is kept as it is, anything else (a compressor or
+   * platform error, a custom deflater's own error) becomes `IO_ERROR` with the original as its `cause`.
+   */
   private latch(reason: unknown): void {
     this.failed = true;
-    this.failure = reason;
+    this.failure = classifyError(reason, 'IO_ERROR', 'The spreadsheet could not be written.');
     this.closed = true;
     this.openSheet = undefined;
   }

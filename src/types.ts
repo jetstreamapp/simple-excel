@@ -396,6 +396,8 @@ export interface ObjectRowsOptions {
 
 export type ArrayRowsOptions = RowsOptions & { readonly mode?: 'array' };
 export type ObjectModeRowsOptions = RowsOptions & ObjectRowsOptions & { readonly mode: 'object' };
+/** Options whose `mode` is only known at run time (`'array' | 'object'`); the object-mode options apply to `'object'` only. */
+export type AnyModeRowsOptions = RowsOptions & ObjectRowsOptions & { readonly mode?: 'array' | 'object' };
 
 /** Element type of a row: `CellValue`, widened to include `CellError` when the workbook was opened with `errors: 'object'`. */
 export type ReadValue = CellValue | CellError;
@@ -411,6 +413,7 @@ export interface Sheet<V extends ReadValue = CellValue> {
   readonly info: SheetInfo;
   rows(options?: ArrayRowsOptions): AsyncIterable<V[]>;
   rows(options: ObjectModeRowsOptions): AsyncIterable<Record<string, V>>;
+  rows(options: AnyModeRowsOptions): AsyncIterable<V[] | Record<string, V>>;
   toObjects(options?: RowsOptions & ObjectRowsOptions): Promise<ObjectsResult<V>>;
   /** First `rowCount` rows as A1-keyed cells, then stops inflating. */
   head(rowCount: number): Promise<Map<string, RawCell>>;

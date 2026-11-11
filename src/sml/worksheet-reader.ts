@@ -198,7 +198,12 @@ function classifyStringLengthError(error: unknown): unknown {
   if (!isStringLengthError(error)) {
     return error;
   }
-  return limitExceeded('This sheet holds more text in one place than a string can, so it was not read further.', { cause: error });
+  return new XlsxError(
+    'LIMIT_EXCEEDED',
+    'This sheet holds more text in one place than a string can, so it was not read further.',
+    undefined,
+    { cause: error },
+  );
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

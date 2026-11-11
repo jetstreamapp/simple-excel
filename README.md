@@ -139,7 +139,17 @@ const source = await fromFile('upload.xlsx');
 ```
 
 The `/node` entry re-exports everything from the core entry and adds file-backed sources and sinks plus a
-zlib-backed deflater with a compression level (the platform `CompressionStream` has no level).
+zlib-backed deflater with a compression level (the platform `CompressionStream` has no level). `toFile` writes to a
+hidden temporary file and renames it into place on `close()`, so the target never holds a partial file;
+`toWritable` fails a pending write with `IO_ERROR` when an HTTP client disconnects mid-download.
+
+## Errors
+
+Every failure is an `XlsxError` with a stable `code` (`ENCRYPTED`, `NOT_XLSX`, `LIMIT_EXCEEDED`, ...). `ABORTED`
+means you cancelled (an `AbortSignal` or `abort()`); `IO_ERROR` means something underneath failed — a sink, a
+stream, a file, a source, the compressor or one of your callbacks — with the original error as the standard
+`cause`. `instanceof XlsxError` and `isXlsxError()` hold across the core and `/node` entries and across the ESM and
+CommonJS builds.
 
 ## Browser support
 

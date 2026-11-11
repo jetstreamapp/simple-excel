@@ -120,6 +120,19 @@ describe('collectToBytes', () => {
     expect(sink.bytesWritten).toBe(600);
   });
 
+  it('stays failed after LIMIT_EXCEEDED, so a caught limit cannot close a file with a chunk missing', async () => {
+    const sink = collectToBytes({ maxBytes: 10 });
+    await sink.write(new Uint8Array(4));
+    const failure = await sink.write(new Uint8Array(8)).then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(failure).toMatchObject({ code: 'LIMIT_EXCEEDED' });
+    await expect(sink.write(new Uint8Array(2))).rejects.toBe(failure);
+    await expect(sink.close()).rejects.toBe(failure);
+    expect(() => sink.result()).toThrow(failure as Error);
+  });
+
   it('refuses result() before close and writes after it', async () => {
     const sink = collectToBytes();
     expect(() => sink.result()).toThrow(XlsxError);
@@ -137,7 +150,8 @@ describe('collectToBytes', () => {
       expect.unreachable('result() must throw after an abort');
     } catch (error) {
       expect(isXlsxError(error)).toBe(true);
-      expect(error).toMatchObject({ code: 'ABORTED', detail: { cause } });
+      expect(error).toMatchObject({ code: 'ABORTED', cause });
+      expect((error as XlsxError).detail).toBeUndefined();
     }
 
     const classified = collectToBytes();
@@ -293,11 +307,28 @@ describe('fromWritableStream', () => {
     });
     const sink = fromWritableStream(stream);
 
-    await expect(sink.write(new Uint8Array(1))).rejects.toThrow(failure);
-    await expect(sink.write(new Uint8Array(1))).rejects.toThrow(failure);
+    await expect(sink.write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR', cause: failure });
+    await expect(sink.write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR', cause: failure });
     // A broken stream answers `close()` with its own state error; `guardSink` is what makes one reason stick.
-    await expect(sink.close()).rejects.toThrow();
-    await expect(guardSink(fromWritableStream(stream)).write(new Uint8Array(1))).rejects.toMatchObject({ code: 'ABORTED' });
+    await expect(sink.close()).rejects.toMatchObject({ code: 'IO_ERROR' });
+    await expect(guardSink(fromWritableStream(stream)).write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR' });
+  });
+
+  it('resolves an abort while a write is stuck in a stream that never settles it', async () => {
+    const stream = new WritableStream<Uint8Array>({
+      write(): Promise<void> {
+        return new Promise<void>(() => undefined);
+      },
+    });
+    const sink = guardSink(fromWritableStream(stream));
+    const stuck = sink.write(new Uint8Array(1));
+    const queued = sink.write(new Uint8Array(2));
+    expect(await isPending(stuck)).toBe(true);
+
+    await sink.abort(new Error('the user cancelled'));
+    await expect(stuck).rejects.toMatchObject({ code: 'ABORTED' });
+    await expect(queued).rejects.toMatchObject({ code: 'ABORTED' });
+    expect(stream.locked).toBe(false);
   });
 
   it('forwards the abort reason and releases the lock', async () => {
@@ -344,7 +375,7 @@ describe('toWritableStream', () => {
     });
 
     await expect(source.pipeTo(toWritableStream(collector))).rejects.toThrow(failure);
-    expect(() => collector.result()).toThrowError(expect.objectContaining({ code: 'ABORTED', detail: { cause: failure } }));
+    expect(() => collector.result()).toThrowError(expect.objectContaining({ code: 'ABORTED', cause: failure }));
   });
 });
 
@@ -368,7 +399,7 @@ describe('guardSink', () => {
     await expect(guarded.close()).rejects.toThrow(failure);
   });
 
-  it('classifies a non-XlsxError failure as ABORTED with the original as the cause', async () => {
+  it('classifies a non-XlsxError failure as IO_ERROR with the original as the cause', async () => {
     const cause = new Error('quota exceeded');
     const guarded = guardSink({
       write(): Promise<void> {
@@ -382,8 +413,33 @@ describe('guardSink', () => {
       },
     });
 
-    await expect(guarded.write(new Uint8Array(1))).rejects.toMatchObject({ code: 'ABORTED', detail: { cause } });
-    await expect(guarded.close()).rejects.toMatchObject({ code: 'ABORTED', detail: { cause } });
+    await expect(guarded.write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR', cause });
+    await expect(guarded.close()).rejects.toMatchObject({ code: 'IO_ERROR', cause });
+  });
+
+  it('abort() reaches the sink at once and rejects the write stuck on back-pressure and every queued call', async () => {
+    const sink = createGatedSink();
+    const guarded = guardSink(sink);
+    const stuck = guarded.write(new Uint8Array(1));
+    const queued = guarded.write(new Uint8Array(2));
+    const closing = guarded.close();
+    await delay(0);
+    expect(sink.calls).toEqual(['write:1']);
+
+    const cancelled = new Error('the user cancelled');
+    const aborting = guarded.abort(cancelled);
+    // The sink hears about the abort while its write is still pending, not after it drains.
+    expect(sink.calls).toEqual(['write:1', 'abort']);
+    const failure = await stuck.then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(failure).toMatchObject({ code: 'ABORTED', cause: cancelled });
+    await expect(queued).rejects.toBe(failure);
+    await expect(closing).rejects.toBe(failure);
+    sink.release();
+    await aborting;
+    expect(sink.calls).toEqual(['write:1', 'abort']);
   });
 
   it('makes every call after an abort reject with the abort reason', async () => {

@@ -16,7 +16,11 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "skipLibCheck": true,
-    "target": "ES2022"
+    "target": "ES2022",
+    // The node entry imports the core by its package name so the build can keep it external (see src/node/index.ts).
+    "paths": {
+      "@jetstreamapp/simple-excel": ["./src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/__tests__/**"]

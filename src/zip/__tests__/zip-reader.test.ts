@@ -402,6 +402,21 @@ describe('ZipReader.open', () => {
     expect((await reader.read('xl/worksheets/sheet1.xml')).byteLength).toBe(50_007);
   });
 
+  it('reads 65,535 entries whose 32-bit end record holds 0xFFFF with no zip64 locator behind it', async () => {
+    // What this library wrote for exactly 65,535 parts before the marker fix; Python and Info-ZIP read it too.
+    const entries = Array.from({ length: 0xffff }, (_, index): TestEntry => ({ name: `p${index}`, data: 'a', method: 'store' }));
+    const reader = await openBuilt(entries, {}, { ...DEFAULT_LIMITS, maxEntries: 100_000 });
+    expect(reader.entries.size).toBe(0xffff);
+    expect(await reader.readText('p65534')).toBe('a');
+  }, 60_000);
+
+  it('still refuses an end record whose offset is the marker when no zip64 locator exists', async () => {
+    const bytes = buildZip([{ name: 'a.xml', data: '<a/>' }]);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    view.setUint32(bytes.byteLength - 22 + 16, 0xffff_ffff, true);
+    await expect(ZipReader.open(sourceFrom(bytes), DEFAULT_LIMITS)).rejects.toMatchObject({ code: 'ZIP_TRUNCATED' });
+  });
+
   it('closes the underlying source', async () => {
     let closed = 0;
     const bytes = fixtureBytes('edge-baseline-minimal');
