@@ -4,7 +4,7 @@ import { XmlTokenizer } from '../../xml/tokenizer';
 import { sourceFrom } from '../../zip/source';
 import { ZipReader } from '../../zip/zip-reader';
 import { parseRels, parseWorkbook, relTypeIs } from '../package-parts';
-import { parseStyles } from '../styles';
+import { MAX_READ_CELL_FORMATS, parseStyles } from '../styles';
 
 const SPREADSHEET_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
@@ -123,6 +123,22 @@ describe('parseStyles', () => {
         '<xf numFmtId="0"/></cellXfs>',
     );
     expect(dateFlags(xml)).toEqual([0, 1, 0]);
+  });
+
+  it("EC-PACKAGE-ELEMENT-FLOOD: accepts Excel's maximum of cell formats and refuses one more", () => {
+    expect(parseStyles(styleSheet(`<cellXfs>${'<xf/>'.repeat(MAX_READ_CELL_FORMATS)}</cellXfs>`)).isDateByXf).toHaveLength(
+      MAX_READ_CELL_FORMATS,
+    );
+    expect(() => parseStyles(styleSheet(`<cellXfs>${'<xf/>'.repeat(MAX_READ_CELL_FORMATS + 1)}</cellXfs>`))).toThrow(
+      expect.objectContaining({ name: 'XlsxError', code: 'LIMIT_EXCEEDED' }),
+    );
+    // cellStyleXfs and dxfs are never indexed, so they do not count.
+    expect(parseStyles(styleSheet(`<cellStyleXfs>${'<xf/>'.repeat(MAX_READ_CELL_FORMATS + 1)}</cellStyleXfs>`)).isDateByXf).toHaveLength(0);
+  });
+
+  it("EC-PACKAGE-ELEMENT-FLOOD: refuses more numFmt elements than Excel's cell-format maximum", () => {
+    const numFmts = `<numFmts>${'<numFmt numFmtId="164" formatCode="0.0"/>'.repeat(MAX_READ_CELL_FORMATS + 1)}</numFmts>`;
+    expect(() => parseStyles(styleSheet(numFmts))).toThrow(expect.objectContaining({ name: 'XlsxError', code: 'LIMIT_EXCEEDED' }));
   });
 });
 

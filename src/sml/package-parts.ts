@@ -221,6 +221,24 @@ function filterDatabaseNames(sheets: readonly SheetPartInfo[]): string {
 
 // ---- readers -------------------------------------------------------------------------------------------------------
 
+/**
+ * The reader's default `limits.maxEntries`. Every `<sheet>`, `<Relationship>` and `<Override>` names a zip entry, so a
+ * part holding more of them than the archive may hold entries is a flood rather than a workbook
+ * (EC-PACKAGE-ELEMENT-FLOOD); it is refused before the list it builds can exhaust memory.
+ */
+export const DEFAULT_MAX_PACKAGE_ENTRIES: number = 10_000;
+
+/** Throw once a package part lists more than `maxEntries` elements of one kind. */
+function checkElementCount(count: number, maxEntries: number, element: string, partKind: string): void {
+  if (count > maxEntries) {
+    throw new XlsxError(
+      'LIMIT_EXCEEDED',
+      `This file's ${partKind} lists more than ${maxEntries} <${element}> elements, more than a workbook can hold, so it was not read.`,
+      { element, maxEntries },
+    );
+  }
+}
+
 export interface Relationship {
   readonly id: string;
   /** Type URI; compare with `relTypeIs` so Strict and Transitional URIs both match. */
@@ -266,14 +284,18 @@ function resolveRelationshipTarget(target: string, basePath: string): string {
   return segments.join('/');
 }
 
-/** Parse a `.rels` part; `basePath` is the directory of the source part (`'xl/'` for workbook rels, `''` for root). */
-export function parseRels(xml: string, basePath: string): Relationship[] {
+/**
+ * Parse a `.rels` part; `basePath` is the directory of the source part (`'xl/'` for workbook rels, `''` for root).
+ * More than `maxEntries` relationships is `LIMIT_EXCEEDED` (EC-PACKAGE-ELEMENT-FLOOD).
+ */
+export function parseRels(xml: string, basePath: string, maxEntries: number = DEFAULT_MAX_PACKAGE_ENTRIES): Relationship[] {
   const relationships: Relationship[] = [];
   const tokenizer = new XmlTokenizer({
     start(name: string): void {
       if (name !== 'Relationship') {
         return;
       }
+      checkElementCount(relationships.length + 1, maxEntries, 'Relationship', 'relationship part');
       const target = tokenizer.attr('Target') ?? '';
       const external = tokenizer.attr('TargetMode') === 'External';
       relationships.push({
@@ -318,12 +340,17 @@ function extensionOf(partName: string): string {
   return partName.slice(lastDot + 1).toLowerCase();
 }
 
-export function parseContentTypes(xml: string): ContentTypes {
+/** More than `maxEntries` `<Default>` or `<Override>` elements is `LIMIT_EXCEEDED` (EC-PACKAGE-ELEMENT-FLOOD). */
+export function parseContentTypes(xml: string, maxEntries: number = DEFAULT_MAX_PACKAGE_ENTRIES): ContentTypes {
   const defaults = new Map<string, string>();
   const overrides = new Map<string, string>();
+  // Elements, not map sizes: a flood of one repeated name builds nothing, but it still costs a callback each.
+  let defaultCount = 0;
+  let overrideCount = 0;
   const tokenizer = new XmlTokenizer({
     start(name: string): void {
       if (name === 'Default') {
+        checkElementCount(++defaultCount, maxEntries, 'Default', 'content-type part');
         const extension = tokenizer.attr('Extension');
         const contentType = tokenizer.attr('ContentType');
         if (extension !== undefined && extension !== '' && contentType !== undefined) {
@@ -333,6 +360,7 @@ export function parseContentTypes(xml: string): ContentTypes {
         return;
       }
       if (name === 'Override') {
+        checkElementCount(++overrideCount, maxEntries, 'Override', 'content-type part');
         const partName = tokenizer.attr('PartName');
         const contentType = tokenizer.attr('ContentType');
         if (partName !== undefined && contentType !== undefined) {
@@ -384,7 +412,8 @@ function parseSheetState(state: string | undefined): WorkbookSheetEntry['state']
   }
 }
 
-export function parseWorkbook(xml: string): ParsedWorkbook {
+/** More than `maxEntries` sheets is `LIMIT_EXCEEDED` (EC-PACKAGE-ELEMENT-FLOOD): each one needs a part of its own. */
+export function parseWorkbook(xml: string, maxEntries: number = DEFAULT_MAX_PACKAGE_ENTRIES): ParsedWorkbook {
   const sheets: WorkbookSheetEntry[] = [];
   let date1904 = false;
   let insideSheetList = false;
@@ -402,6 +431,7 @@ export function parseWorkbook(xml: string): ParsedWorkbook {
       if (name !== 'sheet' || !insideSheetList) {
         return;
       }
+      checkElementCount(sheets.length + 1, maxEntries, 'sheet', 'workbook part');
       const sheetId = Number.parseInt(tokenizer.attr('sheetId') ?? '', 10);
       sheets.push({
         name: tokenizer.attr('name') ?? '',

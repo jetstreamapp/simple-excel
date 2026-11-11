@@ -201,6 +201,23 @@ for (let i = 1; i <= 6000; i++) {
   bombRows.push(bombRow(i));
 }
 write(HOSTILE, 'zip-bomb-30mb-sheet.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: bombRows.join(''), dimension: '' }) }));
+// ---- reader limits (EC-PACKAGE-ELEMENT-FLOOD and the reader DoS family): each one KB on disk ----
+// 20,000 <sheet/> entries: twice the default maxEntries, 160 KB of XML.
+write(
+  HOSTILE,
+  'workbook-sheet-flood.xlsx',
+  parts({
+    'xl/workbook.xml': workbook().replace('</sheets>', `${'<sheet/>'.repeat(20000)}</sheets>`),
+  }),
+);
+// 70,000 cellXfs entries: past Excel's 65,490 unique cell formats.
+write(
+  HOSTILE,
+  'styles-xf-flood.xlsx',
+  parts({
+    'xl/styles.xml': styles.replace('</cellXfs>', `${'<xf numFmtId="0"/>'.repeat(70000)}</cellXfs>`),
+  }),
+);
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [

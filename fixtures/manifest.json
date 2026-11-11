@@ -1075,6 +1075,42 @@
       "expected": null,
       "generated": false,
       "notes": "One sheet converted from a CSV whose first two lines are blank and whose first column is empty (dimension B3:E6)."
+    },
+    {
+      "id": "hostile-workbook-sheet-flood",
+      "path": "hostile/workbook-sheet-flood.xlsx",
+      "bytes": 2734,
+      "sha256": "b4054a4de60207a5c88eafbb92a94066df37d10e26b628a60c641d48b6e29a8a",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-PACKAGE-ELEMENT-FLOOD"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "workbook.xml lists 20,000 <sheet/> entries (160 KB of XML), twice the default maxEntries; each would become a sheet handle."
+    },
+    {
+      "id": "hostile-styles-xf-flood",
+      "path": "hostile/styles-xf-flood.xlsx",
+      "bytes": 5598,
+      "sha256": "fe2a809144ff4003a891f380899c9a61e764a7068df96a60a7ff475471ed884d",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-PACKAGE-ELEMENT-FLOOD"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "styles.xml lists 70,000 cellXfs entries, past Excel's 65,490 unique cell formats."
     }
   ]
 }

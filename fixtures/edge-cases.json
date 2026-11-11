@@ -456,6 +456,14 @@
     "status": "observed"
   },
   {
+    "id": "EC-PACKAGE-ELEMENT-FLOOD",
+    "family": "Security",
+    "symptom": "A package part lists millions of tiny elements: 5M `<sheet/>` in workbook.xml (58 KB upload), millions of `<Relationship/>` or `<Override/>`, or 50M `<xf/>` in styles.xml. Each becomes an object, so simple-excel 0.2.1 reached 1.9 GB at openWorkbook() and Node ran out of memory.",
+    "seenIn": "Hostile uploads only. No producer writes more `<sheet>`, `<Relationship>` or `<Override>` elements than the archive has entries, or more cellXfs/numFmts than Excel allows (65,490 unique cell formats).",
+    "expected": "LIMIT_EXCEEDED once `<sheet>`, `<Relationship>`, `<Override>` or `<Default>` counts pass limits.maxEntries, or cellXfs/numFmts pass 65,490, before the lists grow with the input.",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
     "id": "EC-ZIP64-LOCAL-SIZES-BIT3",
     "family": "Container",
     "symptom": "A zip64 entry written with bit 3 (data descriptor) whose local header carries 0xFFFFFFFF in the size fields (as several writers do) makes Excel silently repair the workbook.",

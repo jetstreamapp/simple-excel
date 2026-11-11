@@ -500,6 +500,21 @@ function cellXfXml(xf: CellXf): string {
   return `<xf ${attributes} applyAlignment="1">${alignment}</xf>`;
 }
 
+/**
+ * Excel's documented ceiling on unique cell formats, which bounds both `cellXfs` and `numFmts`: no workbook Excel can
+ * open holds more. A styles part listing more is a flood (EC-PACKAGE-ELEMENT-FLOOD) and is refused before the
+ * per-xf table grows with it.
+ */
+export const MAX_READ_CELL_FORMATS: number = 65_490;
+
+function tooManyFormats(element: string): XlsxError {
+  return new XlsxError(
+    'LIMIT_EXCEEDED',
+    `This file's styles part lists more than ${MAX_READ_CELL_FORMATS} <${element}> elements, more than Excel allows, so it was not read.`,
+    { element, maxFormats: MAX_READ_CELL_FORMATS },
+  );
+}
+
 export interface ParsedStyles {
   /** `isDateByXf[i] === 1` when cellXfs[i] renders as a date/time. Length = cellXfs count. */
   readonly isDateByXf: Uint8Array;
@@ -522,11 +537,15 @@ export function parseStyles(xml: string): ParsedStyles {
   const numFmts = new Map<number, string>();
   const numFmtIdByXf: number[] = [];
   const openElements: string[] = [];
+  let numFmtCount = 0;
   const tokenizer = new XmlTokenizer({
     start(name: string): void {
       const parent = openElements.at(-1);
       openElements.push(name);
       if (name === 'numFmt' && parent === 'numFmts') {
+        if (++numFmtCount > MAX_READ_CELL_FORMATS) {
+          throw tooManyFormats('numFmt');
+        }
         const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
         const formatCode = tokenizer.attr('formatCode');
         if (Number.isFinite(numFmtId) && formatCode !== undefined) {
@@ -535,6 +554,9 @@ export function parseStyles(xml: string): ParsedStyles {
         return;
       }
       if (name === 'xf' && parent === 'cellXfs') {
+        if (numFmtIdByXf.length >= MAX_READ_CELL_FORMATS) {
+          throw tooManyFormats('xf');
+        }
         const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
         numFmtIdByXf.push(Number.isFinite(numFmtId) ? numFmtId : 0);
       }

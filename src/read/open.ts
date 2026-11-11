@@ -5,7 +5,15 @@
  */
 import { isXlsxError, XlsxError } from '../errors';
 import { MAX_COLUMNS, parseRange } from '../sml/cell-ref';
-import { parseContentTypes, parseRels, parseWorkbook, relTypeIs, type ContentTypes, type Relationship } from '../sml/package-parts';
+import {
+  DEFAULT_MAX_PACKAGE_ENTRIES,
+  parseContentTypes,
+  parseRels,
+  parseWorkbook,
+  relTypeIs,
+  type ContentTypes,
+  type Relationship,
+} from '../sml/package-parts';
 import { parseSharedStrings } from '../sml/shared-strings-reader';
 import { parseStyles } from '../sml/styles';
 import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext, type WorksheetRowsOptions } from '../sml/worksheet-reader';
@@ -32,7 +40,6 @@ import { sourceFrom, type SourceInput } from '../zip/source';
 import { ZipReader } from '../zip/zip-reader';
 import { SNIFF_BYTES, sniff } from './sniff';
 
-const DEFAULT_MAX_ENTRIES = 10_000;
 const DEFAULT_MAX_INFLATED_BYTES = 1024 * 1024 * 1024;
 const DEFAULT_MAX_SHARED_STRING_CHARS = 256 * 1024 * 1024;
 const DEFAULT_MAX_XML_DEPTH = 256;
@@ -93,7 +100,7 @@ interface ResolvedLimits {
 
 function resolveLimits(limits: ReadLimits | undefined): ResolvedLimits {
   return {
-    maxEntries: limits?.maxEntries ?? DEFAULT_MAX_ENTRIES,
+    maxEntries: limits?.maxEntries ?? DEFAULT_MAX_PACKAGE_ENTRIES,
     maxInflatedBytes: limits?.maxInflatedBytes ?? DEFAULT_MAX_INFLATED_BYTES,
     maxSharedStringChars: limits?.maxSharedStringChars ?? DEFAULT_MAX_SHARED_STRING_CHARS,
     maxXmlDepth: limits?.maxXmlDepth ?? DEFAULT_MAX_XML_DEPTH,
@@ -166,13 +173,13 @@ function relsPartFor(partName: string): string {
   return `${directoryOf(partName)}_rels/${partName.slice(partName.lastIndexOf('/') + 1)}.rels`;
 }
 
-async function readRels(zip: ZipReader, partName: string): Promise<Relationship[]> {
+async function readRels(zip: ZipReader, partName: string, limits: ResolvedLimits): Promise<Relationship[]> {
   const relsPart = relsPartFor(partName);
   if (!zip.has(relsPart)) {
     return [];
   }
   const xml = await zip.readText(relsPart);
-  return parsePart(relsPart, () => parseRels(xml, directoryOf(partName)));
+  return parsePart(relsPart, () => parseRels(xml, directoryOf(partName), limits.maxEntries));
 }
 
 function relationshipTarget(rels: readonly Relationship[], suffix: string): string | undefined {
@@ -744,10 +751,10 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   let contentTypes: ContentTypes | undefined;
   if (zip.has(CONTENT_TYPES_PART)) {
     const xml = await zip.readText(CONTENT_TYPES_PART);
-    contentTypes = parsePart(CONTENT_TYPES_PART, () => parseContentTypes(xml));
+    contentTypes = parsePart(CONTENT_TYPES_PART, () => parseContentTypes(xml, limits.maxEntries));
   }
 
-  const rootRels = await readRels(zip, PACKAGE_ROOT_PART);
+  const rootRels = await readRels(zip, PACKAGE_ROOT_PART, limits);
   const workbookPart = locateMainPart(zip, rootRels, contentTypes);
   if (workbookPart === undefined) {
     throw notXlsx('zip', 'The archive has no workbook part, so it is not an .xlsx workbook. Open it in Excel and save it as .xlsx.');
@@ -755,8 +762,8 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   rejectForeignMainPart(workbookPart, contentTypes);
 
   const workbookXml = await zip.readText(workbookPart);
-  const parsed = parsePart(workbookPart, () => parseWorkbook(workbookXml));
-  const workbookRels = await readRels(zip, workbookPart);
+  const parsed = parsePart(workbookPart, () => parseWorkbook(workbookXml, limits.maxEntries));
+  const workbookRels = await readRels(zip, workbookPart, limits);
   const workbookDirectory = directoryOf(workbookPart);
 
   const sharedStringsPart = relationshipTarget(workbookRels, 'sharedStrings') ?? `${workbookDirectory}sharedStrings.xml`;
