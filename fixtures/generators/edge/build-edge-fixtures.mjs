@@ -74,6 +74,9 @@ function write(dir, name, entriesOrParts, zipOptions) {
 // ---- edge (valid-but-unusual) ----
 write(EDGE, 'baseline-minimal.xlsx', parts());
 write(EDGE, 'no-dimension.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ dimension: '' }) }));
+// A <dimension> smaller than the data (written from a low row-count hint, EC-DIMENSION-FROM-HINT): it claims one row,
+// the sheet has three. Every row must still be read.
+write(EDGE, 'dimension-smaller-than-data.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ dimension: '<dimension ref="A1:F1"/>' }) }));
 write(
   EDGE,
   'missing-r-attributes.xlsx',

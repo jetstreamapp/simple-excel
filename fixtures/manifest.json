@@ -243,6 +243,23 @@
       "generated": false
     },
     {
+      "id": "edge-dimension-smaller-than-data",
+      "path": "edge/dimension-smaller-than-data.xlsx",
+      "bytes": 2463,
+      "sha256": "4a33ecf5de8f7e3d237b2ae85e54af2588271cf93a6c0a07906886ff587e3989",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-DIMENSION-FROM-HINT"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false,
+      "notes": "The minimal 3-row workbook with <dimension ref=\"A1:F1\"/>: the dimension claims one row. Every row must be read, as Excel does; SheetJS reads only the declared row."
+    },
+    {
       "id": "edge-missing-r-attributes",
       "path": "edge/missing-r-attributes.xlsx",
       "bytes": 2437,

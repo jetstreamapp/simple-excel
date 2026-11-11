@@ -955,6 +955,18 @@ describe('object mode: which columns get names', () => {
     expect((await objects(rows)).headers).toEqual(['__EMPTY', 'Id', 'Name']);
   });
 
+  it('EC-DIMENSION-FROM-HINT: a dimension smaller than the data still reads every row', async () => {
+    const workbook = await openWorkbook(readFixture(fixtureById('edge-dimension-smaller-than-data')));
+    try {
+      expect(await collect(workbook.sheet(0).rows())).toHaveLength(3);
+      const { rows, headers } = await workbook.sheet(0).toObjects();
+      expect(headers).toEqual(['Name', 'Amount', 'When']);
+      expect(rows).toHaveLength(2);
+    } finally {
+      await workbook.close();
+    }
+  });
+
   it('EC-HEADER-DIMENSION-START-COLUMN: a value left of a wrong dimension is kept under a blank header', async () => {
     const rows =
       `<row r="1"><c r="B1" t="inlineStr"><is><t>Id</t></is></c></row>` +

@@ -834,9 +834,9 @@
   {
     "id": "EC-HEADER-ROW-FIRST-NONEMPTY",
     "family": "Structure",
-    "symptom": "The header row is not row 1: a blank first row (Excel and openpyxl write <dimension ref=\"A2:D5\"/>, Google Sheets writes none).",
-    "seenIn": "SheetJS sheet_to_json starts at the first row of the used range and finds the headers; simple-excel 0.1.1 always used row 1, named every column __EMPTY and read the header row as data (headers [] under dropEmptyHeaders). SheetJS itself fails when the dimension is loose (aoa_to_sheet with origin A2 writes A1:D5).",
-    "expected": "Without an explicit headerRow, object mode takes the first row at or after startRow that holds a value.",
+    "symptom": "The header row is not the first row of the sheet: a blank first row (Excel and openpyxl write <dimension ref=\"A2:D5\"/>, Google Sheets writes none), or an honest dimension whose first row holds only styled blank cells (`<c r=\"A1\" s=\"3\"/>`): Excel counts a formatted blank as used, so the range starts on a row with no values. 78 real Excel files in the corpus run had exactly that shape.",
+    "seenIn": "SheetJS sheet_to_json starts at the first row of the used range: right for a blank row 1 outside the range, but for a styled-blank first row it names every column __EMPTY and reads the real header row as data. simple-excel 0.1.1 always used row 1 (headers [] under dropEmptyHeaders). SheetJS also fails when the dimension is loose (aoa_to_sheet with origin A2 writes A1:D5).",
+    "expected": "Without an explicit headerRow, object mode takes the first row at or after startRow that holds a value (an empty string or an error counts; a row of styled blank cells does not), whatever the dimension says.",
     "status": "verified 2026-09-27 (readiness audit)"
   },
   {
