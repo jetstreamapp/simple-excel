@@ -1026,6 +1026,41 @@ describe('object mode: header text', () => {
   });
 });
 
+describe('object mode: date headers and the time zone', () => {
+  /** A1 2025-01-01 12:00, B1 2025-03-15 00:00, C1 2025-06-30 23:30 (date cells via s="1"), then one data row. */
+  const DATE_HEADERS =
+    '<row r="1"><c r="A1" s="1"><v>45658.5</v></c><c r="B1" s="1"><v>45731</v></c><c r="C1" s="1"><v>45838.979166666664</v></c></row>' +
+    `${row(2, [1, 2, 3])}`;
+
+  async function headersIn(timeZone: string, dates: 'utc' | 'local'): Promise<string[]> {
+    const previous = process.env.TZ;
+    process.env.TZ = timeZone;
+    try {
+      return (await objectsWith(DATE_HEADERS, { dates })).headers;
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = previous;
+      }
+    }
+  }
+
+  it("names date headers from the cell's wall clock under dates: 'utc', whatever the server's time zone", async () => {
+    const expected = ['2025-01-01T12:00:00', '2025-03-15T00:00:00', '2025-06-30T23:30:00'];
+    for (const timeZone of ['UTC', 'America/New_York', 'Asia/Tokyo']) {
+      expect(await headersIn(timeZone, 'utc'), timeZone).toEqual(expected);
+    }
+  });
+
+  it("names date headers from the local wall clock under dates: 'local'", async () => {
+    const expected = ['2025-01-01T12:00:00', '2025-03-15T00:00:00', '2025-06-30T23:30:00'];
+    for (const timeZone of ['UTC', 'America/New_York', 'Asia/Tokyo']) {
+      expect(await headersIn(timeZone, 'local'), timeZone).toEqual(expected);
+    }
+  });
+});
+
 describe('openWorkbook: part names that differ in case', () => {
   it('EC-PART-NAME-CASE: finds the shared-string part when the relationship and the entry disagree on case', async () => {
     const bytes = await workbookBytes({

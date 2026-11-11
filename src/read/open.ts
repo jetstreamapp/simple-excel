@@ -291,7 +291,7 @@ function padTwo(value: number): string {
  * error cell names its column with the error text whatever `errors` says (EC-HEADER-ERROR-CELL); the row reader
  * hands the header row's errors over as text for that reason, and a `CellError` is read the same way.
  */
-function headerTextOf(value: ReadValue): string {
+function headerTextOf(value: ReadValue, utcDates: boolean): string {
   if (typeof value === 'string') {
     return value;
   }
@@ -299,6 +299,12 @@ function headerTextOf(value: ReadValue): string {
     return value ? 'TRUE' : 'FALSE';
   }
   if (value instanceof Date) {
+    // The wall clock the cell shows lives in the UTC fields under `dates: 'utc'` and in the local ones otherwise, so
+    // the key does not move with the server's time zone.
+    if (utcDates) {
+      const date = `${value.getUTCFullYear()}-${padTwo(value.getUTCMonth() + 1)}-${padTwo(value.getUTCDate())}`;
+      return `${date}T${padTwo(value.getUTCHours())}:${padTwo(value.getUTCMinutes())}:${padTwo(value.getUTCSeconds())}`;
+    }
     const date = `${value.getFullYear()}-${padTwo(value.getMonth() + 1)}-${padTwo(value.getDate())}`;
     return `${date}T${padTwo(value.getHours())}:${padTwo(value.getMinutes())}:${padTwo(value.getSeconds())}`;
   }
@@ -379,6 +385,7 @@ class ObjectRowBuilder {
   private readonly defval: CellValue;
   private readonly naming: NonNullable<ObjectRowsOptions['headerNaming']>;
   private readonly dropEmptyHeaders: boolean;
+  private readonly utcDates: boolean;
   private readonly namer = new HeaderNamer();
   private readonly columns: HeaderColumn[] = [];
   /** Columns from `leftmostNamed` up to `namedColumns` have names, including any `dropEmptyHeaders` kept out of `columns`. */
@@ -387,7 +394,7 @@ class ObjectRowBuilder {
   private headersReady = false;
   private recordsBuilt = 0;
 
-  constructor(options: RowsOptions & ObjectRowsOptions, declared: DeclaredColumns) {
+  constructor(options: RowsOptions & ObjectRowsOptions, declared: DeclaredColumns, dates: WorksheetReadContext['dates']) {
     this.requestedStartRow = Math.max(1, options.startRow ?? 1);
     this.headerRow = options.headerRow === undefined ? DETECT_HEADER_ROW : Math.max(1, options.headerRow);
     this.firstDataRow =
@@ -397,6 +404,7 @@ class ObjectRowBuilder {
     this.defval = options.defval === undefined ? '' : options.defval;
     this.naming = options.headerNaming ?? 'sheetjs';
     this.dropEmptyHeaders = options.dropEmptyHeaders === true;
+    this.utcDates = dates === 'utc';
   }
 
   /** 1-based row the underlying reader must start at: the header row when the caller named one, else `startRow`. */
@@ -517,7 +525,7 @@ class ObjectRowBuilder {
   /** The named column, or undefined when `dropEmptyHeaders` leaves it out. The caller places it in `columns`. */
   private nameColumn(column: number, value: ReadValue | undefined): HeaderColumn | undefined {
     const missing = value === undefined || value === null;
-    const text = missing ? '' : headerTextOf(value);
+    const text = missing ? '' : headerTextOf(value, this.utcDates);
     // A header cell holding an empty string is an empty name in SheetJS; only an absent cell becomes `__EMPTY`.
     const name = this.naming === 'index' ? String(column) : this.namer.unique(missing ? EMPTY_HEADER_BASE : text);
     if (this.dropEmptyHeaders && text === '') {
@@ -574,14 +582,14 @@ class SheetReader implements Sheet<ReadValue> {
     return readWorksheetHead(this.partStream(), this.parts.context, rowCount);
   }
 
-  private async *arrayRows(options: ArrayRowsOptions): AsyncGenerator<ReadValue[]> {
+  private async *arrayRows(options: RowsOptions): AsyncGenerator<ReadValue[]> {
     for await (const row of readWorksheetRows(this.partStream(), this.parts.context, options)) {
       yield row.cells as ReadValue[];
     }
   }
 
   private async *objectRows(options: RowsOptions & ObjectRowsOptions, state: ObjectReadState): AsyncGenerator<Record<string, ReadValue>> {
-    const builder = new ObjectRowBuilder(options, await this.declaredColumns());
+    const builder = new ObjectRowBuilder(options, await this.declaredColumns(), this.parts.context.dates);
     const maxRows = options.maxRows ?? Number.POSITIVE_INFINITY;
     const rowOptions: WorksheetRowsOptions = {
       startRow: builder.startRow,
