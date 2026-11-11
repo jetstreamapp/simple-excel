@@ -251,6 +251,13 @@ write(
     }),
   }),
 );
+// Legal but shaped to exhaust memory: these must read to the end, in bounded memory.
+// 2,000 rows with one cell at XFD each: every row is a 16,384-slot array.
+const wideRows = [];
+for (let index = 1; index <= 2000; index++) {
+  wideRows.push(`<row r="${index}"><c r="XFD${index}"><v>${index}</v></c></row>`);
+}
+write(HOSTILE, 'wide-sparse-rows.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: wideRows.join(''), dimension: '' }) }));
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [

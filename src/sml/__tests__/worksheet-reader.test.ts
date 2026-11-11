@@ -827,6 +827,72 @@ describe('streaming', () => {
   });
 });
 
+describe('EC-WIDE-SPARSE-ROWS: batches are bounded by the slots they hold', () => {
+  /** The rows yielded before the read failed, and how it failed. The malformed tail sits in the same chunk. */
+  async function rowsBeforeError(
+    xml: string,
+    options: WorksheetRowsOptions = {},
+    overrides: Partial<WorksheetReadContext> = {},
+  ): Promise<{ rows: number; error: unknown }> {
+    let rows = 0;
+    try {
+      for await (const _row of readWorksheetRows(bytesOf(xml), context(overrides), options)) {
+        rows++;
+      }
+    } catch (error) {
+      return { rows, error };
+    }
+    return { rows, error: undefined };
+  }
+
+  const wideRow = (rowNumber: number): string => `<row r="${rowNumber}"><c r="XFD${rowNumber}"><v>${rowNumber}</v></c></row>`;
+  const wideRows = (count: number): string => Array.from({ length: count }, (_unused, index) => wideRow(index + 1)).join('');
+
+  it('EC-WIDE-SPARSE-ROWS: yields 16,384-slot rows in batches of 64 within one chunk', async () => {
+    // One chunk of 200 rows and then broken markup: the rows of every full batch reach the caller before the error.
+    const { rows, error } = await rowsBeforeError(`<worksheet><sheetData>${wideRows(200)}</sheetData></bogus>`);
+    expect(rows).toBe(192);
+    expect(error).toMatchObject({ code: 'XML_MALFORMED' });
+  });
+
+  it('EC-WIDE-SPARSE-ROWS: reads every row of a wide sheet, in order, holes filled with null', async () => {
+    const rows = await readRows(sheet(wideRows(200)));
+    expect(rows.map(row => row.index)).toEqual(Array.from({ length: 200 }, (_unused, index) => index + 1));
+    const last = rows.at(-1)?.cells ?? [];
+    expect(last).toHaveLength(16_384);
+    expect(last[16_383]).toBe(200);
+    expect(last.slice(0, 16_383).every(value => value === null)).toBe(true);
+  });
+
+  it('places cells written out of order and across gaps', async () => {
+    const xml = sheet('<row r="1"><c r="E1"><v>5</v></c><c r="B1"><v>2</v></c><c r="H1"><v>8</v></c><c r="A1"><v>1</v></c></row>');
+    expect(await readCells(xml)).toEqual([[1, 2, null, null, 5, null, null, 8]]);
+  });
+
+  it('EC-WIDE-SPARSE-ROWS: resolves deferred shared strings in every batch', async () => {
+    // The spaced attribute hides t="s" from the pre-scan, so each cell is resolved after its batch is parsed.
+    const rowsXml = Array.from(
+      { length: 150 },
+      (_unused, index) =>
+        `<row r="${index + 1}"><c r="A${index + 1}" t = "s"><v>${index % 2}</v></c><c r="XFD${index + 1}"><v>1</v></c></row>`,
+    ).join('');
+    const rows = await readRows(sheet(rowsXml), {}, { sharedStrings: () => Promise.resolve(['even', 'odd']) });
+    expect(rows).toHaveLength(150);
+    expect(rows.map(row => row.cells[0])).toEqual(Array.from({ length: 150 }, (_unused, index) => (index % 2 === 0 ? 'even' : 'odd')));
+  });
+
+  it('EC-WIDE-SPARSE-ROWS: maxRows and an early break still stop mid-chunk', async () => {
+    expect(await readRows(sheet(wideRows(200)), { maxRows: 70 })).toHaveLength(70);
+    let seen = 0;
+    for await (const _row of readWorksheetRows(bytesOf(sheet(wideRows(200))), context(), {})) {
+      if (++seen === 65) {
+        break;
+      }
+    }
+    expect(seen).toBe(65);
+  });
+});
+
 // ---------------------------------------------------------------------------------------------------------------
 // head()
 // ---------------------------------------------------------------------------------------------------------------

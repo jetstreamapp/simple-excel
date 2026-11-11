@@ -429,6 +429,47 @@ describe('XmlTokenizer limits and hostile input', () => {
   });
 });
 
+describe('XmlTokenizer pause and resume', () => {
+  it('EC-WIDE-SPARSE-ROWS: stops after the token whose handler paused and resumes where it stopped', () => {
+    const xml = '<a><row r="1"/><row r="2">x</row><row r="3"/>tail</a>';
+    const expected = tokenize(xml);
+    const events: string[] = [];
+    let pauses = 0;
+    const tokenizer: XmlTokenizer = new XmlTokenizer({
+      start(name: string): void {
+        events.push(`start:${name}`);
+      },
+      text(text: string): void {
+        events.push(`text:${JSON.stringify(text)}`);
+      },
+      end(name: string): void {
+        events.push(`end:${name}`);
+        if (name === 'row') {
+          tokenizer.pause();
+        }
+      },
+    });
+    tokenizer.push(xml);
+    while (tokenizer.paused) {
+      pauses++;
+      expect(events.at(-1)).toBe('end:row');
+      tokenizer.resume();
+    }
+    tokenizer.end();
+    expect(pauses).toBe(3);
+    expect(events).toEqual(expected.map(event => event.replace(/ .*$/, '')));
+    expect(tokenizer.paused).toBe(false);
+  });
+
+  it('resume() without a pause does nothing', () => {
+    const tokenizer = new XmlTokenizer({ start(): void {}, text(): void {}, end(): void {} });
+    tokenizer.push('<a>');
+    tokenizer.resume();
+    tokenizer.push('</a>');
+    expect(() => tokenizer.end()).not.toThrow();
+  });
+});
+
 describe('EC-XML-LONG-TAG-RESCAN: a tag split over many chunks', () => {
   function chunked(xml: string, size: number): string[] {
     const chunks: string[] = [];

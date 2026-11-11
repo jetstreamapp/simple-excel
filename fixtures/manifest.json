@@ -1165,6 +1165,23 @@
       "generated": false,
       "expectedError": "XML_MALFORMED",
       "notes": "Five 1 MiB tags inside sheetData, then one that never closes and runs past the 1 MiB tag limit (6 MiB of XML). Each tag spans dozens of 16 KiB inflate chunks."
+    },
+    {
+      "id": "hostile-wide-sparse-rows",
+      "path": "hostile/wide-sparse-rows.xlsx",
+      "bytes": 17780,
+      "sha256": "26706d2d826103a482985e2fd561012a5ac73fb0e7ef5327e65ffab035005cb8",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-WIDE-SPARSE-ROWS"],
+      "expected": null,
+      "generated": false,
+      "notes": "A legal sheet of 2,000 rows with one cell at column XFD each, so every row is a 16,384-slot array. No expectedError: it must read to the end in bounded memory."
     }
   ]
 }

@@ -74,6 +74,17 @@ const TYPE_ISO_DATE = 6;
 /** `t="s"` is five characters, so four kept from the previous chunk catch one split across the boundary. */
 const SHARED_TYPE_SCAN_TAIL = 4;
 
+/**
+ * What one batch of rows may materialize before it is yielded, in array slots: each row costs its cells plus
+ * `ROW_SLOT_OVERHEAD` for the row object and its array. Rows used to be batched per decoded chunk, and a 16 KiB chunk
+ * of rows with one cell at XFD is 300-odd 16,384-slot arrays, about 40 MB before the first yield (EC-WIDE-SPARSE-ROWS).
+ * About 8 MB of slots per batch holds whatever the sheet looks like, and ordinary rows never come near it: a chunk of
+ * them is a few hundred slots.
+ */
+const BATCH_SLOT_BUDGET = 1024 * 1024;
+/** A yielded row's own cost in slots beyond its cells: the row object, the array header, the index. */
+const ROW_SLOT_OVERHEAD = 8;
+
 const CODE_SPACE = 0x20;
 const CODE_DOLLAR = 0x24;
 const CODE_ZERO = 0x30;
@@ -292,6 +303,16 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
 
   push(text: string): void {
     this.tokenizer.push(text);
+  }
+
+  /** The tokenizer stopped mid-input for a full batch: yield it, then `resume()` before pushing anything more. */
+  get paused(): boolean {
+    return this.tokenizer.paused;
+  }
+
+  /** Continue the input a full batch paused; it may pause again. */
+  resume(): void {
+    this.tokenizer.resume();
   }
 
   /** Fill in cells whose `t="s"` the pre-scan missed (an exotic attribute spelling); normally a no-op. */
@@ -696,6 +717,8 @@ class RowsParser extends WorksheetParser {
 
   private cells: CellValue[] = [];
   private batch: SheetRow[] = [];
+  /** Slots the rows in `batch` hold; see `BATCH_SLOT_BUDGET`. */
+  private batchSlots = 0;
   private emitted = 0;
   /** No row with a value has been emitted yet: with `errorTextRow: 'first'`, the next one is the header row. */
   private awaitingFirstRow = true;
@@ -723,6 +746,7 @@ class RowsParser extends WorksheetParser {
   takeBatch(): SheetRow[] {
     const batch = this.batch;
     this.batch = [];
+    this.batchSlots = 0;
     return batch;
   }
 
@@ -800,14 +824,19 @@ class RowsParser extends WorksheetParser {
   private place(value: CellValue): void {
     const cells = this.cells;
     const column = this.column;
-    if (column < cells.length) {
+    const length = cells.length;
+    if (column === length) {
+      cells.push(value);
+      return;
+    }
+    if (column < length) {
       cells[column] = value;
       return;
     }
-    while (cells.length < column) {
-      cells.push(null);
-    }
-    cells.push(value);
+    // A gap: one resize and one fill rather than a push per hole, which is 16,384 calls for a cell at XFD.
+    cells.length = column + 1;
+    cells.fill(null, length, column);
+    cells[column] = value;
   }
 
   private emit(row: SheetRow): void {
@@ -816,6 +845,11 @@ class RowsParser extends WorksheetParser {
     this.nextIndex = row.index + 1;
     if (this.emitted >= this.maxRows) {
       this.stop();
+      return;
+    }
+    this.batchSlots += row.cells.length + ROW_SLOT_OVERHEAD;
+    if (this.batchSlots >= BATCH_SLOT_BUDGET) {
+      this.tokenizer.pause();
     }
   }
 }
@@ -890,19 +924,25 @@ async function* streamRows(
   if (parser.stopped) {
     return;
   }
-  const decoder = new TextDecoder('utf-8');
   try {
-    for await (const chunk of chunks) {
-      throwIfAborted(context.signal);
-      await feed(parser, decoder.decode(chunk, { stream: true }));
-      for (const row of parser.takeBatch()) {
-        yield row;
-      }
-      if (parser.stopped) {
-        return;
+    for await (const text of decodedText(chunks, context.signal)) {
+      await feed(parser, text);
+      // A batch that fills up pauses the parser mid-chunk; it resumes once the rows so far are in the caller's hands.
+      for (;;) {
+        for (const row of parser.takeBatch()) {
+          yield row;
+        }
+        if (parser.stopped) {
+          return;
+        }
+        if (!parser.paused) {
+          break;
+        }
+        throwIfAborted(context.signal);
+        parser.resume();
+        await parser.resolveDeferredCells();
       }
     }
-    await feed(parser, decoder.decode());
     parser.finish();
     for (const row of parser.takeBatch()) {
       yield row;
@@ -944,6 +984,16 @@ export async function readWorksheetHead(
     throw classifyStringLengthError(error);
   }
   return parser.cells;
+}
+
+/** The part as UTF-8 text, chunk by chunk, then whatever the decoder held back of a character split at the end. */
+async function* decodedText(chunks: AsyncIterable<Uint8Array>, signal: AbortSignal | undefined): AsyncGenerator<string> {
+  const decoder = new TextDecoder('utf-8');
+  for await (const chunk of chunks) {
+    throwIfAborted(signal);
+    yield decoder.decode(chunk, { stream: true });
+  }
+  yield decoder.decode();
 }
 
 async function feed(parser: WorksheetParser, text: string): Promise<void> {

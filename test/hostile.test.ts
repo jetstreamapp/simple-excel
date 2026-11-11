@@ -4,6 +4,8 @@
  * hostile fixtures without one are legal workbooks shaped to exhaust memory; the right outcome for those is a read to
  * the end in bounded memory.
  */
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { isXlsxError, openWorkbook, type ArrayRowsOptions, type OpenOptions, type XlsxErrorCode } from '../src/index';
 import { fixturesWithTag, readFixture, type Fixture } from './helpers/fixtures';
@@ -35,6 +37,7 @@ const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = [
   'EC-PART-SIZE-PADDING',
   'EC-CELL-TEXT-RUN-SPLIT',
   'EC-XML-LONG-TAG-RESCAN',
+  'EC-WIDE-SPARSE-ROWS',
 ];
 
 /** Read options that make a read-flat fixture hostile, by catalog id. */
@@ -43,8 +46,11 @@ const ROW_OPTIONS_BY_CATALOG_ID: Readonly<Record<string, ArrayRowsOptions>> = {
 };
 
 const MB = 1024 * 1024;
-/** How much the heap may grow while a read-flat fixture streams. Before the batch budget these reached 1 GB. */
-const READ_FLAT_HEAP_BUDGET = 256 * MB;
+/**
+ * Live heap a read-flat fixture may hold at any point of its read, measured after a full collection. A batch is
+ * bounded at about 8 MB of row slots; before that budget, one inflate chunk of `wide-sparse-rows` held 40 MB of rows.
+ */
+const READ_FLAT_LIVE_HEAP_BUDGET = 32 * MB;
 /** A fixture that must fail fast does so in well under this, whatever machine runs the suite. */
 const FAIL_FAST_MS = 10_000;
 
@@ -67,6 +73,20 @@ async function openAndStreamEverything(
     await workbook.close();
   }
   return rows;
+}
+
+/** A full garbage collection, so heap samples measure what is live rather than what the collector has not reached. */
+function garbageCollector(): () => void {
+  if (typeof globalThis.gc === 'function') {
+    return globalThis.gc;
+  }
+  setFlagsFromString('--expose-gc');
+  return runInNewContext('gc') as () => void;
+}
+
+/** Sample often while the first batches go by, where an unbounded one shows, then sparsely: a full GC is not free. */
+function shouldSample(rows: number): boolean {
+  return rows <= 4096 ? rows % 32 === 0 : rows % 16_384 === 0;
 }
 
 async function rejection(operation: () => Promise<unknown>): Promise<unknown> {
@@ -126,17 +146,20 @@ describe.skipIf(!READER_READY)('hostile: the reader DoS fixtures hold with the d
       continue;
     }
     it(`${fixture.id} reads to the end in bounded memory`, async () => {
+      const collectGarbage = garbageCollector();
+      const bytes = readFixture(fixture);
+      collectGarbage();
       const heapBefore = process.memoryUsage().heapUsed;
-      let peakHeap = heapBefore;
-      // Sampled from the consumer: a batch is yielded without an event-loop turn, so a timer would miss its peak.
-      const rows = await openAndStreamEverything(readFixture(fixture), {}, rowOptionsFor(fixture), count => {
-        if (count % 16 === 0) {
-          peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
+      let peakLive = 0;
+      // Sampled from the consumer, mid-batch: a batch is yielded without an event-loop turn, so a timer would miss it.
+      const rows = await openAndStreamEverything(bytes, {}, rowOptionsFor(fixture), count => {
+        if (shouldSample(count)) {
+          collectGarbage();
+          peakLive = Math.max(peakLive, process.memoryUsage().heapUsed - heapBefore);
         }
       });
-      expect(rows).toBeGreaterThan(0);
-      peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
-      expect(peakHeap - heapBefore, `heap grew ${((peakHeap - heapBefore) / MB).toFixed(0)} MB`).toBeLessThan(READ_FLAT_HEAP_BUDGET);
+      expect(rows).toBeGreaterThan(1000);
+      expect(peakLive, `live heap reached ${(peakLive / MB).toFixed(1)} MB`).toBeLessThan(READ_FLAT_LIVE_HEAP_BUDGET);
     });
   }
 });

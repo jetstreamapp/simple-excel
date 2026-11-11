@@ -305,6 +305,8 @@ export class XmlTokenizer {
   private pendingText = '';
   private mode: number = MODE_TEXT;
   private needMoreInput = false;
+  /** A handler asked to stop after the token it is handling; the rest of the input waits in `buffer` for `resume`. */
+  private pauseRequested = false;
   private sawFirstChunk = false;
   /** The previous chunk ended with a carriage return, so a line feed opening this one belongs to that line end. */
   private sawTrailingCarriageReturn = false;
@@ -388,6 +390,30 @@ export class XmlTokenizer {
     this.sawTrailingCarriageReturn = chunk.charCodeAt(chunk.length - 1) === CHAR_CARRIAGE_RETURN;
     const text = continuesLineEnd ? chunk.slice(1) : chunk;
     return text.indexOf('\r') < 0 ? text : text.replace(CARRIAGE_RETURN_PATTERN, '\n');
+  }
+
+  /**
+   * Called from a handler callback: stop scanning once the current token is handled, keeping the rest of the input
+   * (the way a partial tag is kept) until `resume()`. This is how a consumer bounds what one chunk can make it build:
+   * a 16 KiB chunk of sparse rows can otherwise become a gigabyte of row arrays before anything is yielded
+   * (EC-WIDE-SPARSE-ROWS). `push` and `end` must not be called while paused.
+   */
+  pause(): void {
+    this.pauseRequested = true;
+  }
+
+  /** True between a `pause()` and the `resume()` that continues the input it left unconsumed. */
+  get paused(): boolean {
+    return this.pauseRequested;
+  }
+
+  /** Continue scanning where `pause()` stopped. The handlers may pause again before the input runs out. */
+  resume(): void {
+    if (!this.pauseRequested) {
+      return;
+    }
+    this.pauseRequested = false;
+    this.scan(false);
   }
 
   /** Flush trailing text and verify every element was closed. */
@@ -499,7 +525,7 @@ export class XmlTokenizer {
     const buffer = this.buffer;
     let position = 0;
     this.needMoreInput = false;
-    while (position < buffer.length && !this.needMoreInput) {
+    while (position < buffer.length && !this.needMoreInput && !this.pauseRequested) {
       position = this.mode === MODE_TEXT ? this.stepText(buffer, position, isFinal) : this.stepSkipped(buffer, position, isFinal);
     }
     if (this.partialTagLength > 0) {
