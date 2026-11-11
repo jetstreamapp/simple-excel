@@ -1,7 +1,7 @@
 /**
  * The reader facade: sniff the bytes, open the container, resolve the package parts, and hand out sheet readers
  * that stream rows on demand. Nothing here parses sheet XML - `sml/worksheet-reader` does - and nothing is read
- * eagerly beyond the workbook, its relationships and the styles part.
+ * eagerly beyond the workbook, its relationships and the styles part (which is streamed).
  */
 import { classifyError, isXlsxError, XlsxError } from '../errors';
 import { isStringLengthError } from '../internal/string-length';
@@ -802,7 +802,7 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   const workbookDirectory = directoryOf(workbookPart);
 
   const sharedStringsPart = relationshipTarget(workbookRels, 'sharedStrings') ?? `${workbookDirectory}sharedStrings.xml`;
-  const styles = await readStyles(zip, workbookRels, workbookDirectory, limits);
+  const styles = await readStyles(zip, workbookRels, workbookDirectory, limits, options.signal);
   const context: WorksheetReadContext = {
     sharedStrings: sharedStringLoader(zip, sharedStringsPart, limits),
     hasSharedStrings: zip.has(sharedStringsPart),
@@ -857,20 +857,26 @@ function sheetWarnings(report: (warning: ReadWarning) => void, sheet: string): (
 }
 
 /** Without a styles part nothing is a date: every `isDateByXf` lookup on an empty array is `undefined`. */
-const NO_STYLES: ParsedStyles = { isDateByXf: new Uint8Array(0), numFmts: new Map(), formatsIgnored: false };
+const NO_STYLES: ParsedStyles = { isDateByXf: new Uint8Array(0), formatsIgnored: false };
 
+/**
+ * Streamed, not read whole: a heavily styled workbook's `styles.xml` can be tens of MB, past `maxPartBytes`, and the
+ * parser keeps only bounded tables from it, so `maxInflatedBytes` is the cap that applies, as for a worksheet.
+ */
 async function readStyles(
   zip: ZipReader,
   workbookRels: readonly Relationship[],
   workbookDirectory: string,
   limits: ResolvedLimits,
+  signal: AbortSignal | undefined,
 ): Promise<ParsedStyles> {
   const stylesPart = relationshipTarget(workbookRels, 'styles') ?? `${workbookDirectory}styles.xml`;
   if (!zip.has(stylesPart)) {
     return NO_STYLES;
   }
-  const xml = await zip.readText(stylesPart, limits.maxPartBytes);
-  return parsePart(stylesPart, () => parseStyles(xml));
+  return parsePartAsync(stylesPart, () =>
+    parseStyles(zip.stream(stylesPart), { maxDepth: limits.maxXmlDepth, maxTextLength: limits.maxTextLength, signal }),
+  );
 }
 
 /** The shared-string table is parsed on the first `t="s"` cell of the first sheet that has one, then reused. */

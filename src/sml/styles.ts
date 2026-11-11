@@ -521,76 +521,98 @@ export interface ParsedStyles {
    * ignored, `XF_NOT_DATE` otherwise. At most `MAX_READ_CELL_FORMATS` long; an xf past the end reads as a number.
    */
   readonly isDateByXf: Uint8Array;
-  /** Custom number formats by id. */
-  readonly numFmts: ReadonlyMap<number, string>;
   /** The part listed more than `MAX_READ_CELL_FORMATS` cellXfs or numFmts, and the rest were ignored. */
   readonly formatsIgnored: boolean;
 }
 
+export interface ParseStylesOptions {
+  readonly maxDepth: number;
+  /** Characters one text node may hold; the part has none worth keeping, so this only bounds what is skipped. */
+  readonly maxTextLength: number;
+  /** Checked between chunks; an aborted signal ends the read with `XlsxError('ABORTED')`. */
+  readonly signal?: AbortSignal;
+}
+
 /**
- * Read what the reader needs from `xl/styles.xml`: the number formats and, for every `cellXfs` entry, whether it
- * renders as a date (EC-DATE-DETECTION-VIA-NUMFMT). Only `<cellXfs>` counts - `<cellStyleXfs>` and `<dxfs>` hold
- * `<xf>` and `<numFmt>` elements of their own that `c/@s` never indexes (primer 7.2). `applyNumberFormat` is
- * deliberately ignored: it declares that the xf overrides its parent cell style, while Excel renders the xf's own
- * `numFmtId` either way, so honouring it would hide dates from producers that leave the flag off.
+ * Read what the reader needs from `xl/styles.xml`: for every `cellXfs` entry, whether it renders as a date
+ * (EC-DATE-DETECTION-VIA-NUMFMT). Only `<cellXfs>` counts - `<cellStyleXfs>` and `<dxfs>` hold `<xf>` and
+ * `<numFmt>` elements of their own that `c/@s` never indexes (primer 7.2). `applyNumberFormat` is deliberately
+ * ignored: it declares that the xf overrides its parent cell style, while Excel renders the xf's own `numFmtId`
+ * either way, so honouring it would hide dates from producers that leave the flag off.
  *
- * Past `MAX_READ_CELL_FORMATS` entries of either list the rest are ignored (EC-STYLES-XF-OVERFLOW): a cell that uses
- * an ignored xf, or an xf whose custom number format was ignored, reads as a plain number.
+ * The part is streamed like a worksheet, so a heavily styled workbook's tens of MB of `styles.xml` never sit in
+ * memory whole. What it keeps is bounded however large the part is: one number per xf and one flag per custom number
+ * format (a format code is classified as it is read, never held), each list capped at `MAX_READ_CELL_FORMATS`. Past
+ * that the rest are ignored (EC-STYLES-XF-OVERFLOW): a cell that uses an ignored xf, or an xf whose custom number
+ * format was ignored, reads as a plain number.
  *
  * Everything else in the part is skipped, which is what makes it tolerant of the producer quirks in the catalog:
  * POI's `<u val="none"/>` (EC-POI-UNDERLINE-NONE-REJECTED) and 6-hex colours (EC-POI-RGB-6-HEX), LibreOffice and
  * Numbers extras, `x:`-prefixed or Strict-namespace documents (EC-STRICT-NAMESPACES), `mc:Ignorable`/`x14ac` noise.
  */
-export function parseStyles(xml: string): ParsedStyles {
-  const numFmts = new Map<number, string>();
+export async function parseStyles(chunks: AsyncIterable<Uint8Array>, options: ParseStylesOptions): Promise<ParsedStyles> {
+  /** Whether each custom number format renders a date, by id; a later `<numFmt>` with the same id wins. */
+  const isDateByNumFmtId = new Map<number, boolean>();
   const numFmtIdByXf: number[] = [];
   const openElements: string[] = [];
   let numFmtCount = 0;
   let formatsIgnored = false;
-  const tokenizer = new XmlTokenizer({
-    start(name: string): void {
-      const parent = openElements.at(-1);
-      openElements.push(name);
-      if (name === 'numFmt' && parent === 'numFmts') {
-        if (++numFmtCount > MAX_READ_CELL_FORMATS) {
-          formatsIgnored = true;
+  const tokenizer = new XmlTokenizer(
+    {
+      start(name: string): void {
+        const parent = openElements.at(-1);
+        openElements.push(name);
+        if (name === 'numFmt' && parent === 'numFmts') {
+          if (++numFmtCount > MAX_READ_CELL_FORMATS) {
+            formatsIgnored = true;
+            return;
+          }
+          const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
+          const formatCode = tokenizer.attr('formatCode');
+          if (Number.isFinite(numFmtId) && formatCode !== undefined) {
+            isDateByNumFmtId.set(numFmtId, isDateFormatCode(formatCode));
+          }
           return;
         }
-        const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
-        const formatCode = tokenizer.attr('formatCode');
-        if (Number.isFinite(numFmtId) && formatCode !== undefined) {
-          numFmts.set(numFmtId, formatCode);
+        if (name === 'xf' && parent === 'cellXfs') {
+          if (numFmtIdByXf.length >= MAX_READ_CELL_FORMATS) {
+            formatsIgnored = true;
+            return;
+          }
+          const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
+          numFmtIdByXf.push(Number.isFinite(numFmtId) ? numFmtId : 0);
         }
-        return;
-      }
-      if (name === 'xf' && parent === 'cellXfs') {
-        if (numFmtIdByXf.length >= MAX_READ_CELL_FORMATS) {
-          formatsIgnored = true;
-          return;
-        }
-        const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
-        numFmtIdByXf.push(Number.isFinite(numFmtId) ? numFmtId : 0);
-      }
+      },
+      text(): void {},
+      end(): void {
+        openElements.pop();
+      },
     },
-    text(): void {},
-    end(): void {
-      openElements.pop();
-    },
-  });
-  tokenizer.push(xml);
+    { maxDepth: options.maxDepth, maxTextLength: options.maxTextLength },
+  );
+
+  const decoder = new TextDecoder('utf-8');
+  for await (const chunk of chunks) {
+    if (options.signal?.aborted === true) {
+      throw new XlsxError('ABORTED', 'Reading this spreadsheet was cancelled.');
+    }
+    tokenizer.push(decoder.decode(chunk, { stream: true }));
+  }
+  // Flush whatever the decoder held back from a multi-byte character split across the last chunk boundary.
+  tokenizer.push(decoder.decode());
   tokenizer.end();
 
   const isDateByXf = new Uint8Array(numFmtIdByXf.length);
   for (const [index, numFmtId] of numFmtIdByXf.entries()) {
     // An explicit `<numFmt>` wins over the built-in table: producers redefine ids inside the reserved range
     // (write-excel-file uses 100, SheetJS overrides 56) and the code they wrote is what Excel renders.
-    const formatCode = numFmts.get(numFmtId);
-    if (formatCode === undefined && formatsIgnored && numFmtId >= FIRST_CUSTOM_NUMFMT_ID) {
+    const customIsDate = isDateByNumFmtId.get(numFmtId);
+    if (customIsDate === undefined && formatsIgnored && numFmtId >= FIRST_CUSTOM_NUMFMT_ID) {
       isDateByXf[index] = XF_FORMAT_IGNORED;
       continue;
     }
-    const isDate = formatCode === undefined ? isBuiltinDateId(numFmtId) : isDateFormatCode(formatCode);
+    const isDate = customIsDate ?? isBuiltinDateId(numFmtId);
     isDateByXf[index] = isDate ? XF_DATE : XF_NOT_DATE;
   }
-  return { isDateByXf, numFmts, formatsIgnored };
+  return { isDateByXf, formatsIgnored };
 }

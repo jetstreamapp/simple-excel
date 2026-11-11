@@ -1127,7 +1127,7 @@
       "expected": null,
       "generated": false,
       "expectedError": "LIMIT_EXCEEDED",
-      "notes": "styles.xml padded with 33 MiB of whitespace (33 KB on disk): past the 32 MiB default maxPartBytes for a part the reader holds whole."
+      "notes": "styles.xml padded with 33 MiB of whitespace (33 KB on disk). styles.xml is streamed, so the padding is one text run that stops at the 1 Mi default maxTextLength (it used to be refused by maxPartBytes when the part was read whole)."
     },
     {
       "id": "hostile-cell-text-split-runs",

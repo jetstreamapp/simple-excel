@@ -199,7 +199,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 
 ### B1 `sml/styles.ts`
 
-- `class StyleRegistry { register(style: CellStyle): StyleId; readonly count: number; toXml(): string }` seeded with Excel's defaults (font 0 Calibri 11, fills none + gray125, border 0 empty, cellXfs 0), custom numFmt ids from 164, built-in codes resolved to ids, `CT_Font` children emitted in schema order, `apply*` attributes, `cellStyleXfs`, `cellStyles` Normal, `dxfs count=0`, `tableStyles`. `parseStyles(xml): { isDateByXf: Uint8Array; numFmts: Map<number,string> }` for the reader.
+- `class StyleRegistry { register(style: CellStyle): StyleId; readonly count: number; toXml(): string }` seeded with Excel's defaults (font 0 Calibri 11, fills none + gray125, border 0 empty, cellXfs 0), custom numFmt ids from 164, built-in codes resolved to ids, `CT_Font` children emitted in schema order, `apply*` attributes, `cellStyleXfs`, `cellStyles` Normal, `dxfs count=0`, `tableStyles`. `parseStyles(chunks, { maxDepth, maxTextLength, signal? }): Promise<{ isDateByXf: Uint8Array; formatsIgnored: boolean }>` for the reader, streamed from the zip entry like a worksheet and capped at 65,490 cellXfs/numFmts (EC-STYLES-XF-OVERFLOW).
 - Rules: 02 §7, EC-STYLES-FONT-ELEMENT-ORDER (we pass the validator), EC-POI-RGB-6-HEX (accept 6/8 hex on read).
 - Tests: validator-clean styles.xml for every style combination in the canonical Features sheet; reader over every corpus styles.xml (incl. POI's `u val="none"`, 6-hex colours).
 

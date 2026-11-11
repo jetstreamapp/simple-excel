@@ -41,8 +41,9 @@ because of one cell at column XFD, or a `blankRows` gap of a million empty rows 
 until the batch is in your hands. Breaking out of the loop cancels the inflate stream, so `head()` and an early
 `break` cost only what was already read.
 
-The package parts the reader holds whole (`[Content_Types].xml`, the relationships, `workbook.xml`, `styles.xml`)
-are capped by `limits.maxPartBytes` (32 MiB), the text of one cell by `limits.maxTextLength` (1 Mi characters) and
+The package parts the reader holds whole (`[Content_Types].xml`, the relationships, `workbook.xml`) are capped by
+`limits.maxPartBytes` (32 MiB). `styles.xml` is streamed like a sheet, since a heavily styled workbook's can be tens
+of MB, and only its first 65,490 cell and number formats are kept. The text of one cell by `limits.maxTextLength` (1 Mi characters) and
 of one row by `limits.maxRowChars` (64 Mi), so a hostile upload fails with `LIMIT_EXCEEDED` instead of building
 strings the size of the heap.
 

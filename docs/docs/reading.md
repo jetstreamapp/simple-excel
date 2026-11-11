@@ -115,15 +115,15 @@ A sheet full of blank text cells with one of these warnings usually means a dama
 
 ### Limits
 
-| `ReadLimits`           | Default                | Guards                                                                                                                                                                            |
-| ---------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `maxInflatedBytes`     | 1 GiB per part         | Zip bombs; exceeded raises `ZIP_BOMB`. The cap that applies to streamed parts: worksheets and the shared-string table                                                             |
-| `maxPartBytes`         | 32 MiB per part        | A part the reader holds whole — `[Content_Types].xml`, the package and workbook relationships, `workbook.xml`, `styles.xml` — padded to exhaust memory (`EC-PART-SIZE-PADDING`)   |
-| `maxSharedStringChars` | 256 Mi UTF-16 units    | A shared-string table designed to exhaust memory. Each item counts its text plus 16 units for its slot, so millions of empty `<si/>` items hit it too (`EC-SST-EMPTY-ITEM-FLOOD`) |
-| `maxEntries`           | 10,000                 | Archives with an absurd number of parts, and package parts that list more sheets, relationships or content types than that (`EC-PACKAGE-ELEMENT-FLOOD`)                           |
-| `maxXmlDepth`          | 256                    | Deeply nested rich-text runs (`EC-XML-DEEP-NESTING`)                                                                                                                              |
-| `maxTextLength`        | 1,048,576 UTF-16 units | One cell's value, inline string or formula text, one shared-string item, or one text node, however many runs build it (`EC-CELL-TEXT-RUN-SPLIT`)                                  |
-| `maxRowChars`          | 64 Mi UTF-16 units     | The text of one row, all its cells together                                                                                                                                       |
+| `ReadLimits`           | Default                | Guards                                                                                                                                                                                                   |
+| ---------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxInflatedBytes`     | 1 GiB per part         | Zip bombs; exceeded raises `ZIP_BOMB`. The cap that applies to streamed parts: worksheets, the shared-string table and `styles.xml`                                                                      |
+| `maxPartBytes`         | 32 MiB per part        | A part the reader holds whole — `[Content_Types].xml`, the package and workbook relationships, `workbook.xml` — padded to exhaust memory (`EC-PART-SIZE-PADDING`). `styles.xml` is streamed like a sheet |
+| `maxSharedStringChars` | 256 Mi UTF-16 units    | A shared-string table designed to exhaust memory. Each item counts its text plus 16 units for its slot, so millions of empty `<si/>` items hit it too (`EC-SST-EMPTY-ITEM-FLOOD`)                        |
+| `maxEntries`           | 10,000                 | Archives with an absurd number of parts, and package parts that list more sheets, relationships or content types than that (`EC-PACKAGE-ELEMENT-FLOOD`)                                                  |
+| `maxXmlDepth`          | 256                    | Deeply nested rich-text runs (`EC-XML-DEEP-NESTING`)                                                                                                                                                     |
+| `maxTextLength`        | 1,048,576 UTF-16 units | One cell's value, inline string or formula text, one shared-string item, or one text node, however many runs build it (`EC-CELL-TEXT-RUN-SPLIT`)                                                         |
+| `maxRowChars`          | 64 Mi UTF-16 units     | The text of one row, all its cells together                                                                                                                                                              |
 
 Raise them for a legitimately huge file you trust; lower them for user uploads. Exceeding a limit raises
 `LIMIT_EXCEEDED` (or `ZIP_BOMB` for the inflate caps), and the message names what was hit.

@@ -48,6 +48,8 @@ const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = [
  */
 const TIGHT_LIMIT_CODES_BY_CATALOG_ID: Readonly<Record<string, XlsxErrorCode[]>> = {
   'EC-SST-EMPTY-ITEM-FLOOD': ['ZIP_BOMB'],
+  // The padded part is styles.xml, which is streamed: its 33 MiB declared size is past the tight inflate cap.
+  'EC-PART-SIZE-PADDING': ['ZIP_BOMB'],
 };
 
 /** Read options that make a read-flat fixture hostile, by catalog id. */

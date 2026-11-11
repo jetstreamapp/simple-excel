@@ -287,8 +287,8 @@ export interface ReadLimits {
   /** Per part, streamed or not. Default 1 GiB. */
   readonly maxInflatedBytes?: number;
   /**
-   * Per part the reader holds whole: `[Content_Types].xml`, the relationship parts, the workbook part and the styles
-   * part (worksheets and the shared-string table are streamed and only `maxInflatedBytes` applies to them).
+   * Per part the reader holds whole: `[Content_Types].xml`, the relationship parts and the workbook part. Worksheets,
+   * the shared-string table and the styles part are streamed, and only `maxInflatedBytes` applies to them.
    * Default 32 MiB.
    */
   readonly maxPartBytes?: number;

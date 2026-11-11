@@ -474,9 +474,9 @@
   {
     "id": "EC-PART-SIZE-PADDING",
     "family": "Security",
-    "symptom": "A part the reader holds whole (styles.xml, workbook.xml, rels, [Content_Types].xml) padded with hundreds of MB of whitespace: a 698 KB upload reached 2.2 GB RSS and then failed with a bare ERR_STRING_TOO_LONG, because the only cap was the 1 GiB per-entry maxInflatedBytes.",
-    "seenIn": "Hostile uploads only. Real package parts are KB to a few MB; the largest legitimate ones are style-bloated styles.xml files and workbook.xml files with many defined names.",
-    "expected": "LIMIT_EXCEEDED when a whole-read part declares or inflates past limits.maxPartBytes (default 32 MiB), checked before inflating and on the running byte count. Streamed parts (worksheets, sharedStrings) keep maxInflatedBytes.",
+    "symptom": "A package part padded with hundreds of MB of whitespace: a 698 KB upload with 700 MiB of it in styles.xml reached 2.2 GB RSS and then failed with a bare ERR_STRING_TOO_LONG, because the parts read whole were capped only by the 1 GiB per-entry maxInflatedBytes.",
+    "seenIn": "Hostile uploads only. Real workbook.xml, rels and [Content_Types].xml parts are KB to a few MB; styles.xml is the one that legitimately reaches tens of MB in heavily styled workbooks, so it is streamed instead.",
+    "expected": "LIMIT_EXCEEDED when a whole-read part ([Content_Types].xml, rels, workbook.xml) declares or inflates past limits.maxPartBytes (default 32 MiB), checked before inflating and on the running byte count. Streamed parts (worksheets, sharedStrings, styles.xml) keep maxInflatedBytes; padding inside one is a text run that stops at maxTextLength.",
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {

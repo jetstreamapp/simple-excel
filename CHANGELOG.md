@@ -7,8 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - `limits.maxPartBytes` (default 32 MiB): the most a part the reader holds whole may declare or inflate to. That is
-  `[Content_Types].xml`, the package and workbook relationships, the workbook part and `styles.xml`; worksheets and
-  the shared-string table are streamed and stay under `maxInflatedBytes`.
+  `[Content_Types].xml`, the package and workbook relationships and the workbook part; worksheets, the shared-string
+  table and `styles.xml` are streamed and stay under `maxInflatedBytes`.
 - `limits.maxRowChars` (default 64 Mi UTF-16 units): the most text one row of a sheet may hold, all its cells
   together.
 - `IO_ERROR`, a new `XlsxErrorCode` for failures underneath the library: a sink's `write` or `close`, a Node stream
@@ -66,9 +66,11 @@ All notable changes to this project will be documented in this file.
   flood of `<xf/>` elements no longer grows the reader's tables. The workbook still reads: some non-Excel writers
   emit one xf per cell, and a number cell that uses an ignored xf reads as a plain number with a
   `CELL_FORMATS_IGNORED` warning.
-- The parts read whole are capped by the new `maxPartBytes` before they are inflated and again as they inflate. A
-  698 KB file with 700 MiB of whitespace in `styles.xml` reached 2.2 GB and then failed with a bare
-  `ERR_STRING_TOO_LONG` instead of an `XlsxError`.
+- The parts read whole are capped by the new `maxPartBytes` before they are inflated and again as they inflate.
+  `styles.xml` is streamed through the tokenizer instead, keeping only its bounded format tables, so a heavily
+  styled workbook's tens of MB of styles read in flat memory. A 698 KB file with 700 MiB of whitespace in
+  `styles.xml` reached 2.2 GB and then failed with a bare `ERR_STRING_TOO_LONG` instead of an `XlsxError`; it now
+  stops at `maxTextLength` after 1 Mi characters.
 - `maxTextLength` holds for a whole cell and shared-string item, and `maxRowChars` for a row, so text split into
   many runs or spread over many cells no longer builds unbounded strings (about 1.4 GB from 1 MB of upload). A
   string past the engine's maximum length now surfaces as `LIMIT_EXCEEDED` rather than a `RangeError`.

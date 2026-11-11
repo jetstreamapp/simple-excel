@@ -320,15 +320,23 @@ describe('openWorkbook: inputs that are not a modern workbook', () => {
     expect((await openWorkbook(bytes, { limits: { maxEntries: 11 } })).sheets).toHaveLength(11);
   });
 
-  it('EC-PART-SIZE-PADDING: applies maxPartBytes to every part it reads whole, but not to streamed sheets', async () => {
+  it('EC-PART-SIZE-PADDING: applies maxPartBytes to every part it reads whole, but not to streamed sheets or styles', async () => {
     const padded = (xml: string): string => xml.replace(/<\/(\w+)>$/, `${' '.repeat(4096)}</$1>`);
-    for (const part of ['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/styles.xml']) {
+    for (const part of ['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels']) {
       const parts = packageParts();
       const bytes = await zip({ ...parts, [part]: padded(parts[part] ?? '') });
       const error = await caught(() => openWorkbook(bytes, { limits: { maxPartBytes: 4096 } }));
       expect(error, part).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { part, maxPartBytes: 4096 } });
       await expect(openWorkbook(bytes, { limits: { maxPartBytes: 8192 } }), part).resolves.toBeDefined();
     }
+    // styles.xml is streamed: a heavily styled workbook's part may be larger than any part read whole.
+    const parts = packageParts();
+    const stylesXml = parts['xl/styles.xml'] ?? '';
+    const manyFonts = `<fonts count="400">${'<font><sz val="11"/><name val="Calibri"/></font>'.repeat(400)}</fonts>`;
+    const bigStylesXml = stylesXml.replace('<cellXfs', `${manyFonts}<cellXfs`);
+    expect(bigStylesXml.length).toBeGreaterThan(16_384);
+    const bigStyles = await zip({ ...parts, 'xl/styles.xml': bigStylesXml });
+    await expect(openWorkbook(bigStyles, { limits: { maxPartBytes: 4096 } })).resolves.toBeDefined();
     const bigSheet = await sheetOnlyBytes(row(1, ['x'.repeat(8192)]));
     const workbook = await openWorkbook(bigSheet, { limits: { maxPartBytes: 4096 } });
     expect(await collect(workbook.sheet(0).rows())).toEqual([['x'.repeat(8192)]]);
