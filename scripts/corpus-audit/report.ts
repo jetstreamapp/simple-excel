@@ -5,7 +5,7 @@
  *   tsx scripts/corpus-audit/report.ts [tmp/corpus-audit/results.jsonl] [--json summary.json]
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import { basename, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
 const { values: options, positionals } = parseArgs({
@@ -97,6 +97,24 @@ console.log(
   `read ${read.length}, ${totalCells.toLocaleString()} cells in ${(totalMs / 1000).toFixed(1)}s of reader time (${Math.round(totalCells / (totalMs / 1000)).toLocaleString()} cells/s incl. open)`,
 );
 table('Status', status);
+
+// A corpus laid out one folder per writer (select-by-writer.py): the same status counts per folder.
+const byFolder = new Map<string, Map<string, number>>();
+for (const entry of entries) {
+  const folder = basename(dirname(entry.file));
+  const counts = byFolder.get(folder) ?? new Map<string, number>();
+  counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
+  byFolder.set(folder, counts);
+}
+if (byFolder.size > 1) {
+  console.log('\n## Status by folder (writer)');
+  for (const [folder, counts] of [...byFolder].sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))) {
+    const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+    const parts = [...counts].sort((a, b) => b[1] - a[1]).map(([state, count]) => `${state} ${count}`);
+    console.log(`  ${String(total).padStart(5)}  ${folder.padEnd(36)} ${parts.join(', ')}`);
+  }
+}
+
 table('Rejected (classified XlsxError)', rejections);
 table('Unclassified errors, timeouts, crashes', unclassified);
 table('SheetJS failures', sheetjsFailures);
