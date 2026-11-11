@@ -36,6 +36,9 @@ All notable changes to this project will be documented in this file.
 - **Breaking:** the original error of a classified failure is the standard `Error.cause`, no longer
   `detail.cause`; the writer's abort reason is the `cause` too, no longer `detail.reason`. `detail` only carries
   structured facts (limits, part names, paths).
+- **Breaking:** `limits.maxSharedStringChars` counts 16 UTF-16 units per shared-string item on top of its text, so
+  the default 256 Mi admits about 16.7M items. A table with more items than that, or with many items near it and
+  long text, needs a larger `maxSharedStringChars`.
 - **Breaking:** `isXlsxError()` checks the brand instead of `name === 'XlsxError'`, so a plain object that only has
   that name no longer passes.
 - **Breaking:** `toFile(path)` writes to a hidden temporary file in the same directory
@@ -62,6 +65,9 @@ All notable changes to this project will be documented in this file.
 - `maxTextLength` holds for a whole cell and shared-string item, and `maxRowChars` for a row, so text split into
   many runs or spread over many cells no longer builds unbounded strings (about 1.4 GB from 1 MB of upload). A
   string past the engine's maximum length now surfaces as `LIMIT_EXCEEDED` rather than a `RangeError`.
+- A shared-string table of empty `<si/>` items is held to `maxSharedStringChars`: every item counts 16 units for
+  its slot. 100M of them (a 713 KB upload) read "successfully" at 2 to 3.6 GB RSS; the default now stops after
+  about 16.7M items, in about a second.
 - The XML tokenizer no longer rescans a tag from its start on every chunk while it waits for the `>`: a 1 MB file of
   1 MiB tags cost about 69 s of CPU per read, against about 3 s for a benign file of the same inflated size.
 - Rows are yielded in batches bounded by the cells they hold (about 1M slots) rather than one batch per decoded

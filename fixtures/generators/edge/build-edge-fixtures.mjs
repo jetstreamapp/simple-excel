@@ -226,6 +226,13 @@ write(
     'xl/styles.xml': styles.replace('</styleSheet>', `${' '.repeat(33 * 1024 * 1024)}</styleSheet>`),
   }),
 );
+// 20M empty <si/> items (100 MB of XML, about 140 KB on disk): no text at all, but each item is a slot in the table.
+// Past the default maxSharedStringChars once every item counts 16 units on top of its text.
+write(
+  HOSTILE,
+  'sst-empty-item-flood.xlsx',
+  parts({ 'xl/sharedStrings.xml': sst().replace('</sst>', `${'<si/>'.repeat(20_000_000)}</sst>`) }),
+);
 // One cell whose value is two 600,000-character runs split by a stray element: each run is under the 1 Mi default
 // maxTextLength, the cell is not.
 write(

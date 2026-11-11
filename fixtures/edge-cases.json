@@ -472,6 +472,14 @@
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {
+    "id": "EC-SST-EMPTY-ITEM-FLOOD",
+    "family": "Security",
+    "symptom": "A shared-string table of millions of empty `<si/>` items: 100M of them are a 713 KB upload that read \"successfully\" at 2 to 3.6 GB RSS in simple-excel 0.3.0 development builds, because maxSharedStringChars counted only text and an empty item has none.",
+    "seenIn": "Hostile uploads only. Excel writes one item per distinct string a sheet uses; a real table of 16M items is already a several-hundred-MB file.",
+    "expected": "Every item counts 16 UTF-16 units toward maxSharedStringChars on top of its text (an empty item holds about 12 bytes, a short one about 28 beyond its characters), so the default 256 Mi admits about 16.7M items and the flood stops with LIMIT_EXCEEDED.",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
     "id": "EC-CELL-TEXT-RUN-SPLIT",
     "family": "Security",
     "symptom": "One cell built from many text runs (`<v>` text split by `<b/>` into 1 MiB runs, rich-text runs, CDATA pieces) or one row of many large cells. maxTextLength capped each run, not the cell, so about 1 MB of upload built a 400 Mi-character cell and past V8's string limit threw a bare RangeError.",

@@ -1199,6 +1199,24 @@
       "expected": null,
       "generated": false,
       "notes": "Row 1, then row 1,048,576. Read with blankRows: true every row between is yielded as []. No expectedError: it must read to the end in bounded memory."
+    },
+    {
+      "id": "hostile-sst-empty-item-flood",
+      "path": "hostile/sst-empty-item-flood.xlsx",
+      "bytes": 148156,
+      "sha256": "40e8c9b4f7d99cf6bfdb66863533f6c76413fbff765a6e21469b140f30fc933e",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-SST-EMPTY-ITEM-FLOOD"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "sharedStrings.xml holds 20M empty <si/> items (100 MB of XML, 145 KB on disk): no text, but each item is a table slot, and 16 units each puts the table past the default 256 Mi maxSharedStringChars."
     }
   ]
 }

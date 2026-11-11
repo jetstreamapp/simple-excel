@@ -3,7 +3,7 @@ import { allFixtures, fixtureById, readFixture, type Fixture } from '../../../te
 import { sourceFrom } from '../../zip/source';
 import { ZipReader } from '../../zip/zip-reader';
 import { parseRels, relTypeIs } from '../package-parts';
-import { parseSharedStrings, type ParseSharedStringsOptions } from '../shared-strings-reader';
+import { parseSharedStrings, SHARED_STRING_ITEM_CHARS, type ParseSharedStringsOptions } from '../shared-strings-reader';
 
 const SPREADSHEET_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const OPTIONS: ParseSharedStringsOptions = { maxChars: 1 << 20, maxDepth: 256, maxTextLength: 1 << 20 };
@@ -92,10 +92,26 @@ describe('parseSharedStrings', () => {
     await expect(parse(prefixed)).resolves.toEqual(['Zoë']);
   });
 
-  it('throws LIMIT_EXCEEDED past maxChars', async () => {
+  it('throws LIMIT_EXCEEDED past maxChars, counting each item on top of its text', async () => {
     const xml = sst('<si><t>abcdefghij</t></si><si><t>klmnopqrst</t></si>');
-    await expect(parse(xml, { ...OPTIONS, maxChars: 20 })).resolves.toHaveLength(2);
-    await expect(parse(xml, { ...OPTIONS, maxChars: 15 })).rejects.toMatchObject({ name: 'XlsxError', code: 'LIMIT_EXCEEDED' });
+    const exact = 20 + 2 * SHARED_STRING_ITEM_CHARS;
+    await expect(parse(xml, { ...OPTIONS, maxChars: exact })).resolves.toHaveLength(2);
+    await expect(parse(xml, { ...OPTIONS, maxChars: exact - 1 })).rejects.toMatchObject({
+      name: 'XlsxError',
+      code: 'LIMIT_EXCEEDED',
+      detail: { maxChars: exact - 1 },
+    });
+  });
+
+  it('EC-SST-EMPTY-ITEM-FLOOD: empty items count toward maxChars, so a flood of <si/> stops at the budget', async () => {
+    const maxChars = 1000 * SHARED_STRING_ITEM_CHARS;
+    await expect(parse(sst('<si/>'.repeat(1000)), { ...OPTIONS, maxChars })).resolves.toHaveLength(1000);
+    await expect(parse(sst('<si/>'.repeat(1001)), { ...OPTIONS, maxChars })).rejects.toMatchObject({
+      name: 'XlsxError',
+      code: 'LIMIT_EXCEEDED',
+      detail: { maxChars, items: 1000 },
+    });
+    await expect(parse(sst('<si><t/></si>'.repeat(1001)), { ...OPTIONS, maxChars })).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED' });
   });
 
   it('EC-CELL-TEXT-RUN-SPLIT: holds maxTextLength against an item built from many runs', async () => {

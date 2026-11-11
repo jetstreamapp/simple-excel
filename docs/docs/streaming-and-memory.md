@@ -48,7 +48,8 @@ strings the size of the heap.
 
 The one structure proportional to the file is the **shared-string table**, which cells index into by number; it
 has to be resident while a sheet is being read. It is parsed lazily — only when a sheet actually contains a
-`t="s"` cell — and capped by `limits.maxSharedStringChars` (256 Mi UTF-16 units by default). A file written with
+`t="s"` cell — and capped by `limits.maxSharedStringChars` (256 Mi UTF-16 units by default, where every item counts
+16 units on top of its text for the slot it takes). A file written with
 inline strings has no table at all and reads with a genuinely constant footprint.
 
 What you do with the rows is your own memory budget. `for await (const row of sheet.rows())` is flat;

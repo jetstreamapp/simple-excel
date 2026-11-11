@@ -35,11 +35,20 @@ const TIGHT_LIMITS: OpenOptions['limits'] = {
 const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = [
   'EC-PACKAGE-ELEMENT-FLOOD',
   'EC-PART-SIZE-PADDING',
+  'EC-SST-EMPTY-ITEM-FLOOD',
   'EC-CELL-TEXT-RUN-SPLIT',
   'EC-XML-LONG-TAG-RESCAN',
   'EC-WIDE-SPARSE-ROWS',
   'EC-BLANK-ROWS-GAP-FILL',
 ];
+
+/**
+ * Fixtures whose part inflates past the tight `maxInflatedBytes` before the limit they probe is reached: that cap
+ * rejects them first under the tight limits, and the default-limit block below checks the limit itself.
+ */
+const TIGHT_LIMIT_CODES_BY_CATALOG_ID: Readonly<Record<string, XlsxErrorCode[]>> = {
+  'EC-SST-EMPTY-ITEM-FLOOD': ['ZIP_BOMB'],
+};
 
 /** Read options that make a read-flat fixture hostile, by catalog id. */
 const ROW_OPTIONS_BY_CATALOG_ID: Readonly<Record<string, ArrayRowsOptions>> = {
@@ -101,8 +110,7 @@ async function rejection(operation: () => Promise<unknown>): Promise<unknown> {
 }
 
 /** `caught` must be the classified error the manifest names. The caller has checked that something was thrown. */
-function expectClassified(fixture: Fixture, caught: unknown): void {
-  const acceptable = EXPECTED_CODES[fixture.expectedError ?? ''];
+function expectClassified(fixture: Fixture, caught: unknown, acceptable = EXPECTED_CODES[fixture.expectedError ?? '']): void {
   expect(acceptable, `manifest error ${fixture.expectedError} has no mapping`).toBeDefined();
   expect(isXlsxError(caught), `expected XlsxError, got ${String(caught)}`).toBe(true);
   if (isXlsxError(caught)) {
@@ -123,7 +131,8 @@ describe.skipIf(!READER_READY)('hostile: every hostile fixture is rejected with 
     it(`${fixture.id} -> ${fixture.expectedError}`, async () => {
       const caught = await rejection(() => openAndStreamEverything(readFixture(fixture), { limits: TIGHT_LIMITS }, rowOptionsFor(fixture)));
       expect(caught, 'expected a rejection').toBeDefined();
-      expectClassified(fixture, caught);
+      const tightCodes = fixture.tags.map(tag => TIGHT_LIMIT_CODES_BY_CATALOG_ID[tag]).find(codes => codes !== undefined);
+      expectClassified(fixture, caught, tightCodes);
     });
   }
 });

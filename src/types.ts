@@ -292,7 +292,10 @@ export interface ReadLimits {
    * Default 32 MiB.
    */
   readonly maxPartBytes?: number;
-  /** Default 256 Mi UTF-16 units. */
+  /**
+   * The shared-string table's size: every item's text in UTF-16 units plus 16 per item for the slot it takes, so a
+   * table of millions of empty items is held to it too. Default 256 Mi, about 16.7M items at most.
+   */
   readonly maxSharedStringChars?: number;
   /** Default 10,000. */
   readonly maxEntries?: number;
