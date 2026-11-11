@@ -154,6 +154,50 @@ write(EDGE, 'no-shared-strings-part.xlsx', {
   }),
 });
 write(EDGE, 'sst-index-out-of-range.xlsx', parts({ 'xl/sharedStrings.xml': sst(['Name', 'Amount']) }));
+// EC-EMPTY-INLINE-STRING: openpyxl writes a styled cell that holds no value as t="inlineStr" with no <is> at all. B2 and
+// row 3 are that shape and read blank. B4 (<is><t/></is>) and C4 (<is/>) carry an <is> element, so they are ''.
+write(
+  EDGE,
+  'empty-inline-string.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:C4"/>',
+      rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Name</t></is></c><c r="B1" t="inlineStr"><is><t>Note</t></is></c><c r="C1" t="inlineStr"><is><t>Amount</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>x</t></is></c><c r="B2" s="0" t="inlineStr"/><c r="C2"><v>12.5</v></c></row><row r="3"><c r="A3" s="0" t="inlineStr"/><c r="B3" s="0" t="inlineStr"/><c r="C3" s="0" t="inlineStr"/></row><row r="4"><c r="A4" t="inlineStr"><is><t>y</t></is></c><c r="B4" t="inlineStr"><is><t/></is></c><c r="C4" t="inlineStr"><is/></c></row>',
+    }),
+  }),
+);
+// EC-NUMFMT-BUILTIN-ACCOUNTING: numFmtId 41-44 are built-in accounting formats that Excel writes without a <numFmt>
+// entry. They are numbers, not dates; xf 5 (numFmtId 14) is the date control.
+write(
+  EDGE,
+  'builtin-accounting-formats.xlsx',
+  parts({
+    'xl/styles.xml': styles.replace(
+      /<cellXfs count="2">(.*?)<\/cellXfs>/,
+      (_match, xfs) =>
+        `<cellXfs count="6">${xfs.replace(/<xf numFmtId="14"[^>]*\/>/, '')}${[41, 42, 43, 44, 14]
+          .map(id => `<xf numFmtId="${id}" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`)
+          .join('')}</cellXfs>`,
+    ),
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:F2"/>',
+      rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>Fmt41</t></is></c><c r="B1" t="inlineStr"><is><t>Fmt42</t></is></c><c r="C1" t="inlineStr"><is><t>Fmt43</t></is></c><c r="D1" t="inlineStr"><is><t>Fmt44</t></is></c><c r="E1" t="inlineStr"><is><t>Date</t></is></c><c r="F1" t="inlineStr"><is><t>Zero</t></is></c></row><row r="2"><c r="A2" s="1"><v>1234.5</v></c><c r="B2" s="2"><v>-1234.5</v></c><c r="C2" s="3"><v>45351</v></c><c r="D2" s="4"><v>0.25</v></c><c r="E2" s="5"><v>45351</v></c><c r="F2" s="4"><v>0</v></c></row>',
+    }),
+  }),
+);
+// EC-XML-CHAR-REF-ASTRAL: a numeric character reference past U+FFFF (an emoji) must become a surrogate pair, in shared
+// strings and inline strings, decimal and hex alike.
+write(
+  EDGE,
+  'astral-char-refs.xlsx',
+  parts({
+    'xl/sharedStrings.xml': sst(['Mood', 'Inline', 'Happy &#128515;:', 'caf&#233; &#x1F600;']),
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:B3"/>',
+      rows: '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2" t="inlineStr"><is><t>Very happy &#128515;</t></is></c></row><row r="3"><c r="A3" t="s"><v>3</v></c><c r="B3" t="inlineStr"><is><r><t>x&#x1F4C8;</t></r><r><t>&#65;</t></r></is></c></row>',
+    }),
+  }),
+);
 write(EDGE, 'date1904.xlsx', parts({ 'xl/workbook.xml': workbook().replace('<workbookPr/>', '<workbookPr date1904="1"/>') }));
 write(EDGE, 'hidden-and-veryhidden-sheets.xlsx', {
   ...parts(),

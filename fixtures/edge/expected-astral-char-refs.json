@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Mood", "Inline"],
+        ["Happy 😃:", "Very happy 😃"],
+        ["café 😀", "x📈A"]
+      ]
+    }
+  ]
+}

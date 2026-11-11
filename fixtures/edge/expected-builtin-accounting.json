@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [
+        ["Fmt41", "Fmt42", "Fmt43", "Fmt44", "Date", "Zero"],
+        [1234.5, -1234.5, 45351, 0.25, { "$date": "2024-02-29" }, 0]
+      ]
+    }
+  ]
+}

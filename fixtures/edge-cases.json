@@ -40,6 +40,14 @@
     "status": "office-kit reader bug (upstream issue; related to open issue #131 on numeric char refs)"
   },
   {
+    "id": "EC-XML-CHAR-REF-ASTRAL",
+    "family": "Strings",
+    "symptom": "A numeric character reference past U+FFFF (&#128515; or &#x1F600;, an emoji) in a shared or inline string.",
+    "seenIn": "openpyxl writes emoji this way (Sheetpedia corpus). SheetJS 0.20.3 keeps only the low 16 bits of the code point, so U+1F603 becomes the private-use U+F603, whatever the read options.",
+    "expected": "The full code point, as a surrogate pair in the JS string: 'Happy \\ud83d\\ude03:'.",
+    "status": "verified 2026-11-11 (corpus audit)"
+  },
+  {
     "id": "EC-CRLF-NORMALIZED",
     "family": "Strings",
     "symptom": "A raw CR inside <t> is collapsed to LF by XML line-end normalization; Excel writes CR as _x000D_.",
@@ -158,6 +166,14 @@
     "seenIn": "office-kit loadWorkbook and loadWorkbookStream both return serials; the consumer must resolve cellXfs -> numFmtId -> isDateFormat.",
     "expected": "Expose typed Dates or a one-call resolver; built-in ids 14-22/45-47 plus custom codes containing y/m/d/h/s outside quotes/brackets.",
     "status": "verified"
+  },
+  {
+    "id": "EC-NUMFMT-BUILTIN-ACCOUNTING",
+    "family": "Numbers",
+    "symptom": "Cells styled with the built-in accounting formats, numFmtId 41-44, which Excel and openpyxl reference without a <numFmt> entry (their codes are locale-dependent and not listed in the spec's table).",
+    "seenIn": "31 of a 3,000-file Sheetpedia sample (about 1%), mostly finance workbooks. SheetJS 0.20.3 drops the sheet when called with cellDates and without cellText (Jetstream's options): fmt_is_date throws on the missing format code, and XLSX.read returns the sheet name with no worksheet and no error. With default options SheetJS reads the values.",
+    "expected": "Numbers, never dates: an unknown or locale-dependent built-in id is not a date format.",
+    "status": "verified 2026-11-11 (corpus audit)"
   },
   {
     "id": "EC-ERROR-CELL-TEXT-SUPPRESSED",
@@ -334,6 +350,14 @@
     "seenIn": "SheetJS/office-kit/openpyxl blank; calamine returns '' for <v/> and treats the styled empty cell differently (type-mismatch / date-as-text).",
     "expected": "Blank, never 0 or ''.",
     "status": "verified"
+  },
+  {
+    "id": "EC-EMPTY-INLINE-STRING",
+    "family": "Cells",
+    "symptom": "A t=\"inlineStr\" cell with no <is> child (<c s=\"4\" t=\"inlineStr\"/>), the shape openpyxl 3.1 writes for every styled empty cell. Rows of nothing else are common in real files.",
+    "seenIn": "Every file in the Sheetpedia corpus (openpyxl 3.1.5 re-saves), 61 of a 3,000-file sample with such cells inside the data. SheetJS 0.20.3 reads each one as '', so sheet_to_json with blankrows:false keeps whole rows of them as records of '' (454 phantom records in one file) and names a header column '' instead of __EMPTY.",
+    "expected": "Blank, like a cell with no value child (EC-EMPTY-V-ELEMENT); a row of them is a blank row. An <is> element that is present, even <is/> or <is><t/></is>, is an empty string ''.",
+    "status": "verified 2026-11-11 (corpus audit); Excel behaviour not yet run through the oracle"
   },
   {
     "id": "EC-INLINE-STRINGS-CDATA",

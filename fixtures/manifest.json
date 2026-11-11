@@ -1075,6 +1075,57 @@
       "expected": null,
       "generated": false,
       "notes": "One sheet converted from a CSV whose first two lines are blank and whose first column is empty (dimension B3:E6)."
+    },
+    {
+      "id": "edge-empty-inline-string",
+      "path": "edge/empty-inline-string.xlsx",
+      "bytes": 2491,
+      "sha256": "2d649c8f3b0c544de6c87130595b79dc45c7b30a16200c4951b7139ffc583da4",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-EMPTY-INLINE-STRING"],
+      "expected": "edge/expected-empty-inline-string.json",
+      "generated": false,
+      "notes": "B2 and all of row 3 are <c t=\"inlineStr\"/> with no <is> (openpyxl's styled empty cell): blank, and row 3 is a blank row. B4 <is><t/></is> and C4 <is/> carry an <is> element, so they are ''."
+    },
+    {
+      "id": "edge-builtin-accounting-formats",
+      "path": "edge/builtin-accounting-formats.xlsx",
+      "bytes": 2521,
+      "sha256": "394fc51dc38d1dec33175be0b004328b69c3f9ae141bf2e3b8f2d2600cd4f338",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-NUMFMT-BUILTIN-ACCOUNTING"],
+      "expected": "edge/expected-builtin-accounting.json",
+      "generated": false,
+      "notes": "Row 2 is styled with built-in numFmtId 41-44 (no <numFmt> entries) and must read as numbers; E2 (numFmtId 14) is the date control. SheetJS 0.20.3 with cellDates and without cellText returns this workbook with no worksheet."
+    },
+    {
+      "id": "edge-astral-char-refs",
+      "path": "edge/astral-char-refs.xlsx",
+      "bytes": 2502,
+      "sha256": "0de1ddda6a31bea4aa39b5e3191900ad064e139af7e30b337b4d1791d4fb0ff1",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-XML-CHAR-REF-ASTRAL"],
+      "expected": "edge/expected-astral-char-refs.json",
+      "generated": false,
+      "notes": "Decimal and hex character references past U+FFFF in shared strings, an inline string and a rich-text run; each must read as the full emoji. SheetJS 0.20.3 truncates them to U+F603, U+F600 and U+F4C8."
     }
   ]
 }

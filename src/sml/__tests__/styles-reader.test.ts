@@ -170,8 +170,11 @@ describe('every corpus styles part parses', () => {
     const styles = parseStyles(await zip.readText(stylesPart ?? ''));
     expect(styles.isDateByXf.length).toBeGreaterThan(0);
 
-    // Every hand-built edge fixture shares one styles.xml: the default xf plus a `mm-dd-yy` one for the date column.
-    if (fixture.tags.includes('kind:edge')) {
+    // Every hand-built edge fixture shares one styles.xml (the default xf plus a `mm-dd-yy` one for the date column),
+    // except EC-NUMFMT-BUILTIN-ACCOUNTING's: the built-in accounting formats 41-44, none of them a date, then mm-dd-yy.
+    if (fixture.tags.includes('EC-NUMFMT-BUILTIN-ACCOUNTING')) {
+      expect([...styles.isDateByXf]).toEqual([0, 0, 0, 0, 0, 1]);
+    } else if (fixture.tags.includes('kind:edge')) {
       expect([...styles.isDateByXf]).toEqual([0, 1]);
     }
 

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "sheets": [
+    {
+      "name": "Data",
+      "hidden": false,
+      "rows": [["Name", "Note", "Amount"], ["x", null, 12.5], [], ["y", "", ""]]
+    }
+  ]
+}
