@@ -316,7 +316,9 @@ For a read you need to cancel from elsewhere, pass a `signal` to `openWorkbook`.
 ends the iteration with `ABORTED`.
 
 Call `workbook.close()` when you are done; it releases the source's handles (for a file-backed source, the file
-descriptor). Reading any sheet of a closed workbook fails with `ABORTED`, whatever the source.
+descriptor). Reading any sheet of a closed workbook fails with `ABORTED`, whatever the source. `openWorkbook` owns a
+source from the moment it is called: when opening fails, it closes the source before rejecting. A source whose
+`read` fails is reported as `IO_ERROR`, with the source's error as the `cause`.
 
 ## Sniffing before you open
 

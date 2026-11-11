@@ -36,7 +36,12 @@ for await (const row of workbook.sheet(0).rows({ mode: 'object' })) {
 await workbook.close(); // closes the file handle
 ```
 
-`workbook.close()` closes the source. If you never open a workbook over it, call `source.close()` yourself.
+`openWorkbook` takes ownership of the source: if opening fails for any reason (an encrypted file, a CSV, a
+truncated zip, a cancelled signal) the source is closed before the promise rejects, and once it succeeds
+`workbook.close()` closes it. If you never hand it to `openWorkbook`, call `source.close()` yourself.
+
+A file that cannot be opened or read fails with `IO_ERROR`; the `fs` error is the `cause`, so `error.cause.code` is
+`ENOENT`, `EACCES` and so on. Reading from a source you already closed is `ABORTED`.
 
 ## `toFile(path)`
 
@@ -45,7 +50,15 @@ function toFile(path: string): ByteSink;
 ```
 
 Streams to a file through `fs.createWriteStream`, honouring back-pressure — a slow disk slows the row loop rather
-than filling memory. `workbook.close()` ends the stream and resolves once the file is flushed.
+than filling memory.
+
+The bytes go to a hidden temporary file in the same directory (`.accounts.xlsx.<random>.partial`).
+`workbook.close()` resolves only after every byte is flushed, the file descriptor is closed and the temporary file is
+renamed to `path`. The target therefore never holds a partial file: a reader polling for it sees nothing, then the
+complete workbook, and an existing file at `path` is replaced only once the new one is complete. If the write fails
+or is aborted, the temporary file is deleted and the target is left as it was. Writing needs permission to create
+files in the target's directory, and the new file gets the default mode for new files rather than the mode of the
+one it replaces.
 
 ```ts
 const workbook = createWorkbookWriter(toFile('accounts.xlsx'));
@@ -86,8 +99,28 @@ app.get('/export.xlsx', async (request, response) => {
 ```
 
 Streaming a response like this means the browser starts downloading immediately and the server never holds the
-file. A stream error is sticky: the sink remembers it and every later call rejects with the original reason, so
-you find out at the first `writeRow` rather than at the end.
+file. A stream error is sticky: the sink remembers it and every later call rejects with the same `IO_ERROR` (the
+stream's error is the `cause`), so you find out at the first `writeRow` rather than at the end.
+
+A client that disconnects mid-download destroys the response without an error event. The sink notices (it watches
+for `'close'` as well as `'error'`), so the pending `writeRow` rejects promptly with `IO_ERROR` instead of waiting
+for a `'drain'` that will never come. Since there is nobody left to answer, the usual handling is to log it quietly:
+
+```ts
+try {
+  await writeExport(workbook);
+} catch (error) {
+  await workbook.abort(error);
+  if (isXlsxError(error) && (error.code === 'IO_ERROR' || error.code === 'ABORTED')) {
+    logger.info('export stopped', { code: error.code, cause: error.cause });
+    return;
+  }
+  throw error;
+}
+```
+
+`workbook.abort()` resolves promptly even while a write is stuck on back-pressure: it destroys the stream and the
+pending `writeRow` rejects with `ABORTED`.
 
 ## `nodeDeflater(level?)`
 

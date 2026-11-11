@@ -441,9 +441,12 @@ const workbook = createWorkbookWriter(sink, {
 - `signal` is checked on every `writeRow`, `addSheet`, `registerStyle` and `close`. Once it has fired, the next
   call throws `ABORTED` and the sink is torn down.
 - `workbook.abort(reason?)` does the same thing imperatively. Call it in a `catch` so a half-written stream is not
-  left open.
+  left open. It reaches the sink at once, even while a write is stuck on back-pressure, and the pending `writeRow`
+  rejects with `ABORTED` (the reason is its `cause`).
 - Any failure while writing (a sink that rejects, a compressor that fails, a value the writer refuses mid-row)
   aborts the sink once, and every later call rejects with that same, original error (`EC-WRITER-FAILURE-STICKY`).
+  A failure that is not already an `XlsxError` (a stream or platform error, a throwing `onProgress`) is reported as
+  `IO_ERROR` with the original as its `cause` — see [Errors](./errors.md#io_error-failures-underneath-the-library).
   Mistakes that write nothing, such as a refused `registerStyle`, `addSheet` or `merge`, are thrown to the caller
   and leave the workbook usable.
 

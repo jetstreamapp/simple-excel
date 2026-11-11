@@ -33,8 +33,10 @@ try {
 
 ```ts
 class XlsxError extends Error {
+  constructor(code: XlsxErrorCode, message: string, detail?: Readonly<Record<string, unknown>>, options?: ErrorOptions);
   readonly code: XlsxErrorCode;
   readonly detail: Readonly<Record<string, unknown>> | undefined;
+  readonly cause?: unknown; // standard Error.cause
 }
 
 function isXlsxError(value: unknown): value is XlsxError;
@@ -43,8 +45,15 @@ function isXlsxError(value: unknown): value is XlsxError;
 `detail` carries whatever is useful for that code — the part name, the limit that was hit, the sniffed format,
 the sheet names that do exist. It is for logs and for your own messaging, not a stable API.
 
-`isXlsxError` is a duck-typed check (`instanceof`, or `name === 'XlsxError'`), so it still works across realms —
-an error that crossed a worker boundary or came out of a bundled copy of the library.
+`cause` is the standard [`Error.cause`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/cause):
+when the library classifies a failure it did not raise itself — a stream error, a file system error, a platform
+compressor that broke, an error thrown by your callback — the original is there, untouched (a Node `fs` error keeps
+its `code`, `ENOENT` and the like). Node prints the cause chain when it logs the error.
+
+`instanceof XlsxError` and `isXlsxError` both hold for an error from any copy of the library: the core and `/node`
+entries, the ESM and CommonJS builds loaded side by side, or two installed versions. Every `XlsxError` carries a
+`Symbol.for('@jetstreamapp/simple-excel/XlsxError')` brand, and the check looks for it rather than for one class. An
+object that merely has `name: 'XlsxError'` is not one.
 
 ## Messages are for end users
 
@@ -158,15 +167,33 @@ rejected — see [Writing](./writing.md#sheet-names) — so `INVALID_SHEET_NAME`
 
 ## Lookup and lifecycle
 
-| Code                      | Fires when                                                                                                                                         |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SHEET_NOT_FOUND`         | `workbook.sheet(x)` for a name or index that does not exist. The message lists the names that do                                                   |
-| `ABORTED`                 | The caller's `AbortSignal` fired, `abort()` was called on the workbook writer or a sink, or a sheet was read after `workbook.close()`              |
-| `UNSUPPORTED_ENVIRONMENT` | A required platform feature is missing: `collectToBlob()` with no `Blob`, reading with no `DecompressionStream('deflate-raw')` (Node before 20.12) |
+| Code                      | Fires when                                                                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SHEET_NOT_FOUND`         | `workbook.sheet(x)` for a name or index that does not exist. The message lists the names that do                                                                          |
+| `ABORTED`                 | You cancelled: your `AbortSignal` fired, or you called `abort()` on the workbook writer or a sink. Also a read from a workbook or `fromFile` source you already closed    |
+| `IO_ERROR`                | Something underneath failed: a sink, a Node stream or file, a `RandomAccessSource` read, the compressor, or one of your callbacks. The original is the `cause`. See below |
+| `UNSUPPORTED_ENVIRONMENT` | A required platform feature is missing: `collectToBlob()` with no `Blob`, reading with no `DecompressionStream('deflate-raw')` (Node before 20.12)                        |
 
-`ABORTED` is what a cancelled export or read throws; treat it as an expected outcome, not a bug. Note that a
-missing `CompressionStream` does _not_ raise `UNSUPPORTED_ENVIRONMENT` on write — the writer falls back to
-storing parts uncompressed. Only reading genuinely requires `DecompressionStream`.
+`ABORTED` only ever means you asked for it, so a cancelled export or read can be treated as an expected outcome,
+not a bug. Note that a missing `CompressionStream` does _not_ raise `UNSUPPORTED_ENVIRONMENT` on write — the writer
+falls back to storing parts uncompressed. Only reading genuinely requires `DecompressionStream`.
+
+## `IO_ERROR`: failures underneath the library
+
+`IO_ERROR` is what a failure the library did not cause turns into. The original error is always the `cause`, and an
+`XlsxError` passes through as it is (throw one from a callback or a custom sink and that is what the caller sees).
+
+| Where it came from                                                      | Example                                                                                       |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| A sink's `write` or `close` (any `ByteSink`, a `WritableStream`)        | Disk full, a storage quota, a `WritableStream` that errored                                   |
+| A Node stream or file (`toWritable`, `toFile`, `fromFile`)              | An HTTP client that disconnected mid-download, `ENOENT` for a missing directory, `EACCES`     |
+| A `RandomAccessSource` read (`openWorkbook` and every row read after)   | A `Blob` whose file changed on disk, a range request that failed, a file that went away       |
+| The compressor (`CompressionStream`, `nodeDeflater`, a custom deflater) | The platform stream failing, zlib failing                                                     |
+| A callback you passed: `onProgress`, `onCellTruncated`, `onWarning`     | Your callback threw; the message names the callback. The write or read stops like any failure |
+
+On a server streaming an export, `IO_ERROR` is usually the client going away; there is nobody left to tell, so log
+it at a lower level than a bug. A stream closed before the file was complete (a disconnected HTTP client destroys
+the response without an error) is reported promptly by the pending `writeRow`, never left hanging.
 
 ## The full list
 
@@ -192,5 +219,6 @@ type XlsxErrorCode =
   | 'ENTRY_TOO_LARGE'
   | 'WRITER_STATE'
   | 'ABORTED'
+  | 'IO_ERROR'
   | 'UNSUPPORTED_ENVIRONMENT';
 ```

@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `IO_ERROR`, a new `XlsxErrorCode` for failures underneath the library: a sink's `write` or `close`, a Node stream
+  or file (including an HTTP response whose client disconnected), a `RandomAccessSource` read, the compressor
+  (`CompressionStream`, `nodeDeflater`, a custom deflater) and a throwing `onProgress`, `onCellTruncated` or
+  `onWarning` callback. The original error is the standard `cause`.
+- `XlsxError` carries a `Symbol.for('@jetstreamapp/simple-excel/XlsxError')` brand and a `Symbol.hasInstance`, so
+  `instanceof XlsxError` and `isXlsxError()` hold for an error from any copy of the library: the core and `/node`
+  entries, and the ESM and CommonJS builds loaded side by side.
+- The `XlsxError` constructor takes an optional fourth `options` argument (`{ cause }`, the standard `ErrorOptions`);
+  `new XlsxError(code, message, detail)` is unchanged.
+- `sheet.rows()` accepts a `mode` that is only known at run time (`'array' | 'object'`, the new `AnyModeRowsOptions`
+  type) and yields `V[] | Record<string, V>`.
+
+### Changed
+
+- **Breaking:** `ABORTED` now means only that the caller cancelled (an `AbortSignal` or `abort()`), or read from a
+  workbook or source they had closed. A sink, stream, file or source that fails on its own is `IO_ERROR`; it used to
+  be reported as `ABORTED` (sinks) or escape as a bare platform `Error` (source reads, `CompressionStream` and zlib
+  failures, `fromFile` on a missing file).
+- **Breaking:** the original error of a classified failure is the standard `Error.cause`, no longer
+  `detail.cause`; the writer's abort reason is the `cause` too, no longer `detail.reason`. `detail` only carries
+  structured facts (limits, part names, paths).
+- **Breaking:** `isXlsxError()` checks the brand instead of `name === 'XlsxError'`, so a plain object that only has
+  that name no longer passes.
+- **Breaking:** `toFile(path)` writes to a hidden temporary file in the same directory
+  (`.<name>.<random>.partial`) and renames it over `path` when `close()` resolves, after the descriptor is closed.
+  The target never holds a partial file, an existing file there is replaced only by a complete one, and on abort or
+  failure the temporary file is deleted. The directory must allow creating files, and the new file gets the default
+  mode rather than the replaced file's.
+- **Breaking:** `openWorkbook` takes ownership of the source it is given: when opening fails for any reason (sniffed
+  format, truncated zip, cancelled signal) the source is closed before the promise rejects.
+- `openWorkbook(input, options)` with an `errors` that is not a literal (`const options: OpenOptions = ...`) is now
+  typed `Workbook<ReadValue>` (`CellValue | CellError`), matching what it yields at run time; it was typed
+  `Workbook<CellValue>`.
+- The `/node` bundles import the core bundle (`@jetstreamapp/simple-excel`) instead of carrying their own copy of it.
+
+### Fixed
+
+- `toWritable` no longer hangs when the stream is destroyed without an error (an HTTP client disconnecting
+  mid-download): a write waiting for `'drain'` or a close waiting for `'finish'` now settles on `'close'` and rejects
+  with `IO_ERROR`, a write to a destroyed or ended stream is refused at once, and `close()` resolves for a stream that
+  already finished.
+- `workbook.abort()` cancels a write stuck on back-pressure: the abort reaches the sink at once instead of queueing
+  behind the pending write, so `abort()` resolves and the pending `writeRow` rejects with `ABORTED`, for a stalled
+  `WritableStream` and a paused Node stream alike.
+- `openWorkbook` closes a `RandomAccessSource` (such as `fromFile`) when the sniff step or the zip directory read
+  rejects; an encrypted, `.xls`, CSV, empty or truncated upload used to leak the file handle.
+- `toFile` no longer leaves a partial file at the target after an abort or a failed write.
+- A failing `CompressionStream` or zlib stream, and the `/node` helpers' internal stream errors, are reported as an
+  `XlsxError` (`IO_ERROR`) instead of a bare `Error`.
+- Object-mode header keys built from date cells no longer shift with the server's time zone under `dates: 'utc'`.
+- An archive with exactly 65,535 entries (or a central-directory offset or size of exactly 0xFFFFFFFF) gets its zip64
+  end records: the writer compared against the 0xFFFF / 0xFFFFFFFF markers with `>` and wrote the marker with no
+  zip64 record behind it. The reader also accepts such archives from other writers, reading the 32-bit values when no
+  zip64 locator is present and they describe a directory inside the file, as Python and Info-ZIP do.
+- `collectToBytes()` stays failed after `LIMIT_EXCEEDED`, so a caller that catches the limit and keeps writing cannot
+  `close()` a file with a chunk missing.
+
 ## [0.2.1] - 2026-10-31
 
 ### Security
