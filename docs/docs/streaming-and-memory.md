@@ -54,7 +54,8 @@ has to be resident while a sheet is being read. It is parsed lazily — only whe
 inline strings has no table at all and reads with a genuinely constant footprint.
 
 What you do with the rows is your own memory budget. `for await (const row of sheet.rows())` is flat;
-`await sheet.toObjects()` is not, because it returns an array of every record.
+`await sheet.toObjects()` is not, because it returns an array of every record; it stops at `limits.maxObjectCells`
+(100M record cells, records × keys).
 
 ## Back-pressure
 
@@ -171,9 +172,10 @@ on the way out.
 - Use `head(n)` to inspect headers or template metadata before committing to a full read.
 - `break` out of the loop as soon as you know enough — the rest of the sheet is never inflated.
 - Lower `limits` for untrusted uploads; raise `maxInflatedBytes` deliberately for a large file you trust.
-- Object mode gives every record every named column (the `sheet_to_json` contract), so a sheet whose header row
-  or data reaches column XFD builds 16,384-key records: its cost is rows times named columns however few cells the
-  rows hold. Stream such a sheet in array mode, or pass `maxColumns` to refuse it.
+- Object mode gives every record every column up to the last header, so a stray value far right of the header
+  costs nothing (it is left out and reported as `DATA_BEYOND_HEADER`). A header row that itself reaches column XFD
+  still builds 16,384-key records: its cost is rows times header columns however few cells the rows hold. Stream
+  such a sheet in array mode, or pass `maxColumns` to refuse it.
 - Prefer a `Blob`/`File` or a `RandomAccessSource` over materializing an `ArrayBuffer`: the reader only pulls the
   ranges it needs.
 

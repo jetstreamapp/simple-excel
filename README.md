@@ -126,8 +126,12 @@ A1-keyed map without inflating the rest of the sheet, which is how you inspect a
 The defaults are set for untrusted uploads: a file past one of them fails fast with `LIMIT_EXCEEDED` (or `ZIP_BOMB`)
 instead of exhausting the host. `limits` caps each part's inflated size (`maxInflatedBytes`, 1 GiB), the parts read
 whole (`maxPartBytes`, 32 MiB), the number of parts and package entries (`maxEntries`, 10,000), the shared-string table
-(`maxSharedStringChars`, 256 Mi), one cell's text (`maxTextLength`, 1 Mi characters) and one row's (`maxRowChars`,
-64 Mi), and XML nesting (`maxXmlDepth`, 256); see [Reading](docs/docs/reading.md#limits).
+(`maxSharedStringChars`, 256 Mi, each item counting 16 on top of its text), one cell's text (`maxTextLength`, 1 Mi
+characters) and one row's (`maxRowChars`, 64 Mi), XML nesting (`maxXmlDepth`, 256) and the record cells
+`toObjects()` holds (`maxObjectCells`, 100M); see [Reading](docs/docs/reading.md#limits).
+
+Object mode keys each record by the header row, as SheetJS `sheet_to_json` does, but stops at the last header: a
+value to the right of it is left out and reported once per sheet through `onWarning` as `DATA_BEYOND_HEADER`.
 
 ## Node
 

@@ -5,7 +5,7 @@
  */
 import { classifyError, isXlsxError, XlsxError } from '../errors';
 import { isStringLengthError } from '../internal/string-length';
-import { MAX_COLUMNS, parseRange } from '../sml/cell-ref';
+import { columnLetters, formatRef, MAX_COLUMNS, parseRange } from '../sml/cell-ref';
 import {
   DEFAULT_MAX_PACKAGE_ENTRIES,
   parseContentTypes,
@@ -47,6 +47,13 @@ const DEFAULT_MAX_XML_DEPTH = 256;
 /** Excel holds 32,767 characters in a cell and Salesforce's longest text field 131,072; 1 Mi leaves room for both. */
 const DEFAULT_MAX_TEXT_LENGTH = 1024 * 1024;
 const DEFAULT_MAX_ROW_CHARS = 64 * 1024 * 1024;
+/**
+ * Records x keys `toObjects()` may hold at once. A materialised cell costs 41 to 57 bytes in Node 24 (records with
+ * more than a dozen keys are dictionary objects; Chrome's pointer compression roughly halves that), so 100M is 4 to
+ * 6 GB at most: it never refuses a legitimate wide load (200k rows x 300 columns is 60M) and stops the pathological
+ * one, a 16,384-column header over 65k rows (1.07G cells), a tenth of the way in.
+ */
+const DEFAULT_MAX_OBJECT_CELLS = 100_000_000;
 
 /** The UI matches on the literal `password-protected`; changing it breaks Jetstream's error copy (ADR-007). */
 const ENCRYPTED_MESSAGE =
@@ -101,6 +108,7 @@ interface ResolvedLimits {
   readonly maxXmlDepth: number;
   readonly maxTextLength: number;
   readonly maxRowChars: number;
+  readonly maxObjectCells: number;
 }
 
 function resolveLimits(limits: ReadLimits | undefined): ResolvedLimits {
@@ -112,6 +120,7 @@ function resolveLimits(limits: ReadLimits | undefined): ResolvedLimits {
     maxXmlDepth: limits?.maxXmlDepth ?? DEFAULT_MAX_XML_DEPTH,
     maxTextLength: limits?.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH,
     maxRowChars: limits?.maxRowChars ?? DEFAULT_MAX_ROW_CHARS,
+    maxObjectCells: limits?.maxObjectCells ?? DEFAULT_MAX_OBJECT_CELLS,
   };
 }
 
@@ -348,6 +357,21 @@ function firstValueIndex(cells: readonly ReadValue[], limit: number): number {
   return limit;
 }
 
+/**
+ * One past the last header cell that holds a value, or 0 when the row holds none. A value is anything the header-row
+ * search counts (EC-HEADER-ROW-FIRST-NONEMPTY), an empty string or an error included: a column whose header cell
+ * says `''` is named `''`, as in SheetJS.
+ */
+function headerEndOf(headerCells: readonly ReadValue[]): number {
+  for (let column = headerCells.length - 1; column >= 0; column--) {
+    const value = headerCells[column];
+    if (value !== undefined && value !== null) {
+      return column + 1;
+    }
+  }
+  return 0;
+}
+
 interface HeaderColumn {
   readonly name: string;
   /** 0-based column the header reads from. */
@@ -371,22 +395,62 @@ function setField(record: Record<string, ReadValue>, column: HeaderColumn, value
 interface ObjectReadState {
   headers: string[];
   truncated: boolean;
-  /** Set once the stream ends, so `toObjects` can give earlier records the columns named after them. */
+  /** Set as soon as the read starts, so `toObjects` can count the keys it holds and backfill once the stream ends. */
   builder: ObjectRowBuilder | undefined;
 }
 
-/** Where the sheet's `<dimension>` puts its columns: both 0 when it declares none. */
-interface DeclaredColumns {
-  /** 0-based first column. */
-  readonly first: number;
-  /** One past the 0-based last column. */
-  readonly end: number;
-}
-
-const NO_DECLARED_COLUMNS: DeclaredColumns = { first: 0, end: 0 };
-
 /** 1-based header row "the first row with a value", as opposed to a row the caller named. */
 const DETECT_HEADER_ROW = 0;
+/** No header row at all: the caller named the columns with `headers`. */
+const NO_HEADER_ROW = -1;
+
+/** The values a read left out because they sit right of the last header (EC-DATA-BEYOND-HEADER). */
+class DataBeyondHeader {
+  /** Which columns held one, by 0-based index; allocated on the first such value, 16 KiB at most. */
+  private readonly seen = new Uint8Array(MAX_COLUMNS);
+  private firstRef = '';
+  private firstColumn = MAX_COLUMNS;
+  private lastColumn = -1;
+  private columnCount = 0;
+  private cellCount = 0;
+
+  /** Record the values of `cells` from `headerEnd` on. `rowIndex` is 1-based. */
+  note(rowIndex: number, cells: readonly ReadValue[], headerEnd: number): void {
+    for (let column = headerEnd; column < cells.length; column++) {
+      const value = cells[column];
+      if (value === undefined || value === null) {
+        continue;
+      }
+      if (this.cellCount++ === 0) {
+        this.firstRef = formatRef(rowIndex - 1, column);
+      }
+      if (this.seen[column] === 0) {
+        this.seen[column] = 1;
+        this.columnCount++;
+        this.firstColumn = Math.min(this.firstColumn, column);
+        this.lastColumn = Math.max(this.lastColumn, column);
+      }
+    }
+  }
+
+  /** The one warning a sheet read gets, or undefined when nothing was left out. */
+  warning(headerEnd: number): ReadWarning | undefined {
+    if (this.cellCount === 0) {
+      return undefined;
+    }
+    const first = columnLetters(this.firstColumn);
+    const last = columnLetters(this.lastColumn);
+    const columns = first === last ? first : `${first}:${last}`;
+    const lastHeaderColumn = headerEnd > 0 ? columnLetters(headerEnd - 1) : '';
+    const header = headerEnd > 0 ? `its last header, in column ${lastHeaderColumn}` : 'its header row, which names no columns';
+    return {
+      code: 'DATA_BEYOND_HEADER',
+      message: `This sheet has ${this.cellCount} value(s) in ${this.columnCount} column(s) (${columns}) to the right of ${header}. Records stop at the last header, so those values were left out.`,
+      ref: this.firstRef,
+      detail: { columns, columnCount: this.columnCount, cellCount: this.cellCount, lastHeaderColumn },
+    };
+  }
+}
 
 /**
  * Turns rows into `{ header: value }` records: finds and names the header row's columns, skips everything before
@@ -394,53 +458,75 @@ const DETECT_HEADER_ROW = 0;
  * which is SheetJS's `blankrows: false` - so without an explicit `headerRow` the first row it sees is the header row
  * (EC-HEADER-ROW-FIRST-NONEMPTY).
  *
- * Columns run from the dimension's first column (EC-HEADER-DIMENSION-START-COLUMN) to the wider of the dimension and
- * the header row. Values outside that range are never dropped: the columns they sit in are named as the blanks they
- * are, to the right as a row widens and to the left when a value lies before the dimension's first column.
+ * Columns run from the dimension's first column (EC-HEADER-DIMENSION-START-COLUMN) to the last header cell that
+ * holds a value, or are exactly the caller's `headers`. That is where SheetJS and this part ways
+ * (EC-DATA-BEYOND-HEADER): SheetJS names every column out to the widest row, so one stray value at XFD gives every
+ * record 16,384 keys. A value right of the header is left out and counted for one `DATA_BEYOND_HEADER` warning. A
+ * value left of the first named column still gets a blank-header name, as in SheetJS.
  */
 class ObjectRowBuilder {
-  /** The caller's `headerRow`, or `DETECT_HEADER_ROW`. */
+  /** The caller's `headerRow`, `DETECT_HEADER_ROW`, or `NO_HEADER_ROW` when the caller named the columns. */
   private readonly headerRow: number;
   private readonly requestedStartRow: number;
   private firstDataRow: number;
-  private readonly declared: DeclaredColumns;
+  private readonly declaredFirstColumn: number;
   private readonly defval: CellValue;
   private readonly naming: NonNullable<ObjectRowsOptions['headerNaming']>;
   private readonly dropEmptyHeaders: boolean;
   private readonly utcDates: boolean;
   private readonly namer = new HeaderNamer();
   private readonly columns: HeaderColumn[] = [];
-  /** Columns from `leftmostNamed` up to `namedColumns` have names, including any `dropEmptyHeaders` kept out of `columns`. */
+  /** Columns `leftmostNamed` to `headerEnd` are named, the ones `dropEmptyHeaders` left out of `columns` too. */
   private leftmostNamed = 0;
-  private namedColumns = 0;
+  /** One past the last column a record has a key for; a value from here on is beyond the header. */
+  private headerEnd = 0;
   private headersReady = false;
   private recordsBuilt = 0;
+  private beyondHeader: DataBeyondHeader | undefined;
 
-  constructor(options: RowsOptions & ObjectRowsOptions, declared: DeclaredColumns, dates: WorksheetReadContext['dates']) {
+  constructor(options: RowsOptions & ObjectRowsOptions, declaredFirstColumn: number, dates: WorksheetReadContext['dates']) {
     this.requestedStartRow = Math.max(1, options.startRow ?? 1);
-    this.headerRow = options.headerRow === undefined ? DETECT_HEADER_ROW : Math.max(1, options.headerRow);
-    this.firstDataRow =
-      this.headerRow === DETECT_HEADER_ROW ? Number.POSITIVE_INFINITY : Math.max(options.startRow ?? 0, this.headerRow + 1);
-    this.declared = declared;
+    this.declaredFirstColumn = declaredFirstColumn;
     // `defval: null` is a caller asking for nulls, not for the default.
     this.defval = options.defval === undefined ? '' : options.defval;
     this.naming = options.headerNaming ?? 'sheetjs';
     this.dropEmptyHeaders = options.dropEmptyHeaders === true;
     this.utcDates = dates === 'utc';
+    if (options.headers !== undefined) {
+      this.headerRow = NO_HEADER_ROW;
+      // A named `headerRow` is then only a row to skip: the data starts after it.
+      this.firstDataRow = Math.max(this.requestedStartRow, options.headerRow === undefined ? 1 : Math.max(1, options.headerRow) + 1);
+      this.useHeaders(options.headers);
+      return;
+    }
+    this.headerRow = options.headerRow === undefined ? DETECT_HEADER_ROW : Math.max(1, options.headerRow);
+    this.firstDataRow =
+      this.headerRow === DETECT_HEADER_ROW ? Number.POSITIVE_INFINITY : Math.max(options.startRow ?? 0, this.headerRow + 1);
   }
 
   /** 1-based row the underlying reader must start at: the header row when the caller named one, else `startRow`. */
   get startRow(): number {
+    if (this.headerRow === NO_HEADER_ROW) {
+      return this.firstDataRow;
+    }
     return this.headerRow === DETECT_HEADER_ROW ? this.requestedStartRow : this.headerRow;
   }
 
-  /** Which row the reader should hand over with error cells as text: the header row, found or named. */
-  get errorTextRow(): number | 'first' {
+  /** Which row the reader should hand over with error cells as text: the header row, found or named, if any. */
+  get errorTextRow(): number | 'first' | undefined {
+    if (this.headerRow === NO_HEADER_ROW) {
+      return undefined;
+    }
     return this.headerRow === DETECT_HEADER_ROW ? 'first' : this.headerRow;
   }
 
   get headers(): string[] {
     return this.columns.map(column => column.name);
+  }
+
+  /** Keys each record built from here on has. */
+  get columnCount(): number {
+    return this.columns.length;
   }
 
   /** The record for one row, or null when the row is the header row or sits before the first data row. */
@@ -461,7 +547,10 @@ class ObjectRowBuilder {
     if (this.leftmostNamed > 0) {
       this.nameColumnsBefore(firstValueIndex(cells, this.leftmostNamed));
     }
-    this.nameColumns(cells.length, NO_HEADER_CELLS);
+    if (cells.length > this.headerEnd) {
+      this.beyondHeader ??= new DataBeyondHeader();
+      this.beyondHeader.note(rowIndex, cells, this.headerEnd);
+    }
     const record: Record<string, ReadValue> = {};
     for (const column of this.columns) {
       const value = cells[column.column];
@@ -474,6 +563,11 @@ class ObjectRowBuilder {
     }
     this.recordsBuilt++;
     return record;
+  }
+
+  /** The `DATA_BEYOND_HEADER` warning for everything this read left out, or undefined when it left nothing out. */
+  dataBeyondHeaderWarning(): ReadWarning | undefined {
+    return this.beyondHeader?.warning(this.headerEnd);
   }
 
   /**
@@ -499,30 +593,33 @@ class ObjectRowBuilder {
     }
   }
 
+  /** The caller's names, one per column from A: exactly those keys, whatever the sheet holds. */
+  private useHeaders(headers: readonly string[]): void {
+    this.headersReady = true;
+    for (const [column, header] of headers.entries()) {
+      const name = String(header);
+      this.columns.push({ name, column, definesOwnProperty: name === PROTOTYPE_KEY, firstRecord: 0 });
+    }
+    this.headerEnd = headers.length;
+  }
+
   /**
    * Name the header row's columns: from the dimension's first column, or from an earlier one when the header row
-   * itself has a value there (a dimension that is wrong about where the data starts), to the wider of the dimension
-   * and the header row.
+   * itself has a value there (a dimension that is wrong about where the data starts), to the last header cell that
+   * holds a value.
    */
   private nameHeaderRow(headerCells: readonly ReadValue[]): void {
     this.headersReady = true;
-    const first = firstValueIndex(headerCells, this.declared.first);
+    const end = headerEndOf(headerCells);
+    const first = Math.min(firstValueIndex(headerCells, this.declaredFirstColumn), end);
     this.leftmostNamed = first;
-    this.namedColumns = first;
-    this.nameColumns(Math.max(this.declared.end, headerCells.length), headerCells);
-  }
-
-  /** Name every column that is not named yet, up to `width`, reading each name from `headerCells`. */
-  private nameColumns(width: number, headerCells: readonly ReadValue[]): void {
-    for (let column = this.namedColumns; column < width; column++) {
+    for (let column = first; column < end; column++) {
       const named = this.nameColumn(column, headerCells[column]);
       if (named !== undefined) {
         this.columns.push(named);
       }
     }
-    if (width > this.namedColumns) {
-      this.namedColumns = width;
-    }
+    this.headerEnd = end;
   }
 
   /** A data row with a value before the named columns: name the blank columns from that value's up to them. */
@@ -564,6 +661,16 @@ class ObjectRowBuilder {
 interface SheetParts {
   readonly zip: ZipReader;
   readonly context: WorksheetReadContext;
+  /** `limits.maxObjectCells`: records x keys `toObjects()` may hold. */
+  readonly maxObjectCells: number;
+}
+
+function tooManyObjectCells(maxObjectCells: number, rows: number, columns: number): XlsxError {
+  return new XlsxError(
+    'LIMIT_EXCEEDED',
+    `This sheet has more than ${maxObjectCells} cells to hold as records (${rows} rows of ${columns} columns so far), more than toObjects() holds at once. Read it with rows({ mode: 'object' }) to stream the records instead, or raise limits.maxObjectCells.`,
+    { maxObjectCells, rows, columns },
+  );
 }
 
 class SheetReader implements Sheet<ReadValue> {
@@ -571,8 +678,8 @@ class SheetReader implements Sheet<ReadValue> {
 
   private readonly parts: SheetParts;
   private readonly partName: string;
-  /** `<dimension>` columns, resolved once per sheet and only when object mode asks for them. */
-  private declared: DeclaredColumns | undefined;
+  /** The `<dimension>`'s first column (0 when it declares none), resolved once and only when object mode asks. */
+  private declaredFirst: number | undefined;
 
   constructor(info: SheetInfo, partName: string, parts: SheetParts) {
     this.info = info;
@@ -590,13 +697,28 @@ class SheetReader implements Sheet<ReadValue> {
     return this.arrayRows(options);
   }
 
+  /**
+   * Every record at once, under `limits.maxObjectCells` (records x keys): past it this throws `LIMIT_EXCEEDED`
+   * pointing at the streaming `rows({ mode: 'object' })`, which holds one record at a time.
+   */
   async toObjects(options: RowsOptions & ObjectRowsOptions = {}): Promise<ObjectsResult<ReadValue>> {
+    const maxObjectCells = this.parts.maxObjectCells;
     const state: ObjectReadState = { headers: [], truncated: false, builder: undefined };
     const rows: Record<string, ReadValue>[] = [];
+    let cells = 0;
     for await (const row of this.objectRows(options, state)) {
+      const columns = state.builder?.columnCount ?? 0;
+      cells += columns;
+      if (cells > maxObjectCells) {
+        throw tooManyObjectCells(maxObjectCells, rows.length + 1, columns);
+      }
       rows.push(row);
     }
     // Everything is in hand here, unlike a stream: a column a later row named reaches the records before it too.
+    const columns = state.headers.length;
+    if (rows.length * columns > maxObjectCells) {
+      throw tooManyObjectCells(maxObjectCells, rows.length, columns);
+    }
     state.builder?.backfill(rows);
     return { rows, headers: state.headers, truncated: state.truncated };
   }
@@ -612,7 +734,10 @@ class SheetReader implements Sheet<ReadValue> {
   }
 
   private async *objectRows(options: RowsOptions & ObjectRowsOptions, state: ObjectReadState): AsyncGenerator<Record<string, ReadValue>> {
-    const builder = new ObjectRowBuilder(options, await this.declaredColumns(), this.parts.context.dates);
+    // Explicit headers name columns from A, so the dimension has nothing to add.
+    const declaredFirst = options.headers === undefined ? await this.declaredFirstColumn() : 0;
+    const builder = new ObjectRowBuilder(options, declaredFirst, this.parts.context.dates);
+    state.builder = builder;
     const maxRows = options.maxRows ?? Number.POSITIVE_INFINITY;
     const rowOptions: WorksheetRowsOptions = {
       startRow: builder.startRow,
@@ -621,6 +746,7 @@ class SheetReader implements Sheet<ReadValue> {
       errorTextRow: builder.errorTextRow,
     };
     let emitted = 0;
+    let failed = false;
     try {
       for await (const row of readWorksheetRows(this.partStream(), this.parts.context, rowOptions)) {
         const record = builder.accept(row.index, row.cells as ReadValue[]);
@@ -635,9 +761,16 @@ class SheetReader implements Sheet<ReadValue> {
         emitted++;
         yield record;
       }
+    } catch (error) {
+      failed = true;
+      throw error;
     } finally {
       state.headers = builder.headers;
-      state.builder = builder;
+      // Once per read, when it ends (or the caller stops it): only then are the columns it left out all known.
+      const warning = failed ? undefined : builder.dataBeyondHeaderWarning();
+      if (warning !== undefined) {
+        this.parts.context.onWarning?.(warning);
+      }
     }
   }
 
@@ -652,16 +785,16 @@ class SheetReader implements Sheet<ReadValue> {
   }
 
   /**
-   * Which columns the sheet says it has. SheetJS builds its header list from `<dimension>` when the sheet declares
-   * one, so a file whose dimension is wider than its data (every Excel, Numbers and Sheets re-save) grows trailing
-   * `__EMPTY` columns, and one whose column A is empty (Excel writes `B2:D9`) starts at B; reading the prologue is
-   * what keeps object mode identical to `sheet_to_json`.
+   * Where the sheet says its columns start. SheetJS builds its header list from `<dimension>` when the sheet declares
+   * one, so a file whose column A is empty (Excel writes `B2:D9`) starts at B; reading the prologue is what keeps
+   * object mode's keys identical to `sheet_to_json`'s on the left. On the right the keys stop at the header
+   * (EC-DATA-BEYOND-HEADER), so the dimension's last column plays no part.
    */
-  private async declaredColumns(): Promise<DeclaredColumns> {
-    if (this.declared !== undefined) {
-      return this.declared;
+  private async declaredFirstColumn(): Promise<number> {
+    if (this.declaredFirst !== undefined) {
+      return this.declaredFirst;
     }
-    let declared: DeclaredColumns = NO_DECLARED_COLUMNS;
+    let declaredFirst = 0;
     if (this.parts.zip.has(this.partName)) {
       const decoder = new TextDecoder('utf-8');
       let prologue = '';
@@ -671,7 +804,7 @@ class SheetReader implements Sheet<ReadValue> {
         if (ref !== undefined) {
           const range = parseRange(ref);
           if (range !== null) {
-            declared = { first: range.start.col, end: Math.min(range.end.col + 1, MAX_COLUMNS) };
+            declaredFirst = range.start.col;
           }
           break;
         }
@@ -681,8 +814,8 @@ class SheetReader implements Sheet<ReadValue> {
         }
       }
     }
-    this.declared = declared;
-    return declared;
+    this.declaredFirst = declaredFirst;
+    return declaredFirst;
   }
 }
 
@@ -831,7 +964,7 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
     const partName = target === '' ? `${workbookDirectory}worksheets/sheet${entry.sheetId}.xml` : target;
     const onWarning = options.onWarning;
     const sheetContext = onWarning === undefined ? context : { ...context, onWarning: sheetWarnings(onWarning, info.name) };
-    return new SheetReader(info, partName, { zip, context: sheetContext });
+    return new SheetReader(info, partName, { zip, context: sheetContext, maxObjectCells: limits.maxObjectCells });
   });
   return new WorkbookReader(zip, parsed.date1904, readers);
 }

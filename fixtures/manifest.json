@@ -1216,6 +1216,23 @@
       "generated": false,
       "expectedError": "LIMIT_EXCEEDED",
       "notes": "sharedStrings.xml holds 20M empty <si/> items (100 MB of XML, 145 KB on disk): no text, but each item is a table slot, and 16 units each puts the table past the default 256 Mi maxSharedStringChars."
+    },
+    {
+      "id": "hostile-stray-cell-beyond-header",
+      "path": "hostile/stray-cell-beyond-header.xlsx",
+      "bytes": 70986,
+      "sha256": "c4e178d5fcb7be12b76d5733be416a6dd357ee87020b460d4c80b8c64b63dc7d",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-DATA-BEYOND-HEADER"],
+      "expected": null,
+      "generated": false,
+      "notes": "Headers Name, Amount, When over 5,000 rows, plus one stray value at XFD2. No expectedError: object mode must read it with 3 keys per record and one DATA_BEYOND_HEADER warning (SheetJS semantics gave every record 16,384 keys, 82M cells)."
     }
   ]
 }

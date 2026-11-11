@@ -802,16 +802,35 @@ describe('sheet.toObjects: the sheet_to_json contract', () => {
     expect((await objects(rows, { maxRows: 3 })).truncated).toBe(false);
   });
 
-  it('gives a column the sheet declares but never fills a blank header', async () => {
-    const result = await objects(`${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}`, {}, 'A1:C2');
-    expect(result.headers).toEqual(['Id', 'Name', '__EMPTY']);
-    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë', __EMPTY: '' }]);
+  it('EC-DATA-BEYOND-HEADER: stops at the last header even when the dimension declares more columns', async () => {
+    // SheetJS names the declared but empty column C `__EMPTY`; nothing is lost by stopping at the header.
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(
+      `${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}`,
+      { onWarning: warning => warnings.push(warning) },
+      {},
+      'A1:C2',
+    );
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
+    expect(warnings).toEqual([]);
   });
 
-  it('keeps values from a row wider than both the header and the dimension', async () => {
-    const result = await objects(`${row(1, ['Id'])}${row(2, ['001', 'extra'])}`, {}, 'A1:A2');
-    expect(result.headers).toEqual(['Id', '__EMPTY']);
-    expect(result.rows).toEqual([{ Id: '001', __EMPTY: 'extra' }]);
+  it('EC-DATA-BEYOND-HEADER: leaves out a value right of the last header and warns once', async () => {
+    const warnings: ReadWarning[] = [];
+    const rows = `${row(1, ['Id'])}${row(2, ['001', 'extra'])}${row(3, ['002', null, 'more'])}${row(4, ['003', 'again'])}`;
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) }, {}, 'A1:A2');
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '001' }, { Id: '002' }, { Id: '003' }]);
+    expect(warnings).toEqual([
+      {
+        code: 'DATA_BEYOND_HEADER',
+        message: expect.stringContaining('3 value(s) in 2 column(s) (B:C) to the right of its last header, in column A'),
+        sheet: 'Data',
+        ref: 'B2',
+        detail: { columns: 'B:C', columnCount: 2, cellCount: 3, lastHeaderColumn: 'A' },
+      },
+    ]);
   });
 
   it('streams the same records through rows({ mode: "object" })', async () => {
@@ -887,17 +906,22 @@ describe('object mode: which row holds the headers', () => {
     const result = await objects(rows, { startRow: 2 });
     expect(result.headers).toEqual(['Id', 'Name']);
     expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
-    // A startRow that lands on a row with values uses that row, as before (the wider row 4 adds a blank header).
-    expect((await objects(rows, { startRow: 1 })).headers).toEqual(['Title', '__EMPTY']);
+    // A startRow that lands on a row with values uses that row, as before; row 4's Name column is past its header.
+    expect((await objects(rows, { startRow: 1 })).headers).toEqual(['Title']);
   });
 
   it('EC-HEADER-ROW-FIRST-NONEMPTY: an explicit headerRow is that exact row, blank or not', async () => {
-    const result = await objects(HEADERS_ON_ROW_2, { headerRow: 1 });
-    expect(result.headers).toEqual(['__EMPTY', '__EMPTY_1']);
-    expect(result.rows).toEqual([
-      { __EMPTY: 'Id', __EMPTY_1: 'Name' },
-      { __EMPTY: '001', __EMPTY_1: 'Zoë' },
-      { __EMPTY: '002', __EMPTY_1: 'Bob' },
+    // A blank header row names no columns, so every value is past the header (EC-DATA-BEYOND-HEADER).
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(HEADERS_ON_ROW_2, { onWarning: warning => warnings.push(warning) }, { headerRow: 1 });
+    expect(result.headers).toEqual([]);
+    expect(result.rows).toEqual([{}, {}, {}]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        ref: 'A2',
+        detail: { columns: 'A:B', columnCount: 2, cellCount: 6, lastHeaderColumn: '' },
+      }),
     ]);
     expect((await objects(HEADERS_ON_ROW_2, { headerRow: 2 })).headers).toEqual(['Id', 'Name']);
   });
@@ -922,11 +946,11 @@ describe('object mode: which columns get names', () => {
       `<row r="2">${'<c r="B2" t="inlineStr"><is><t>Id</t></is></c><c r="C2" t="inlineStr"><is><t>Name</t></is></c>'}</row>` +
       `<row r="3"><c r="B3" t="inlineStr"><is><t>001</t></is></c><c r="C3" t="inlineStr"><is><t>Zoë</t></is></c></row>`;
     const result = await objects(rows, {}, 'B2:D3');
-    // The dimension runs to D, so D is a trailing blank header, exactly as SheetJS names it.
-    expect(result.headers).toEqual(['Id', 'Name', '__EMPTY']);
-    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë', __EMPTY: '' }]);
+    // The dimension runs to D, which SheetJS names `__EMPTY`; the keys stop at the last header (EC-DATA-BEYOND-HEADER).
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
     expect((await objects(rows, { dropEmptyHeaders: true }, 'B2:D3')).headers).toEqual(['Id', 'Name']);
-    expect((await objects(rows, { headerNaming: 'index' }, 'B2:D3')).headers).toEqual(['1', '2', '3']);
+    expect((await objects(rows, { headerNaming: 'index' }, 'B2:D3')).headers).toEqual(['1', '2']);
     // Without a dimension the columns start at A.
     expect((await objects(rows)).headers).toEqual(['__EMPTY', 'Id', 'Name']);
   });
@@ -988,29 +1012,83 @@ describe('object mode: which columns get names', () => {
       }),
     );
     const result = await (await openWorkbook(bytes)).sheet(0).toObjects();
-    // The dimension runs to D, so D is a trailing blank header, exactly as when the fragment is absent.
-    expect(result.headers).toEqual(['Id', '__EMPTY', '__EMPTY_1']);
+    // The dimension starts at B, so column A gets no blank header, exactly as when the fragment is absent.
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '001' }]);
   });
 
-  it('EC-HEADER-DIMENSION-START-COLUMN: toObjects gives every record the columns a later, wider row named', async () => {
+  it('EC-DATA-BEYOND-HEADER: a later, wider row names no columns; its values are left out, streamed or not', async () => {
     const rows = `${row(1, ['Id'])}${row(2, ['001'])}${row(3, ['002', 'wide'])}${row(4, ['003', null, 'wider'])}`;
-    const result = await objects(rows);
-    expect(result.headers).toEqual(['Id', '__EMPTY', '__EMPTY_1']);
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) });
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '001' }, { Id: '002' }, { Id: '003' }]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        ref: 'B3',
+        detail: { columns: 'B:C', columnCount: 2, cellCount: 2, lastHeaderColumn: 'A' },
+      }),
+    ]);
+    expect(await streamedObjects(rows)).toEqual([{ Id: '001' }, { Id: '002' }, { Id: '003' }]);
+  });
+});
+
+describe('object mode: explicit headers and the toObjects cell budget', () => {
+  it('EC-DATA-BEYOND-HEADER: explicit headers are exactly the keys, from column A, with no header row read', async () => {
+    const warnings: ReadWarning[] = [];
+    const rows = `${row(1, ['001', 'Zoë', 'extra'])}${row(2, ['002'])}`;
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) }, { headers: ['Id', 'Name'] }, 'B1:C2');
+    expect(result.headers).toEqual(['Id', 'Name']);
     expect(result.rows).toEqual([
-      { Id: '001', __EMPTY: '', __EMPTY_1: '' },
-      { Id: '002', __EMPTY: 'wide', __EMPTY_1: '' },
-      { Id: '003', __EMPTY: '', __EMPTY_1: 'wider' },
+      { Id: '001', Name: 'Zoë' },
+      { Id: '002', Name: '' },
     ]);
-    for (const record of result.rows) {
-      expect(Object.keys(record)).toEqual(result.headers);
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'DATA_BEYOND_HEADER', ref: 'C1', detail: expect.objectContaining({ columns: 'C' }) }),
+    ]);
+    // With headerRow as well, that row and the ones above it are skipped; a repeated name keeps the later column.
+    const skipped = await objects(`${row(1, ['Title'])}${row(2, ['a', 'b'])}${row(3, ['c', 'd'])}`, {
+      headers: ['x', 'x', '__proto__'],
+      headerRow: 2,
+    });
+    expect(skipped.headers).toEqual(['x', 'x', '__proto__']);
+    expect(skipped.rows).toEqual([JSON.parse('{"x":"d","__proto__":""}')]);
+    expect(Object.getPrototypeOf(skipped.rows[0])).toBe(Object.prototype);
+    expect(await streamedObjects(rows, { headers: ['Id'], startRow: 2 })).toEqual([{ Id: '002' }]);
+  });
+
+  it('maxObjectCells: toObjects holds at most that many record keys and points at streaming past it', async () => {
+    const rows = `${row(1, ['A', 'B', 'C'])}${row(2, [1, 2, 3])}${row(3, [4, 5, 6])}${row(4, [7, 8, 9])}`;
+    const bytes = await sheetOnlyBytes(rows);
+    const workbook = await openWorkbook(bytes, { limits: { maxObjectCells: 9 } });
+    try {
+      expect((await workbook.sheet(0).toObjects()).rows).toHaveLength(3);
+    } finally {
+      await workbook.close();
     }
-    expect((await objects(rows, { defval: null })).rows[0]).toEqual({ Id: '001', __EMPTY: null, __EMPTY_1: null });
-    // The stream yields each record as it was when built.
-    expect(await streamedObjects(rows)).toEqual([
-      { Id: '001' },
-      { Id: '002', __EMPTY: 'wide' },
-      { Id: '003', __EMPTY: '', __EMPTY_1: 'wider' },
-    ]);
+    const tight = await openWorkbook(bytes, { limits: { maxObjectCells: 8 } });
+    try {
+      const error = await caught(() => tight.sheet(0).toObjects());
+      expect(error).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { maxObjectCells: 8, rows: 3, columns: 3 } });
+      expect(error.message).toContain("rows({ mode: 'object' })");
+      // The stream holds one record at a time, so the budget does not apply to it.
+      expect(await collect(tight.sheet(0).rows({ mode: 'object' }))).toHaveLength(3);
+    } finally {
+      await tight.close();
+    }
+  });
+
+  it('maxObjectCells: counts the columns a late row adds to every earlier record', async () => {
+    // Row 4's value left of the dimension names column A late; toObjects would give all three records two keys.
+    const rows = `${row(1, [null, 'Id'])}${row(2, [null, '1'])}${row(3, [null, '2'])}${row(4, ['x', '3'])}`;
+    const bytes = await sheetOnlyBytes(rows, 'B1:B4');
+    const workbook = await openWorkbook(bytes, { limits: { maxObjectCells: 5 } });
+    try {
+      await expect(workbook.sheet(0).toObjects()).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { rows: 3, columns: 2 } });
+    } finally {
+      await workbook.close();
+    }
   });
 });
 
@@ -1047,9 +1125,12 @@ describe('object mode: header text', () => {
   });
 
   it('EC-HEADER-PROTO-KEY: a __proto__ column filled with defval stays an own property', async () => {
-    const result = await objects(`${row(1, ['__proto__'])}${row(2, ['001'])}${row(3, ['002', 'x'])}`, { defval: null });
-    expect(result.headers).toEqual(['__proto__', '__EMPTY']);
+    // Row 3's value left of the dimension names column A late, so toObjects rebuilds record 0 with every column.
+    const rows = `${row(1, [null, '__proto__'])}${row(2, [null, '001'])}${row(3, ['x', '002'])}`;
+    const result = await objects(rows, { defval: null }, 'B1:B3');
+    expect(result.headers).toEqual(['__EMPTY', '__proto__']);
     expect(Object.getOwnPropertyDescriptor(result.rows[0], '__proto__')?.value).toBe('001');
+    expect(Object.getOwnPropertyDescriptor(result.rows[0], '__EMPTY')?.value).toBeNull();
     expect(Object.getPrototypeOf(result.rows[0])).toBe(Object.prototype);
     const blankProto = await objects(`${row(1, [null, '__proto__'])}${row(2, [null, null])}${row(3, ['v', null])}`);
     expect(blankProto.headers).toEqual(['__EMPTY', '__proto__']);
@@ -1070,10 +1151,8 @@ describe('object mode: header text', () => {
     expect(asObject.headers).toEqual(['#N/A', 'Name']);
     expect(asObject.rows).toEqual([{ '#N/A': { error: '#DIV/0!' }, Name: 'Zoë' }]);
     // An explicit headerRow gets the same treatment, and a row of nothing but errors can be the header row.
-    expect((await objectsWith(`<row r="1"/>${rows.replaceAll('1"', '5"')}`, { errors: 'null' }, { headerRow: 2 })).headers).toEqual([
-      '__EMPTY',
-      '__EMPTY_1',
-    ]);
+    const shifted = rows.replaceAll('2"', '3"').replaceAll('1"', '2"');
+    expect((await objectsWith(`<row r="1"/>${shifted}`, { errors: 'null' }, { headerRow: 2 })).headers).toEqual(['#N/A', 'Name']);
     const errorsOnly = `<row r="2"><c r="A2" t="e"><v>#REF!</v></c></row><row r="3"><c r="A3"><v>1</v></c></row>`;
     expect(await objectsWith(errorsOnly, { errors: 'null' })).toEqual({ rows: [{ '#REF!': 1 }], headers: ['#REF!'], truncated: false });
   });

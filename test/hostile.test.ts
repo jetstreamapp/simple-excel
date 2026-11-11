@@ -39,6 +39,7 @@ const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = [
   'EC-CELL-TEXT-RUN-SPLIT',
   'EC-XML-LONG-TAG-RESCAN',
   'EC-WIDE-SPARSE-ROWS',
+  'EC-DATA-BEYOND-HEADER',
   'EC-BLANK-ROWS-GAP-FILL',
 ];
 
@@ -195,5 +196,45 @@ describe.skipIf(!READER_READY)('hostile: EC-STYLES-XF-OVERFLOW', () => {
     } finally {
       await workbook.close();
     }
+  });
+});
+
+describe.skipIf(!READER_READY)('hostile: EC-DATA-BEYOND-HEADER', () => {
+  it('hostile-stray-cell-beyond-header reads in object mode with the header keys only, in bounded memory', async () => {
+    const [fixture] = fixturesWithTag('EC-DATA-BEYOND-HEADER');
+    expect(fixture).toBeDefined();
+    const bytes = readFixture(fixture!);
+    const collectGarbage = garbageCollector();
+    collectGarbage();
+    const heapBefore = process.memoryUsage().heapUsed;
+    const warnings: ReadWarning[] = [];
+    const workbook = await openWorkbook(bytes, { onWarning: warning => warnings.push(warning) });
+    try {
+      const { rows, headers } = await workbook.sheet(0).toObjects();
+      collectGarbage();
+      const held = process.memoryUsage().heapUsed - heapBefore;
+      expect(headers).toEqual(['Name', 'Amount', 'When']);
+      expect(rows).toHaveLength(5000);
+      expect(rows[0]).toEqual({ Name: 2, Amount: 1, When: 2 });
+      // 15,000 cells of records; with a key per column out to XFD they were 82M.
+      expect(held, `toObjects held ${(held / MB).toFixed(1)} MB`).toBeLessThan(READ_FLAT_LIVE_HEAP_BUDGET);
+      let streamed = 0;
+      for await (const record of workbook.sheet(0).rows({ mode: 'object' })) {
+        expect(Object.keys(record)).toHaveLength(3);
+        streamed++;
+      }
+      expect(streamed).toBe(5000);
+    } finally {
+      await workbook.close();
+    }
+    // Once per sheet, however many reads ran into it.
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        sheet: 'Data',
+        ref: 'XFD2',
+        detail: { columns: 'XFD', columnCount: 1, cellCount: 1, lastHeaderColumn: 'C' },
+      }),
+    ]);
   });
 });

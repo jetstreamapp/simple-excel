@@ -144,6 +144,7 @@ character references and nothing else, so there is no entity-expansion surface t
 | XML nested too deep                                                      | `limits.maxXmlDepth`                 |
 | One cell, shared string or text node too long                            | `limits.maxTextLength`               |
 | One row holds too much text                                              | `limits.maxRowChars`                 |
+| `toObjects()` would hold more record cells (records × keys)              | `limits.maxObjectCells`              |
 | A string longer than the JavaScript engine can build                     | — (only with limits raised that far) |
 | A cell past the column cap for this read                                 | `RowsOptions.maxColumns`             |
 | A cell reference past column XFD                                         | — (`EC-REF-BEYOND-XFD`)              |

@@ -308,6 +308,13 @@ export interface ReadLimits {
   readonly maxTextLength?: number;
   /** UTF-16 units of text in one row of a sheet, all its cells together. Default 64 Mi. */
   readonly maxRowChars?: number;
+  /**
+   * Cells `toObjects()` may hold at once, counted as records x keys; past it `toObjects()` throws `LIMIT_EXCEEDED`
+   * and the streaming `rows({ mode: 'object' })`, which holds one record at a time, is the way to read the sheet.
+   * Default 100,000,000: a legitimate wide load (200k rows x 300 columns is 60M) fits, and a pathological one (a
+   * 16,384-column header over 65k rows) stops early. A cell costs about 40 to 60 bytes in Node, less in browsers.
+   */
+  readonly maxObjectCells?: number;
 }
 
 /**
@@ -316,12 +323,19 @@ export interface ReadLimits {
  *   which is what Excel shows (EC-SST-INDEX-OUT-OF-RANGE).
  * - `'SHARED_STRINGS_MISSING'`: a `t="s"` cell in a workbook that has no shared-string part at all. It reads as `''`
  *   (EC-SST-ABSENT-INLINE-ONLY).
+ * - `'DATA_BEYOND_HEADER'`: in object mode (`rows({ mode: 'object' })`, `toObjects()`), values to the right of the last
+ *   header: the last header cell that holds a value (an empty string counts), or the last of the caller's `headers`.
+ *   Records stop at the header, so these values are left out (SheetJS would give every record a key for every column
+ *   out to them; EC-DATA-BEYOND-HEADER). Reported once per sheet when the read ends, with `ref` the first such cell and
+ *   `detail.columns` (`'E:XFD'`, or one column's letters), `detail.columnCount` (columns with such a value),
+ *   `detail.cellCount` (values left out) and `detail.lastHeaderColumn` (`'D'`, or `''` when the header row names
+ *   nothing).
  * - `'CELL_FORMATS_IGNORED'`: the styles part lists more than 65,490 cell formats (`cellXfs`) or number formats
  *   (`numFmts`), Excel's ceiling, and a number cell uses one past it. The formats past it are ignored, so such a cell
  *   reads as a plain number: a date there comes back as its serial (EC-STYLES-XF-OVERFLOW). `detail.maxCellFormats`
  *   is the ceiling.
  */
-export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING' | 'CELL_FORMATS_IGNORED';
+export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING' | 'DATA_BEYOND_HEADER' | 'CELL_FORMATS_IGNORED';
 
 /** Something a sheet says that Excel tolerates and the reader repaired, reported through `OpenOptions.onWarning`. */
 export interface ReadWarning {
@@ -346,9 +360,9 @@ export interface OpenOptions {
   readonly limits?: ReadLimits;
   readonly signal?: AbortSignal;
   /**
-   * Called when a sheet holds something the reader repaired instead of rejecting (see `ReadWarningCode`). Each code
-   * is reported at most once per sheet, for the first cell that hit it, however many cells do; the read goes on
-   * either way. Without a callback nothing is collected.
+   * Called when a sheet holds something the reader repaired or left out instead of rejecting (see
+   * `ReadWarningCode`). Each code is reported at most once per sheet, for the first cell that hit it, however many
+   * cells do; the read goes on either way. Without a callback nothing is collected.
    */
   readonly onWarning?: (warning: ReadWarning) => void;
 }
@@ -375,12 +389,16 @@ export interface RowsOptions {
 }
 
 /**
- * Object mode, the `sheet_to_json` contract. Columns are named from the header row, starting at the first column of
- * the sheet's `<dimension>` when it declares one (column A otherwise) and running to the wider of the dimension and
- * the header row. A data row with a value outside those columns still keeps it, under a blank-header name
- * (`__EMPTY`, ...). `toObjects()` gives every record every column, filling the ones named after a record was built
- * with `defval`; streaming `rows({ mode: 'object' })` cannot revisit records it already yielded, so there a column
- * first named by a later row is missing from the records before it.
+ * Object mode, the `sheet_to_json` contract bound to the header. Columns are named from the header row, starting at
+ * the first column of the sheet's `<dimension>` when it declares one (column A otherwise) and ending at the last
+ * header cell that holds a value (an empty string counts); blank header cells in between are named `__EMPTY`,
+ * `__EMPTY_1`, ... as in SheetJS. A value to the right of the last header is left out of the records and reported
+ * once per sheet as `DATA_BEYOND_HEADER`:
+ * SheetJS instead names every column out to the widest row, so one stray value at XFD gives every record 16,384 keys
+ * (EC-DATA-BEYOND-HEADER). A value left of the first named column still gets a blank-header name. `toObjects()` gives
+ * every record every column, filling the ones named after a record was built with `defval`; streaming
+ * `rows({ mode: 'object' })` cannot revisit records it already yielded, so there a column first named by a later row
+ * is missing from the records before it.
  */
 export interface ObjectRowsOptions {
   /**
@@ -401,6 +419,13 @@ export interface ObjectRowsOptions {
   readonly headerNaming?: 'sheetjs' | 'index';
   /** Drop columns whose header is empty instead of naming them. Default false. */
   readonly dropEmptyHeaders?: boolean;
+  /**
+   * Name the columns yourself instead of reading a header row: `headers[i]` is the key for the i-th column from A,
+   * and every record has exactly these keys (a name given twice keeps the later column's value). Values right of
+   * the last one are left out with `DATA_BEYOND_HEADER`. No row is read as headers: data starts at `startRow`, or
+   * after `headerRow` when that is given too. `headerNaming` and `dropEmptyHeaders` do not apply.
+   */
+  readonly headers?: readonly string[];
 }
 
 export type ArrayRowsOptions = RowsOptions & { readonly mode?: 'array' };

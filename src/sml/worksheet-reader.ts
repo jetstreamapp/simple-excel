@@ -28,7 +28,7 @@ export interface WorksheetReadContext {
   readonly hasSharedStrings: boolean;
   /** Per cellXfs entry, `XF_DATE`, `XF_NOT_DATE` or `XF_FORMAT_IGNORED` (see `parseStyles`). */
   readonly isDateByXf: Uint8Array;
-  /** The styles part had more formats than `MAX_READ_CELL_FORMATS` and the rest were ignored (EC-STYLES-XF-OVERFLOW). */
+  /** The styles part had more than `MAX_READ_CELL_FORMATS` formats; the rest were ignored (EC-STYLES-XF-OVERFLOW). */
   readonly cellFormatsIgnored: boolean;
   readonly date1904: boolean;
   readonly dates: NonNullable<OpenOptions['dates']>;

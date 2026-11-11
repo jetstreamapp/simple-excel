@@ -20,10 +20,20 @@ All notable changes to this project will be documented in this file.
   entries, and the ESM and CommonJS builds loaded side by side.
 - The `XlsxError` constructor takes an optional fourth `options` argument (`{ cause }`, the standard `ErrorOptions`);
   `new XlsxError(code, message, detail)` is unchanged.
+- `limits.maxObjectCells` (default 100,000,000): the record cells (records × keys) `toObjects()` holds at once.
+  Past it `toObjects()` throws `LIMIT_EXCEEDED` with a message pointing at the streaming `rows({ mode: 'object' })`.
+  A record cell costs about 40 to 60 bytes in Node, so a legitimate wide load (200,000 rows × 300 columns is 60M)
+  fits and a 16,384-column header over 65k rows stops a tenth of the way in.
+- `ObjectRowsOptions.headers`: name the columns yourself (`headers[i]` keys the i-th column from A) instead of
+  reading a header row; every record has exactly those keys.
+- `DATA_BEYOND_HEADER`, a new `ReadWarningCode`: object mode left out values to the right of the last header.
+  Reported once per sheet when the read ends, with `detail.columns` (such as `'E:XFD'`), `columnCount`, `cellCount`
+  and `lastHeaderColumn`.
 - `CELL_FORMATS_IGNORED`, a new `ReadWarningCode`: the styles part lists more than 65,490 `cellXfs` or `numFmts`
   and a number cell uses one past that ceiling, so it reads as a plain number (a date there comes back as its
   serial).
-- `ReadWarning.detail`: structured facts about a warning (`CELL_FORMATS_IGNORED` sets `maxCellFormats`).
+- `ReadWarning.detail`: structured facts about a warning, for a UI to show (`DATA_BEYOND_HEADER` and
+  `CELL_FORMATS_IGNORED` set it).
 - `sheet.rows()` accepts a `mode` that is only known at run time (`'array' | 'object'`, the new `AnyModeRowsOptions`
   type) and yields `V[] | Record<string, V>`.
 
@@ -43,6 +53,12 @@ All notable changes to this project will be documented in this file.
 - **Breaking:** `limits.maxSharedStringChars` counts 16 UTF-16 units per shared-string item on top of its text, so
   the default 256 Mi admits about 16.7M items. A table with more items than that, or with many items near it and
   long text, needs a larger `maxSharedStringChars`.
+- **Breaking:** object mode (`rows({ mode: 'object' })` and `toObjects()`) keys each record only up to the last
+  header cell that holds a value, or exactly the caller's `headers`. Values to the right of it are left out and
+  reported as `DATA_BEYOND_HEADER`, where SheetJS `sheet_to_json` (and earlier versions) named every column out to
+  the widest row and the sheet's `<dimension>`. Blank header cells inside the header keep their `__EMPTY`,
+  `__EMPTY_1`, ... names; a dimension wider than the data no longer adds trailing `__EMPTY` keys; a merged header
+  names only its first column; and an explicit `headerRow` on a blank row names no columns, so its records are empty.
 - **Breaking:** `isXlsxError()` checks the brand instead of `name === 'XlsxError'`, so a plain object that only has
   that name no longer passes.
 - **Breaking:** `toFile(path)` writes to a hidden temporary file in the same directory
@@ -82,6 +98,10 @@ All notable changes to this project will be documented in this file.
 - Rows are yielded in batches bounded by the cells they hold (about 1M slots) rather than one batch per decoded
   chunk, so rows with a cell at column XFD (a 16,384-slot array each) no longer pile up before the first yield: a
   146 KB file reached 1.26 GB. `maxColumns` still defaults to 16,384, so a stray far-right cell reads as before.
+- Object mode no longer widens every record to a stray far-right value: one value at XFD gave every record 16,384
+  keys, so `toObjects()` on a 703 KB upload of 65k rows ran Node out of a 12 GB heap and streaming its records took
+  104 s. Records now stop at the header (the same file reads in well under a second), and `toObjects()` stops at
+  `maxObjectCells`.
 - With `blankRows: true`, a jump in row numbers is filled under the same batch budget instead of queuing every blank
   row first (about 1M rows from a 1.8 KB file).
 

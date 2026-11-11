@@ -264,6 +264,16 @@ write(
   }),
 );
 // Legal but shaped to exhaust memory: these must read to the end, in bounded memory.
+// A 3-column sheet of 5,000 rows with one stray value at XFD2 (EC-DATA-BEYOND-HEADER). SheetJS-style object mode gave
+// every record 16,384 keys (82M cells); records now stop at the header and the stray value is reported.
+const strayRows = ['<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row>'];
+for (let index = 2; index <= 5001; index++) {
+  const stray = index === 2 ? '<c r="XFD2"><v>9</v></c>' : '';
+  strayRows.push(
+    `<row r="${index}"><c r="A${index}"><v>${index}</v></c><c r="B${index}"><v>1</v></c><c r="C${index}"><v>2</v></c>${stray}</row>`,
+  );
+}
+write(HOSTILE, 'stray-cell-beyond-header.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: strayRows.join(''), dimension: '' }) }));
 // 2,000 rows with one cell at XFD each: every row is a 16,384-slot array.
 const wideRows = [];
 for (let index = 1; index <= 2000; index++) {

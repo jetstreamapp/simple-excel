@@ -81,9 +81,11 @@ uploaded, with no signal to you or to them.
 
 **Migrating.** Object mode reproduces `sheet_to_json`'s key naming exactly (`__EMPTY`, `__EMPTY_1`, duplicate
 `_1`/`_2` suffixes, `defval`, `blankrows: false`), and `dates: 'local'` matches its `cellDates: true` output. The
-[reading page](./reading.md#header-naming) has the details. Three documented differences remain: SheetJS returns
+[reading page](./reading.md#header-naming) has the details. Three documented value differences remain: SheetJS returns
 the raw number for the fake 1900-02-29, collapses CRLF to LF, and decodes `_X0041_` with a capital X (none of
-which this library does).
+which this library does). And by design, records stop at the last header: SheetJS names every column out to the
+widest row and the sheet's `<dimension>`, where object mode leaves those values out and reports them as
+`DATA_BEYOND_HEADER`.
 
 :::caution
 SheetJS 0.20.3 cannot open a zip64 archive at all. If it is a consumer of your files, leave `zip64: 'auto'` alone.

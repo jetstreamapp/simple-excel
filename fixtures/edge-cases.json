@@ -508,7 +508,15 @@
     "family": "Security",
     "symptom": "Rows with one cell at column XFD. Each row materializes a 16,384-slot array and every row decoded from one inflate chunk was held before the first yield: a 146 KB upload reached 1.26 GB, toObjects() on a 7 KB one held about 1 GB.",
     "seenIn": "A stray far-right cell is common in real exports (a formatted or cleared cell at the edge of the grid), so maxColumns stays 16,384 and such files must keep reading.",
-    "expected": "Rows are yielded in batches bounded by materialized cell slots (about 1M), the tokenizer pausing mid-chunk; object mode keeps SheetJS semantics (every record gets every named column), so its cost still scales with rows x named columns.",
+    "expected": "Rows are yielded in batches bounded by materialized cell slots (about 1M), the tokenizer pausing mid-chunk. Object mode stops each record at the last header (EC-DATA-BEYOND-HEADER), and toObjects() is held to limits.maxObjectCells; a header row that itself reaches XFD still gives every record 16,384 keys.",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
+    "id": "EC-DATA-BEYOND-HEADER",
+    "family": "Security",
+    "symptom": "Object mode with SheetJS sheet_to_json semantics names every column out to the widest row, so one stray value at XFD gives every record 16,384 keys: toObjects() on a 7 KB upload held about 1 GB, and on a 703 KB one (65k rows) ran Node out of a 12 GB heap; the streamed records of that file took 104 s.",
+    "seenIn": "A stray far-right value is common in real exports (a note or formula left at the edge of the grid). A merged header (A1:C1 holding one title) also leaves the columns under the rest of the merge without a header.",
+    "expected": "Record keys stop at the last header cell that holds a value (or the caller's explicit headers); blank header cells inside keep their __EMPTY names. Values right of it are left out and reported once per sheet as DATA_BEYOND_HEADER with the columns and counts. toObjects() also stops at limits.maxObjectCells (records x keys, default 100M) with LIMIT_EXCEEDED pointing at rows({ mode: 'object' }). A deliberate divergence from SheetJS; the parity suite compares only the columns inside the header.",
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {
