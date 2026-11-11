@@ -172,11 +172,14 @@ export function collectToBytes(options?: { readonly maxBytes?: number }): BytesS
         throw new XlsxError('WRITER_STATE', 'This sink is already closed; no more bytes can be written to it.');
       }
       if (bytesWritten + chunk.byteLength > maxBytes) {
-        throw new XlsxError(
+        // Latched, so a caller that catches this and keeps writing cannot close a file with a chunk missing.
+        failure = new XlsxError(
           'LIMIT_EXCEEDED',
           `This file is larger than the ${maxBytes} byte limit for collecting it in memory. Write it to a stream or a file instead.`,
           { maxBytes, bytesWritten },
         );
+        chunks.length = 0;
+        throw failure;
       }
       chunks.push(chunk);
       bytesWritten += chunk.byteLength;

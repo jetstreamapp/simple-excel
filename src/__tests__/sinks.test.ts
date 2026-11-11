@@ -120,6 +120,19 @@ describe('collectToBytes', () => {
     expect(sink.bytesWritten).toBe(600);
   });
 
+  it('stays failed after LIMIT_EXCEEDED, so a caught limit cannot close a file with a chunk missing', async () => {
+    const sink = collectToBytes({ maxBytes: 10 });
+    await sink.write(new Uint8Array(4));
+    const failure = await sink.write(new Uint8Array(8)).then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(failure).toMatchObject({ code: 'LIMIT_EXCEEDED' });
+    await expect(sink.write(new Uint8Array(2))).rejects.toBe(failure);
+    await expect(sink.close()).rejects.toBe(failure);
+    expect(() => sink.result()).toThrow(failure as Error);
+  });
+
   it('refuses result() before close and writes after it', async () => {
     const sink = collectToBytes();
     expect(() => sink.result()).toThrow(XlsxError);
