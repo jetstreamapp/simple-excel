@@ -228,7 +228,15 @@ export class ZipWriter {
   }
 
   async abort(reason?: unknown): Promise<void> {
-    this.failure ??= new XlsxError('ABORTED', 'Writing the spreadsheet was cancelled.', reason === undefined ? undefined : { reason });
+    this.failure ??=
+      reason instanceof XlsxError
+        ? reason
+        : new XlsxError(
+            'ABORTED',
+            'Writing the spreadsheet was cancelled.',
+            undefined,
+            reason === undefined ? undefined : { cause: reason },
+          );
     if (this.aborted) {
       return;
     }

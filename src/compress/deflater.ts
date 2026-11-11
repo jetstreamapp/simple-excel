@@ -1,4 +1,4 @@
-import { XlsxError } from '../errors';
+import { classifyError, isXlsxError, XlsxError } from '../errors';
 import type { ChunkHandler, Deflater, DeflaterFactory, DeflaterOptions } from '../types';
 
 /** True when `CompressionStream('deflate-raw')` is available in this environment. */
@@ -25,15 +25,35 @@ export function hasNativeDeflate(): boolean {
   return nativeDeflateProbe;
 }
 
+/** What a compressor reports when the platform stream under it, or the consumer it feeds, fails. */
+const COMPRESSION_FAILED = 'The spreadsheet could not be compressed.';
+
+/** What an aborted compressor reports when the abort came without a classified reason. */
+function compressorAbortError(reason: unknown): XlsxError {
+  if (isXlsxError(reason)) {
+    return reason;
+  }
+  return new XlsxError('ABORTED', 'The compressor was aborted.', undefined, reason === undefined ? undefined : { cause: reason });
+}
+
 /**
  * Remembers the first failure seen by a deflater. Everything after a broken compression stream is meaningless, so
- * every later call rejects with that same reason rather than with a second, derived one.
+ * every later call rejects with that same reason rather than with a second, derived one. A platform failure is
+ * classified as `IO_ERROR` (the original is the `cause`); an `XlsxError` from the consumer passes through.
  */
 class FailureLatch {
   private latched = false;
-  private reason: unknown;
+  private reason: XlsxError | undefined;
 
   record(reason: unknown): void {
+    this.latch(classifyError(reason, 'IO_ERROR', COMPRESSION_FAILED));
+  }
+
+  recordAbort(reason: unknown): void {
+    this.latch(compressorAbortError(reason));
+  }
+
+  private latch(reason: XlsxError): void {
     if (!this.latched) {
       this.latched = true;
       this.reason = reason;
@@ -117,7 +137,7 @@ function createNativeDeflater(onChunk: ChunkHandler): Deflater {
     },
 
     async abort(reason?: unknown): Promise<void> {
-      failure.record(reason ?? new XlsxError('ABORTED', 'The compressor was aborted.'));
+      failure.recordAbort(reason);
       await Promise.allSettled([writer.abort(reason), reader.cancel(reason)]);
     },
 
@@ -161,7 +181,7 @@ export function createStoredDeflater(onChunk: ChunkHandler): Deflater {
     },
 
     async abort(reason?: unknown): Promise<void> {
-      failure.record(reason ?? new XlsxError('ABORTED', 'The compressor was aborted.'));
+      failure.recordAbort(reason);
     },
 
     get bytesIn(): number {

@@ -12,6 +12,7 @@ export { isValidSheetName, MAX_SHEET_NAME_LENGTH, sanitizeSheetName } from './sm
 export type { SourceInput } from './zip/source';
 export { createWorkbookWriter } from './write/workbook-writer';
 export type {
+  AnyModeRowsOptions,
   ArrayRowsOptions,
   BorderLineStyle,
   ByteSink,

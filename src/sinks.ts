@@ -1,4 +1,4 @@
-import { isXlsxError, XlsxError } from './errors';
+import { classifyError, isXlsxError, XlsxError } from './errors';
 import type { ByteSink } from './types';
 
 /**
@@ -38,12 +38,20 @@ function asBlobParts(chunks: Uint8Array[]): BlobPart[] {
   return chunks as BlobPart[];
 }
 
-/** Errors keep their classification; anything else becomes an `ABORTED` error carrying the original as `detail.cause`. */
+/**
+ * An abort is the caller cancelling: an `XlsxError` reason keeps its classification, anything else becomes `ABORTED`
+ * with the reason as its `cause`.
+ */
 function toAbortError(reason: unknown): XlsxError {
   if (isXlsxError(reason)) {
     return reason;
   }
-  return new XlsxError('ABORTED', 'The write was aborted.', { cause: reason });
+  return new XlsxError('ABORTED', 'The write was aborted.', undefined, reason === undefined ? undefined : { cause: reason });
+}
+
+/** A sink that fails on its own (disk full, a closed connection) is an I/O failure, never a cancellation. */
+function toSinkError(reason: unknown): XlsxError {
+  return classifyError(reason, 'IO_ERROR', 'The spreadsheet could not be written to its destination.');
 }
 
 export interface BlobSink extends ByteSink {
@@ -213,10 +221,15 @@ export function collectToBytes(options?: { readonly maxBytes?: number }): BytesS
   };
 }
 
-/** Adapt a `WritableStream<Uint8Array>` (File System Access, Node `Writable.toWeb`, ...) as a sink. */
+/**
+ * Adapt a `WritableStream<Uint8Array>` (File System Access, Node `Writable.toWeb`, ...) as a sink. A stream that fails
+ * is reported as `IO_ERROR` with the stream's error as the `cause`.
+ */
 export function fromWritableStream(stream: WritableStream<Uint8Array>): ByteSink {
   const writer = stream.getWriter();
   let released = false;
+  /** Writes the stream has not settled yet; an abort does not wait behind them (see `abort`). */
+  let pendingWrites = 0;
   // A stream that errors rejects `closed` whether or not anyone looks at it, and `releaseLock()` rejects `ready`;
   // every failure the caller cares about is reported by write/close/abort instead.
   void writer.closed.catch(() => undefined);
@@ -233,19 +246,38 @@ export function fromWritableStream(stream: WritableStream<Uint8Array>): ByteSink
 
   return {
     async write(chunk: Uint8Array): Promise<void> {
-      await writer.ready;
-      await writer.write(chunk);
+      pendingWrites++;
+      try {
+        await writer.ready;
+        await writer.write(chunk);
+      } catch (error) {
+        throw toSinkError(error);
+      } finally {
+        pendingWrites--;
+      }
     },
     async close(): Promise<void> {
       try {
         await writer.close();
+      } catch (error) {
+        throw toSinkError(error);
       } finally {
         releaseLock();
       }
     },
     async abort(reason?: unknown): Promise<void> {
+      const aborting = writer.abort(reason);
+      if (pendingWrites > 0) {
+        // The stream only finishes aborting once the write it is running settles, and an underlying sink stalled on
+        // back-pressure may never settle it. The abort is under way either way; the caller must not hang on it.
+        void aborting.catch(() => undefined);
+        releaseLock();
+        return;
+      }
       try {
-        await writer.abort(reason);
+        await aborting;
+      } catch {
+        // Aborting a stream that already failed has nothing left to report.
       } finally {
         releaseLock();
       }
@@ -269,24 +301,25 @@ export function toWritableStream(sink: ByteSink): WritableStream<Uint8Array> {
 }
 
 /**
- * Wrap a caller-supplied sink so that every method call after a failure rejects with the original reason.
+ * Wrap a caller-supplied sink so that every method call after a failure rejects with the original reason. A failing
+ * `write` or `close` is classified as `IO_ERROR` (the original is the `cause`) unless it already is an `XlsxError`.
  *
- * Calls are also serialized: a write issued while an earlier call is still pending waits for it, so the writer may
- * hand over a chunk without awaiting it and still know the sink sees the chunks in order. A second `close()`, and an
- * `abort()` after a close or another abort, are no-ops; `abort()` never rejects with the sticky reason, so an error
- * path can always tear the sink down.
+ * Calls are serialized: a write issued while an earlier call is still pending waits for it, so the writer may hand
+ * over a chunk without awaiting it and still know the sink sees the chunks in order. `abort()` is the exception: it
+ * latches the failure, rejects the call the sink is stuck on and every queued one, and calls `sink.abort` at once,
+ * so a sink stalled on back-pressure cannot hold a cancellation hostage. A second `close()`, and an `abort()` after a
+ * completed close or another abort, are no-ops; `abort()` never rejects, so an error path can always tear the sink
+ * down.
  */
 export function guardSink(sink: ByteSink): ByteSink {
   let failure: XlsxError | undefined;
-  let closed = false;
+  let closeRequested = false;
+  let closeCompleted = false;
   let aborted = false;
   /** Tail of the serialized call chain. It never rejects, so one failure is reported to one caller only. */
   let tail: Promise<void> = Promise.resolve();
-
-  function remember(reason: unknown): XlsxError {
-    failure ??= toAbortError(reason);
-    return failure;
-  }
+  /** Rejects the call currently running against the sink; set only while one is. */
+  let interruptRunning: ((reason: XlsxError) => void) | undefined;
 
   function enqueue(operation: () => Promise<void>): Promise<void> {
     const running = tail.then(operation);
@@ -297,20 +330,46 @@ export function guardSink(sink: ByteSink): ByteSink {
     return running;
   }
 
+  /** Run one sink call so that an abort can reject it without waiting for the sink to settle it. */
+  function interruptible(call: () => Promise<void>): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const interrupt = (reason: XlsxError): void => reject(reason);
+      interruptRunning = interrupt;
+      function settle(): void {
+        if (interruptRunning === interrupt) {
+          interruptRunning = undefined;
+        }
+      }
+      let pending: Promise<void>;
+      try {
+        pending = call();
+      } catch (error) {
+        pending = Promise.reject(error);
+      }
+      pending.then(
+        () => {
+          settle();
+          resolve();
+        },
+        (error: unknown) => {
+          settle();
+          failure ??= toSinkError(error);
+          reject(failure);
+        },
+      );
+    });
+  }
+
   return {
     write(chunk: Uint8Array): Promise<void> {
       return enqueue(async () => {
         if (failure) {
           throw failure;
         }
-        if (closed) {
+        if (closeRequested) {
           throw new XlsxError('WRITER_STATE', 'This sink is already closed; no more bytes can be written to it.');
         }
-        try {
-          await sink.write(chunk);
-        } catch (error) {
-          throw remember(error);
-        }
+        await interruptible(() => sink.write(chunk));
       });
     },
     close(): Promise<void> {
@@ -318,30 +377,27 @@ export function guardSink(sink: ByteSink): ByteSink {
         if (failure) {
           throw failure;
         }
-        if (closed) {
+        if (closeRequested) {
           return;
         }
-        closed = true;
-        try {
-          await sink.close();
-        } catch (error) {
-          throw remember(error);
-        }
+        closeRequested = true;
+        await interruptible(() => sink.close());
+        closeCompleted = true;
       });
     },
-    abort(reason?: unknown): Promise<void> {
-      return enqueue(async () => {
-        if (closed || aborted) {
-          return;
-        }
-        aborted = true;
-        remember(reason);
-        try {
-          await sink.abort(reason);
-        } catch (error) {
-          remember(error);
-        }
-      });
+    async abort(reason?: unknown): Promise<void> {
+      if (closeCompleted || aborted) {
+        return;
+      }
+      aborted = true;
+      failure ??= toAbortError(reason);
+      interruptRunning?.(failure);
+      interruptRunning = undefined;
+      try {
+        await sink.abort(reason);
+      } catch {
+        // The sink is already broken; the failure that got us here is the one worth reporting.
+      }
     },
   };
 }

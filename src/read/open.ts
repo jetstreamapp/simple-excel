@@ -3,15 +3,15 @@
  * that stream rows on demand. Nothing here parses sheet XML - `sml/worksheet-reader` does - and nothing is read
  * eagerly beyond the workbook, its relationships and the styles part.
  */
-import { isXlsxError, XlsxError } from '../errors';
+import { classifyError, isXlsxError, XlsxError } from '../errors';
 import { MAX_COLUMNS, parseRange } from '../sml/cell-ref';
 import { parseContentTypes, parseRels, parseWorkbook, relTypeIs, type ContentTypes, type Relationship } from '../sml/package-parts';
 import { parseSharedStrings } from '../sml/shared-strings-reader';
 import { parseStyles } from '../sml/styles';
 import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext, type WorksheetRowsOptions } from '../sml/worksheet-reader';
 import type {
+  AnyModeRowsOptions,
   ArrayRowsOptions,
-  CellError,
   CellValue,
   ObjectModeRowsOptions,
   ObjectRowsOptions,
@@ -28,7 +28,7 @@ import type {
   SniffResult,
   Workbook,
 } from '../types';
-import { sourceFrom, type SourceInput } from '../zip/source';
+import { guardSource, sourceFrom, type SourceInput } from '../zip/source';
 import { ZipReader } from '../zip/zip-reader';
 import { SNIFF_BYTES, sniff } from './sniff';
 
@@ -133,10 +133,7 @@ function rejectSniffedFormat(format: SniffResult): never {
 
 /** Parsers throw `XlsxError` for everything they anticipate; anything else means the part is damaged. */
 function damagedPart(partName: string, cause: unknown): XlsxError {
-  return new XlsxError('XML_MALFORMED', `The part ${partName} could not be read; this file may be damaged.`, {
-    part: partName,
-    cause,
-  });
+  return new XlsxError('XML_MALFORMED', `The part ${partName} could not be read; this file may be damaged.`, { part: partName }, { cause });
 }
 
 function parsePart<T>(partName: string, parse: () => T): T {
@@ -560,7 +557,8 @@ class SheetReader implements Sheet<ReadValue> {
 
   rows(options?: ArrayRowsOptions): AsyncIterable<ReadValue[]>;
   rows(options: ObjectModeRowsOptions): AsyncIterable<Record<string, ReadValue>>;
-  rows(options: ArrayRowsOptions | ObjectModeRowsOptions = {}): AsyncIterable<ReadValue[] | Record<string, ReadValue>> {
+  rows(options: AnyModeRowsOptions): AsyncIterable<ReadValue[] | Record<string, ReadValue>>;
+  rows(options: AnyModeRowsOptions = {}): AsyncIterable<ReadValue[] | Record<string, ReadValue>> {
     if (options.mode === 'object') {
       return this.objectRows(options, { headers: [], truncated: false, builder: undefined });
     }
@@ -714,33 +712,44 @@ class WorkbookReader implements Workbook<ReadValue> {
  * (`ENCRYPTED` with a `password-protected` message, `LEGACY_XLS`, `XLSB`, `ODS`, `NOT_XLSX`) for anything that is
  * not a modern workbook. The workbook lists sheets without touching sheet XML; sheet contents stream on demand, until
  * `close()`, after which every read fails with `ABORTED`. With `errors: 'object'` the row values include `CellError`
- * objects.
+ * objects; when `errors` is not a literal the values are typed `ReadValue` (`CellValue | CellError`).
+ *
+ * `openWorkbook` takes ownership of a `RandomAccessSource` (`fromFile` in Node): if opening fails for any reason the
+ * source is closed before the promise rejects, and once it succeeds `workbook.close()` closes it. A source that
+ * fails to read is reported as `IO_ERROR` with the source's own error as the `cause`.
  */
-export function openWorkbook(
-  input: SourceInput,
-  options: OpenOptions & { readonly errors: 'object' },
-): Promise<Workbook<CellValue | CellError>>;
-export function openWorkbook(input: SourceInput, options?: OpenOptions): Promise<Workbook>;
-export function openWorkbook(input: SourceInput, options: OpenOptions = {}): Promise<Workbook<CellValue | CellError>> {
+export function openWorkbook(input: SourceInput, options: OpenOptions & { readonly errors: 'object' }): Promise<Workbook<ReadValue>>;
+export function openWorkbook(input: SourceInput, options?: OpenOptions & { readonly errors?: 'string' | 'null' }): Promise<Workbook>;
+export function openWorkbook(input: SourceInput, options?: OpenOptions): Promise<Workbook<ReadValue>>;
+export function openWorkbook(input: SourceInput, options: OpenOptions = {}): Promise<Workbook<ReadValue>> {
   return openPackage(input, options);
 }
 
+/**
+ * Takes ownership of the source: once `sourceFrom` accepted the input, any failure closes it (a close that fails as
+ * well is swallowed, so the caller sees the failure that mattered), and success hands it to the workbook.
+ */
 async function openPackage(input: SourceInput, options: OpenOptions): Promise<Workbook<ReadValue>> {
-  throwIfAborted(options.signal);
-  const source = sourceFrom(input);
-  const headLength = Math.min(source.size, SNIFF_BYTES);
-  const head = headLength > 0 ? await source.read(0, headLength) : new Uint8Array(0);
-  const format = sniff(head);
-  if (format !== 'zip') {
-    rejectSniffedFormat(format);
-  }
-
-  const limits = resolveLimits(options.limits);
-  const zip = await ZipReader.open(source, { maxEntries: limits.maxEntries, maxInflatedBytes: limits.maxInflatedBytes });
+  const source = guardSource(sourceFrom(input));
+  let zip: ZipReader | undefined;
   try {
+    throwIfAborted(options.signal);
+    const headLength = Math.min(source.size, SNIFF_BYTES);
+    const head = headLength > 0 ? await source.read(0, headLength) : new Uint8Array(0);
+    const format = sniff(head);
+    if (format !== 'zip') {
+      rejectSniffedFormat(format);
+    }
+
+    const limits = resolveLimits(options.limits);
+    zip = await ZipReader.open(source, { maxEntries: limits.maxEntries, maxInflatedBytes: limits.maxInflatedBytes });
     return await readPackage(zip, options, limits);
   } catch (error) {
-    await zip.close();
+    try {
+      await (zip === undefined ? source.close?.() : zip.close());
+    } catch {
+      // The failure that got us here is the one worth reporting.
+    }
     throw error;
   }
 }
@@ -810,7 +819,12 @@ function sheetWarnings(report: (warning: ReadWarning) => void, sheet: string): (
       return;
     }
     reported.add(warning.code);
-    report({ ...warning, sheet });
+    try {
+      report({ ...warning, sheet });
+    } catch (error) {
+      // Like every caller callback: a throw stops the read as IO_ERROR, with the callback's error as the cause.
+      throw classifyError(error, 'IO_ERROR', 'The onWarning callback threw, so reading the spreadsheet stopped.');
+    }
   };
 }
 

@@ -174,7 +174,7 @@ describe('createInflater', () => {
       }
       expect(caught).toBeInstanceOf(XlsxError);
       expect((caught as XlsxError).code).toBe('ZIP_TRUNCATED');
-      expect((caught as XlsxError).detail?.cause).toBeDefined();
+      expect((caught as XlsxError).cause).toBeDefined();
     });
 
     it('reports a deflate stream that ends early as ZIP_TRUNCATED', async () => {
@@ -309,7 +309,7 @@ describe('createInflater: environments without deflate-raw', () => {
     expect(isXlsxError(thrown) && thrown.code).toBe('UNSUPPORTED_ENVIRONMENT');
     expect(isXlsxError(thrown) && thrown.message).toContain('deflate-raw');
     expect(isXlsxError(thrown) && thrown.message).toContain('Node.js 20.12');
-    expect(isXlsxError(thrown) && thrown.detail?.cause).toBeInstanceOf(TypeError);
+    expect(isXlsxError(thrown) && thrown.cause).toBeInstanceOf(TypeError);
     // Stored entries need no decompressor at all.
     expect(() => createInflater(() => Promise.resolve(), { maxBytes: MIB, method: 'store' })).not.toThrow();
   });

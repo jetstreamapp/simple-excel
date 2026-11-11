@@ -1158,6 +1158,20 @@ describe('openWorkbook: warnings', () => {
   it('reads the same with no callback', async () => {
     expect(await readRows(await twoSheets())).toEqual([['Name', ''], ['']]);
   });
+
+  it('stops the read with IO_ERROR when the onWarning callback throws, with its error as the cause', async () => {
+    const callbackFailure = new Error('the logger is down');
+    const workbook = await openWorkbook(await twoSheets(), {
+      onWarning: () => {
+        throw callbackFailure;
+      },
+    });
+    try {
+      expect(await caught(() => collect(workbook.sheet(0).rows()))).toMatchObject({ code: 'IO_ERROR', cause: callbackFailure });
+    } finally {
+      await workbook.close();
+    }
+  });
 });
 
 describe('openWorkbook: what it accepts as input', () => {
@@ -1207,6 +1221,94 @@ describe('openWorkbook: what it accepts as input', () => {
       ['Zoë', 12.5],
     ]);
     expect(await readRows(foreignView)).toHaveLength(2);
+  });
+});
+
+/** A source over `bytes` that counts its `close()` calls. */
+function closeCountingSource(bytes: Uint8Array): RandomAccessSource & { readonly closes: number } {
+  const inner = sourceFrom(bytes);
+  let closes = 0;
+  return {
+    size: inner.size,
+    read: (offset: number, length: number) => inner.read(offset, length),
+    close: (): Promise<void> => {
+      closes++;
+      return Promise.resolve();
+    },
+    get closes(): number {
+      return closes;
+    },
+  };
+}
+
+describe('openWorkbook: owns the source it is given', () => {
+  it('closes the source whenever opening fails, whatever the reason', async () => {
+    const cases: Record<string, Uint8Array> = {
+      encrypted: readFixture(fixtureById('hostile-encrypted-password-test')),
+      xls: readFixture(fixtureById('hostile-biff8-xls-renamed')),
+      csv: encoder.encode('a,b,c\n1,2,3\n'),
+      empty: new Uint8Array(0),
+      truncated: readFixture(fixtureById('hostile-truncated-central-directory')),
+      'zip without a workbook': await zip({ 'readme.txt': 'not a spreadsheet' }),
+    };
+    for (const [label, bytes] of Object.entries(cases)) {
+      const source = closeCountingSource(bytes);
+      const error = await caught(() => openWorkbook(source));
+      expect(error.code, label).not.toBe('IO_ERROR');
+      expect(source.closes, `${label} (${error.code})`).toBe(1);
+    }
+  });
+
+  it('closes the source when the signal has already fired', async () => {
+    const source = closeCountingSource(await workbookBytes());
+    const controller = new AbortController();
+    controller.abort();
+    expect((await caught(() => openWorkbook(source, { signal: controller.signal }))).code).toBe('ABORTED');
+    expect(source.closes).toBe(1);
+  });
+
+  it('keeps the original failure when closing the source fails too', async () => {
+    const inner = sourceFrom(encoder.encode('a,b,c\n'));
+    const source: RandomAccessSource = {
+      size: inner.size,
+      read: (offset: number, length: number) => inner.read(offset, length),
+      close: () => Promise.reject(new Error('EBADF')),
+    };
+    expect((await caught(() => openWorkbook(source))).code).toBe('NOT_XLSX');
+  });
+
+  it('leaves the source open on success until workbook.close()', async () => {
+    const source = closeCountingSource(await workbookBytes());
+    const workbook = await openWorkbook(source);
+    expect(source.closes).toBe(0);
+    await workbook.close();
+    expect(source.closes).toBe(1);
+  });
+
+  it('reports a source whose read fails as IO_ERROR with the original as the cause, and closes it', async () => {
+    const bytes = await workbookBytes();
+    const failure = new Error('ECONNRESET: the range request failed');
+    let closes = 0;
+    const source: RandomAccessSource = {
+      size: bytes.byteLength,
+      read: (offset: number, length: number) =>
+        offset === 0 ? Promise.resolve(bytes.subarray(offset, offset + length)) : Promise.reject(failure),
+      close: () => {
+        closes++;
+        return Promise.resolve();
+      },
+    };
+    const error = await caught(() => openWorkbook(source));
+    expect(error).toMatchObject({ code: 'IO_ERROR', cause: failure });
+    expect(closes).toBe(1);
+
+    const throwing: RandomAccessSource = {
+      size: bytes.byteLength,
+      read: () => {
+        throw failure;
+      },
+    };
+    expect(await caught(() => openWorkbook(throwing))).toMatchObject({ code: 'IO_ERROR', cause: failure });
   });
 });
 

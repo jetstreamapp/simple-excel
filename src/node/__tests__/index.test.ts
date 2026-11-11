@@ -1,6 +1,8 @@
 import { Buffer } from 'node:buffer';
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer, get, type IncomingMessage } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Writable } from 'node:stream';
@@ -8,7 +10,7 @@ import { inflateRawSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fixtureById, readFixture } from '../../../test/helpers/fixtures';
 import type { Deflater } from '../../types';
-import { fromFile, nodeDeflater, openWorkbook, toFile, toWritable } from '../index';
+import { createWorkbookWriter, fromFile, isXlsxError, nodeDeflater, openWorkbook, toFile, toWritable, XlsxError } from '../index';
 
 const KIB = 1024;
 const MIB = 1024 * 1024;
@@ -101,6 +103,16 @@ describe('fromFile', () => {
     await expect(source.close()).resolves.toBeUndefined();
   });
 
+  it('reports a file that cannot be opened as IO_ERROR with the fs error as the cause', async () => {
+    const path = join(workingDirectory, 'does-not-exist.xlsx');
+    const failure = await fromFile(path).then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(failure).toBeInstanceOf(XlsxError);
+    expect(failure).toMatchObject({ code: 'IO_ERROR', detail: { path }, cause: expect.objectContaining({ code: 'ENOENT' }) });
+  });
+
   it('refuses a read after close with ABORTED rather than a bare EBADF', async () => {
     const path = join(workingDirectory, 'read-after-close.bin');
     await writeFile(path, randomBytes(8));
@@ -125,7 +137,100 @@ describe('fromFile', () => {
   });
 });
 
+/** The files in `directory`, hidden ones included. */
+async function listDirectory(directory: string): Promise<string[]> {
+  return (await readdir(directory)).toSorted();
+}
+
+/** A fresh, empty directory under the suite's working directory. */
+async function freshDirectory(name: string): Promise<string> {
+  const directory = join(workingDirectory, name);
+  await mkdir(directory);
+  return directory;
+}
+
+/** What `run` rejects with, or undefined when it resolves. */
+async function failureOf(run: () => Promise<unknown>): Promise<unknown> {
+  try {
+    await run();
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+}
+
 describe('toFile', () => {
+  it('writes to a hidden temporary file and only puts the complete file at the target on close', async () => {
+    const directory = await freshDirectory('to-file-rename');
+    const path = join(directory, 'export.xlsx');
+    const sink = toFile(path);
+    await sink.write(repetitiveBytes(64 * KIB));
+
+    const during = await listDirectory(directory);
+    expect(during).toHaveLength(1);
+    expect(during[0]).toMatch(/^\.export\.xlsx\.[0-9a-f]+\.partial$/);
+
+    await sink.close();
+    expect(await listDirectory(directory)).toEqual(['export.xlsx']);
+    expect((await readFile(path)).byteLength).toBe(64 * KIB);
+  });
+
+  it('leaves an existing file untouched until the new one is complete, and in place after an abort', async () => {
+    const directory = await freshDirectory('to-file-existing');
+    const path = join(directory, 'report.xlsx');
+    await writeFile(path, 'previous export');
+
+    const workbook = createWorkbookWriter(toFile(path));
+    const sheet = workbook.addSheet('Data');
+    for (let index = 0; index < 20_000; index++) {
+      await sheet.writeRow([index, `hello world ${index}`]);
+    }
+    expect(await readFile(path, 'utf8')).toBe('previous export');
+    await workbook.abort(new Error('the upstream query failed'));
+
+    expect(await listDirectory(directory)).toEqual(['report.xlsx']);
+    expect(await readFile(path, 'utf8')).toBe('previous export');
+  });
+
+  it('removes the temporary file and writes nothing at the target when the workbook fails', async () => {
+    const directory = await freshDirectory('to-file-failure');
+    const path = join(directory, 'broken.xlsx');
+    const workbook = createWorkbookWriter(toFile(path));
+    const sheet = workbook.addSheet('Data');
+    await sheet.writeRow(['fine']);
+    await expect(sheet.writeRow([{ not: 'a cell' } as never])).rejects.toMatchObject({ code: 'WRITER_STATE' });
+    await expect(workbook.close()).rejects.toMatchObject({ code: 'WRITER_STATE' });
+    // The row path starts the sink abort without waiting for it; give the unlink a moment to land.
+    for (let attempt = 0; attempt < 50 && (await listDirectory(directory)).length > 0; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    expect(await listDirectory(directory)).toEqual([]);
+  });
+
+  it('creates nothing until the first byte, so a sink that is never used leaves no file behind', async () => {
+    const directory = await freshDirectory('to-file-unused');
+    const unused = toFile(join(directory, 'unused.xlsx'));
+    const abortedFirst = toFile(join(directory, 'aborted.xlsx'));
+    await abortedFirst.abort(new Error('the export was cancelled before it began'));
+    await expect(abortedFirst.write(new Uint8Array(1))).rejects.toMatchObject({ code: 'ABORTED' });
+    expect(unused).toBeDefined();
+    expect(await listDirectory(directory)).toEqual([]);
+  });
+
+  it('reports a directory that does not exist as IO_ERROR with the fs error as the cause', async () => {
+    const path = join(workingDirectory, 'no', 'such', 'directory', 'x.xlsx');
+    const workbook = createWorkbookWriter(toFile(path));
+    const sheet = workbook.addSheet('Data');
+    const failure = await failureOf(async () => {
+      for (let index = 0; index < 1000; index++) {
+        await sheet.writeRow([index]);
+      }
+      await sheet.close();
+      await workbook.close();
+    });
+    expect(failure).toMatchObject({ code: 'IO_ERROR', cause: expect.objectContaining({ code: 'ENOENT' }) });
+  });
+
   it('writes 20 MiB in 64 KiB chunks byte for byte', async () => {
     const path = join(workingDirectory, 'large.bin');
     const chunk = repetitiveBytes(64 * KIB);
@@ -169,7 +274,7 @@ describe('toWritable', () => {
     expect(Date.now() - startedAt).toBeGreaterThanOrEqual(25);
   });
 
-  it('makes a stream error sticky', async () => {
+  it('makes a stream error sticky, as IO_ERROR with the stream error as the cause', async () => {
     const failure = new Error('disk full');
     const writable = new Writable({
       write(_chunk, _encoding, callback): void {
@@ -179,8 +284,108 @@ describe('toWritable', () => {
 
     const sink = toWritable(writable);
     await sink.write(new Uint8Array(8)).catch(() => undefined);
-    await expect(sink.close()).rejects.toThrow(failure);
-    await expect(sink.write(new Uint8Array(8))).rejects.toThrow(failure);
+    await expect(sink.close()).rejects.toMatchObject({ code: 'IO_ERROR', cause: failure });
+    await expect(sink.write(new Uint8Array(8))).rejects.toMatchObject({ code: 'IO_ERROR', cause: failure });
+  });
+
+  it('rejects a write waiting for drain when the stream is destroyed without an error', async () => {
+    const writable = new Writable({
+      highWaterMark: 16,
+      write(): void {
+        // Never calls back: the stream stays full until it is destroyed.
+      },
+    });
+    const sink = toWritable(writable);
+    const pending = sink.write(new Uint8Array(64));
+    writable.destroy();
+    await expect(pending).rejects.toMatchObject({ name: 'XlsxError', code: 'IO_ERROR' });
+    await expect(sink.write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR' });
+    await expect(sink.close()).rejects.toMatchObject({ code: 'IO_ERROR' });
+  });
+
+  it('refuses a write to a stream that was already destroyed or ended', async () => {
+    const destroyed = new Writable({ write: (_chunk, _encoding, callback): void => callback() });
+    destroyed.destroy();
+    await expect(toWritable(destroyed).write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR' });
+
+    const ended = new Writable({ write: (_chunk, _encoding, callback): void => callback() });
+    ended.end();
+    await expect(toWritable(ended).write(new Uint8Array(1))).rejects.toMatchObject({ code: 'IO_ERROR' });
+  });
+
+  it('resolves close() for a stream that already finished', async () => {
+    const writable = new Writable({ write: (_chunk, _encoding, callback): void => callback() });
+    const sink = toWritable(writable);
+    await sink.write(new Uint8Array(4));
+    await new Promise<void>(resolve => writable.end(resolve));
+    await expect(sink.close()).resolves.toBeUndefined();
+  });
+
+  it('rejects writeRow promptly when an HTTP client disconnects mid-download', async () => {
+    let serverOutcome: Promise<unknown> | undefined;
+    const server = createServer((_request, response) => {
+      serverOutcome = failureOf(async () => {
+        const workbook = createWorkbookWriter(toWritable(response), { deflater: nodeDeflater(1) });
+        const sheet = workbook.addSheet('Data', { header: ['a', 'b', 'c'] });
+        for (let index = 0; index < 2_000_000; index++) {
+          await sheet.writeRow([index, `${'x'.repeat(50)}${Math.random()}`, Math.random()]);
+        }
+        await sheet.close();
+        await workbook.close();
+      });
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const { port } = server.address() as AddressInfo;
+      await new Promise<void>(resolve => {
+        const request = get({ host: '127.0.0.1', port }, (response: IncomingMessage) => {
+          let received = 0;
+          response.on('data', (chunk: Buffer) => {
+            received += chunk.byteLength;
+            if (received > 200_000) {
+              request.destroy();
+              resolve();
+            }
+          });
+        });
+        request.on('error', () => undefined);
+      });
+      const startedAt = Date.now();
+      const outcome = await serverOutcome;
+      expect(Date.now() - startedAt).toBeLessThan(3000);
+      expect(isXlsxError(outcome)).toBe(true);
+      expect(outcome).toMatchObject({ code: 'IO_ERROR' });
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
+
+  it('wb.abort() resolves and the pending writeRow rejects while a paused stream holds back-pressure', async () => {
+    const writable = new Writable({
+      highWaterMark: 1024,
+      write(): void {
+        // Never drains.
+      },
+    });
+    const workbook = createWorkbookWriter(toWritable(writable), { compression: 'store' });
+    const sheet = workbook.addSheet('Data');
+    let pendingRow: Promise<void> | undefined;
+    for (let index = 0; index < 20_000 && pendingRow === undefined; index++) {
+      const write = sheet.writeRow([index, `row ${index} with some text to fill the flush buffer`]);
+      const outcome = await Promise.race([
+        write.then(() => 'settled'),
+        new Promise<string>(resolve => setTimeout(() => resolve('pending'), 20)),
+      ]);
+      if (outcome === 'pending') {
+        pendingRow = write;
+      }
+    }
+    expect(pendingRow, 'a row should be waiting for the stream to drain').toBeDefined();
+
+    await workbook.abort(new Error('the user cancelled'));
+    await expect(pendingRow).rejects.toMatchObject({ code: 'ABORTED' });
+    expect(writable.destroyed).toBe(true);
   });
 
   it('destroys the stream on abort and refuses later writes', async () => {
@@ -302,7 +507,7 @@ describe('nodeDeflater', () => {
     );
 
     await deflater.push(bytesOf(randomBytes(MIB))).catch(() => undefined);
-    await expect(deflater.finish()).rejects.toThrow(failure);
+    await expect(deflater.finish()).rejects.toMatchObject({ code: 'IO_ERROR', cause: failure });
   });
 
   it('rejects later calls after an abort', async () => {
@@ -310,7 +515,7 @@ describe('nodeDeflater', () => {
     await deflater.push(repetitiveBytes(64 * KIB));
     await deflater.abort(new Error('cancelled'));
 
-    await expect(deflater.push(repetitiveBytes(16))).rejects.toThrow('cancelled');
-    await expect(deflater.finish()).rejects.toThrow('cancelled');
+    await expect(deflater.push(repetitiveBytes(16))).rejects.toMatchObject({ code: 'ABORTED', cause: new Error('cancelled') });
+    await expect(deflater.finish()).rejects.toMatchObject({ code: 'ABORTED', cause: new Error('cancelled') });
   });
 });
