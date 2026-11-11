@@ -5,6 +5,7 @@ import { decodeCellText } from '../xml/escape';
 import { XmlTokenizer, type XmlTokenizerHandler } from '../xml/tokenizer';
 import { columnIndexOfRef, formatRef, MAX_COLUMNS, MAX_ROWS } from './cell-ref';
 import { componentsFromIso, componentsFromSerial, dateFromComponents, serialFromComponents } from './date';
+import { MAX_READ_CELL_FORMATS, XF_DATE, XF_NOT_DATE } from './styles';
 
 /** What the facade's object mode adds to a row read. */
 export interface WorksheetRowsOptions extends RowsOptions {
@@ -25,7 +26,10 @@ export interface WorksheetReadContext {
    * the deferred path instead and resolves against the same empty table.
    */
   readonly hasSharedStrings: boolean;
+  /** Per cellXfs entry, `XF_DATE`, `XF_NOT_DATE` or `XF_FORMAT_IGNORED` (see `parseStyles`). */
   readonly isDateByXf: Uint8Array;
+  /** The styles part had more formats than `MAX_READ_CELL_FORMATS` and the rest were ignored (EC-STYLES-XF-OVERFLOW). */
+  readonly cellFormatsIgnored: boolean;
   readonly date1904: boolean;
   readonly dates: NonNullable<OpenOptions['dates']>;
   readonly errors: NonNullable<OpenOptions['errors']>;
@@ -614,7 +618,15 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     }
     // -0 has no spreadsheet representation (EC-NUM-NEGATIVE-ZERO).
     const value = parsed === 0 ? 0 : parsed;
-    if (this.serialDates || this.context.isDateByXf[this.style] !== 1) {
+    if (this.serialDates) {
+      return value;
+    }
+    const dateFlag = this.context.isDateByXf[this.style];
+    if (dateFlag !== XF_DATE) {
+      // Undefined past the end of the table and XF_FORMAT_IGNORED for a dropped format: a number either way.
+      if (dateFlag !== XF_NOT_DATE && this.context.cellFormatsIgnored) {
+        this.warnCellFormatIgnored();
+      }
       return value;
     }
     const components = componentsFromSerial(value, this.context.date1904);
@@ -699,6 +711,23 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
         ? `Cell ${ref} refers to shared string ${index}, but the table holds ${tableSize}; it reads as empty text, as in Excel.`
         : `Cell ${ref} refers to the shared-string table, but this workbook has none; it reads as empty text.`;
     report({ code, message, ref });
+  }
+
+  /** Reached only for a number cell whose format was ignored, so the message is built at most once per read. */
+  private warnCellFormatIgnored(): void {
+    const report = this.context.onWarning;
+    const code: ReadWarningCode = 'CELL_FORMATS_IGNORED';
+    if (report === undefined || this.warned.has(code)) {
+      return;
+    }
+    this.warned.add(code);
+    const ref = this.currentRef();
+    report({
+      code,
+      message: `This workbook lists more than ${MAX_READ_CELL_FORMATS} cell formats, more than Excel allows, and cell ${ref} uses one past that; it reads as a plain number, so a date there shows as its serial.`,
+      ref,
+      detail: { maxCellFormats: MAX_READ_CELL_FORMATS },
+    });
   }
 
   private async loadSharedStrings(): Promise<readonly string[]> {

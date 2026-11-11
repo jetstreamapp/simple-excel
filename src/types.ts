@@ -316,8 +316,12 @@ export interface ReadLimits {
  *   which is what Excel shows (EC-SST-INDEX-OUT-OF-RANGE).
  * - `'SHARED_STRINGS_MISSING'`: a `t="s"` cell in a workbook that has no shared-string part at all. It reads as `''`
  *   (EC-SST-ABSENT-INLINE-ONLY).
+ * - `'CELL_FORMATS_IGNORED'`: the styles part lists more than 65,490 cell formats (`cellXfs`) or number formats
+ *   (`numFmts`), Excel's ceiling, and a number cell uses one past it. The formats past it are ignored, so such a cell
+ *   reads as a plain number: a date there comes back as its serial (EC-STYLES-XF-OVERFLOW). `detail.maxCellFormats`
+ *   is the ceiling.
  */
-export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING';
+export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING' | 'CELL_FORMATS_IGNORED';
 
 /** Something a sheet says that Excel tolerates and the reader repaired, reported through `OpenOptions.onWarning`. */
 export interface ReadWarning {
@@ -327,6 +331,8 @@ export interface ReadWarning {
   readonly sheet?: string;
   /** A1 reference of the first cell that triggered the warning. */
   readonly ref?: string;
+  /** Structured facts about the warning, for a UI to show; which keys each code sets is listed on `ReadWarningCode`. */
+  readonly detail?: Readonly<Record<string, string | number>>;
 }
 
 export interface OpenOptions {

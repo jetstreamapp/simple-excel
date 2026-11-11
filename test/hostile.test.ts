@@ -7,7 +7,7 @@
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { isXlsxError, openWorkbook, type ArrayRowsOptions, type OpenOptions, type XlsxErrorCode } from '../src/index';
+import { isXlsxError, openWorkbook, type ArrayRowsOptions, type OpenOptions, type ReadWarning, type XlsxErrorCode } from '../src/index';
 import { fixturesWithTag, readFixture, type Fixture } from './helpers/fixtures';
 import { READER_READY } from './helpers/ready';
 
@@ -173,4 +173,25 @@ describe.skipIf(!READER_READY)('hostile: the reader DoS fixtures hold with the d
       expect(peakLive, `live heap reached ${(peakLive / MB).toFixed(1)} MB`).toBeLessThan(READ_FLAT_LIVE_HEAP_BUDGET);
     });
   }
+});
+
+describe.skipIf(!READER_READY)('hostile: EC-STYLES-XF-OVERFLOW', () => {
+  it('hostile-styles-xf-flood reads, the cell on an ignored xf as a plain number, warned once', async () => {
+    const [fixture] = fixturesWithTag('EC-STYLES-XF-OVERFLOW');
+    expect(fixture).toBeDefined();
+    const warnings: ReadWarning[] = [];
+    const workbook = await openWorkbook(readFixture(fixture!), { dates: 'utc', onWarning: warning => warnings.push(warning) });
+    try {
+      const rows: unknown[][] = [];
+      for await (const row of workbook.sheet(0).rows()) {
+        rows.push(row);
+      }
+      // C2 uses xf 1, inside the ceiling, and stays a date; C4 uses xf 69,000, past it.
+      expect(rows[1]?.[2]).toEqual(new Date(Date.UTC(2024, 1, 29)));
+      expect(rows[3]).toEqual([null, null, 45351]);
+      expect(warnings).toEqual([expect.objectContaining({ code: 'CELL_FORMATS_IGNORED', sheet: 'Data', ref: 'C4' })]);
+    } finally {
+      await workbook.close();
+    }
+  });
 });

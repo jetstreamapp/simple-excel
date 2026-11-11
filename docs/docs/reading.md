@@ -100,14 +100,16 @@ ones, so a `switch` over it needs a default branch.
 
 ### Warnings
 
-Some damage Excel shrugs off, and so does the reader: the cell reads blank and the read carries on. `onWarning`
-lets you notice. Each `ReadWarning` has a `code`, a `message`, the `sheet` and the `ref` of the first cell that hit
-it, and each code is reported at most once per sheet however many cells hit it.
+Some damage Excel shrugs off, and so does the reader: the cell reads as best it can and the read carries on.
+`onWarning` lets you notice. Each `ReadWarning` has a `code`, a `message`, the `sheet`, the `ref` of the first cell
+that hit it and, for some codes, a `detail` object with structured facts for a UI. Each code is reported at most once
+per sheet however many cells hit it.
 
-| `code`                   | What happened                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| `SST_INDEX_OUT_OF_RANGE` | A shared-string cell points past the end of the table; it reads as `''`, as in Excel |
-| `SHARED_STRINGS_MISSING` | A shared-string cell in a workbook that has no shared-string part; it reads as `''`  |
+| `code`                   | What happened                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SST_INDEX_OUT_OF_RANGE` | A shared-string cell points past the end of the table; it reads as `''`, as in Excel                                                                                                                                                                                                                                                                 |
+| `SHARED_STRINGS_MISSING` | A shared-string cell in a workbook that has no shared-string part; it reads as `''`                                                                                                                                                                                                                                                                  |
+| `CELL_FORMATS_IGNORED`   | `styles.xml` lists more than 65,490 `cellXfs` or `numFmts` (Excel's ceiling; some non-Excel writers emit one per cell) and a number cell uses one past it. The formats past the ceiling are ignored, so the cell reads as a plain number and a date there comes back as its serial (`EC-STYLES-XF-OVERFLOW`). `detail.maxCellFormats` is the ceiling |
 
 A sheet full of blank text cells with one of these warnings usually means a damaged file, not an empty one.
 

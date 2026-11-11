@@ -139,7 +139,6 @@ character references and nothing else, so there is no entity-expansion surface t
 | ------------------------------------------------------------------------ | ------------------------------------ |
 | Too many parts in the archive                                            | `limits.maxEntries`                  |
 | Too many sheets, relationships or content types listed in a package part | `limits.maxEntries`                  |
-| More than 65,490 `cellXfs` or `numFmts` entries in `styles.xml`          | — (`EC-PACKAGE-ELEMENT-FLOOD`)       |
 | A part read whole is too large                                           | `limits.maxPartBytes`                |
 | Shared-string table too large                                            | `limits.maxSharedStringChars`        |
 | XML nested too deep                                                      | `limits.maxXmlDepth`                 |

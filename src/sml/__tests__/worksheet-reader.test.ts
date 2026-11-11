@@ -28,6 +28,7 @@ function context(overrides: Partial<WorksheetReadContext> = {}): WorksheetReadCo
     sharedStrings: () => Promise.resolve([]),
     hasSharedStrings: true,
     isDateByXf: new Uint8Array(0),
+    cellFormatsIgnored: false,
     date1904: false,
     dates: 'utc',
     errors: 'string',
@@ -550,6 +551,38 @@ describe('dates', () => {
       },
     );
     expect(utcText(cells[0]?.[0] ?? null)).toBe('2024-02-29T00:00:00.000Z');
+  });
+
+  it('EC-STYLES-XF-OVERFLOW: a number whose format was ignored reads as a number and warns once', async () => {
+    const warnings: ReadWarning[] = [];
+    // xf 0 a number, xf 1 a date, xf 2 a dropped custom format; xf 3 lies past the end of the stored table.
+    const cells = await readCells(
+      sheet(
+        '<row r="1"><c r="A1" s="1"><v>45351</v></c><c r="B1"><v>7</v></c><c r="C1" s="3"><v>45351</v></c>' +
+          '<c r="D1" s="2"><v>45351</v></c><c r="E1" s="3" t="s"><v>0</v></c></row>',
+      ),
+      {},
+      {
+        isDateByXf: Uint8Array.from([0, 1, 2]),
+        cellFormatsIgnored: true,
+        sharedStrings: () => Promise.resolve(['text']),
+        onWarning: warning => warnings.push(warning),
+      },
+    );
+    expect(cells[0]?.[0]).toBeInstanceOf(Date);
+    expect(cells[0]?.slice(1)).toEqual([7, 45351, 45351, 'text']);
+    expect(warnings).toEqual([expect.objectContaining({ code: 'CELL_FORMATS_IGNORED', ref: 'C1', detail: { maxCellFormats: 65_490 } })]);
+  });
+
+  it('EC-STYLES-XF-OVERFLOW: an xf index past the table warns only when the styles part was cut short', async () => {
+    const warnings: ReadWarning[] = [];
+    const cells = await readCells(
+      sheet('<row r="1"><c r="A1" s="9"><v>45351</v></c></row>'),
+      {},
+      { isDateByXf: dateStyles, onWarning: warning => warnings.push(warning) },
+    );
+    expect(cells[0]?.[0]).toBe(45351);
+    expect(warnings).toEqual([]);
   });
 
   it('dates: "serial" never builds a Date', async () => {

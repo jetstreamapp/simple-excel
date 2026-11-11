@@ -1097,8 +1097,8 @@
     {
       "id": "hostile-styles-xf-flood",
       "path": "hostile/styles-xf-flood.xlsx",
-      "bytes": 5598,
-      "sha256": "fe2a809144ff4003a891f380899c9a61e764a7068df96a60a7ff475471ed884d",
+      "bytes": 5780,
+      "sha256": "5ef66fd6a312dbabaa78907c7df73f0939a0049f4faedc5252e726503748999a",
       "generator": {
         "name": "hand-built",
         "version": "(generators/edge/build-edge-fixtures.mjs)",
@@ -1106,11 +1106,10 @@
       },
       "provenance": "script:generators/edge/build-edge-fixtures.mjs",
       "license": "Jetstream research",
-      "tags": ["kind:hostile", "EC-PACKAGE-ELEMENT-FLOOD"],
+      "tags": ["kind:hostile", "EC-STYLES-XF-OVERFLOW"],
       "expected": null,
       "generated": false,
-      "expectedError": "LIMIT_EXCEEDED",
-      "notes": "styles.xml lists 70,000 cellXfs entries, past Excel's 65,490 unique cell formats."
+      "notes": "styles.xml lists 70,002 cellXfs entries, past Excel's 65,490 unique cell formats; all but the first two are dates. No expectedError: the formats past the ceiling are ignored, so C4 (xf 69,000) reads as the number 45351 and onWarning gets CELL_FORMATS_IGNORED once."
     },
     {
       "id": "hostile-styles-part-padding",

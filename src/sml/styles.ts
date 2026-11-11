@@ -501,25 +501,30 @@ function cellXfXml(xf: CellXf): string {
 }
 
 /**
- * Excel's documented ceiling on unique cell formats, which bounds both `cellXfs` and `numFmts`: no workbook Excel can
- * open holds more. A styles part listing more is a flood (EC-PACKAGE-ELEMENT-FLOOD) and is refused before the
- * per-xf table grows with it.
+ * Excel's documented ceiling on unique cell formats, which bounds both `cellXfs` and `numFmts`. Excel never writes
+ * more, but some other writers emit one xf per cell, so entries past it are ignored rather than refused
+ * (EC-STYLES-XF-OVERFLOW): the tables stop growing there, which is what keeps a flood of them bounded
+ * (EC-PACKAGE-ELEMENT-FLOOD).
  */
 export const MAX_READ_CELL_FORMATS: number = 65_490;
 
-function tooManyFormats(element: string): XlsxError {
-  return new XlsxError(
-    'LIMIT_EXCEEDED',
-    `This file's styles part lists more than ${MAX_READ_CELL_FORMATS} <${element}> elements, more than Excel allows, so it was not read.`,
-    { element, maxFormats: MAX_READ_CELL_FORMATS },
-  );
-}
+/** `isDateByXf` entry: the xf renders as a number (or text). */
+export const XF_NOT_DATE = 0;
+/** `isDateByXf` entry: the xf renders as a date or time. */
+export const XF_DATE = 1;
+/** `isDateByXf` entry: the xf's custom number format was past `MAX_READ_CELL_FORMATS`, so it reads as a number. */
+export const XF_FORMAT_IGNORED = 2;
 
 export interface ParsedStyles {
-  /** `isDateByXf[i] === 1` when cellXfs[i] renders as a date/time. Length = cellXfs count. */
+  /**
+   * Per cellXfs entry: `XF_DATE` when it renders as a date/time, `XF_FORMAT_IGNORED` when its number format was
+   * ignored, `XF_NOT_DATE` otherwise. At most `MAX_READ_CELL_FORMATS` long; an xf past the end reads as a number.
+   */
   readonly isDateByXf: Uint8Array;
   /** Custom number formats by id. */
   readonly numFmts: ReadonlyMap<number, string>;
+  /** The part listed more than `MAX_READ_CELL_FORMATS` cellXfs or numFmts, and the rest were ignored. */
+  readonly formatsIgnored: boolean;
 }
 
 /**
@@ -528,6 +533,9 @@ export interface ParsedStyles {
  * `<xf>` and `<numFmt>` elements of their own that `c/@s` never indexes (primer 7.2). `applyNumberFormat` is
  * deliberately ignored: it declares that the xf overrides its parent cell style, while Excel renders the xf's own
  * `numFmtId` either way, so honouring it would hide dates from producers that leave the flag off.
+ *
+ * Past `MAX_READ_CELL_FORMATS` entries of either list the rest are ignored (EC-STYLES-XF-OVERFLOW): a cell that uses
+ * an ignored xf, or an xf whose custom number format was ignored, reads as a plain number.
  *
  * Everything else in the part is skipped, which is what makes it tolerant of the producer quirks in the catalog:
  * POI's `<u val="none"/>` (EC-POI-UNDERLINE-NONE-REJECTED) and 6-hex colours (EC-POI-RGB-6-HEX), LibreOffice and
@@ -538,13 +546,15 @@ export function parseStyles(xml: string): ParsedStyles {
   const numFmtIdByXf: number[] = [];
   const openElements: string[] = [];
   let numFmtCount = 0;
+  let formatsIgnored = false;
   const tokenizer = new XmlTokenizer({
     start(name: string): void {
       const parent = openElements.at(-1);
       openElements.push(name);
       if (name === 'numFmt' && parent === 'numFmts') {
         if (++numFmtCount > MAX_READ_CELL_FORMATS) {
-          throw tooManyFormats('numFmt');
+          formatsIgnored = true;
+          return;
         }
         const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
         const formatCode = tokenizer.attr('formatCode');
@@ -555,7 +565,8 @@ export function parseStyles(xml: string): ParsedStyles {
       }
       if (name === 'xf' && parent === 'cellXfs') {
         if (numFmtIdByXf.length >= MAX_READ_CELL_FORMATS) {
-          throw tooManyFormats('xf');
+          formatsIgnored = true;
+          return;
         }
         const numFmtId = Number.parseInt(tokenizer.attr('numFmtId') ?? '', 10);
         numFmtIdByXf.push(Number.isFinite(numFmtId) ? numFmtId : 0);
@@ -574,8 +585,12 @@ export function parseStyles(xml: string): ParsedStyles {
     // An explicit `<numFmt>` wins over the built-in table: producers redefine ids inside the reserved range
     // (write-excel-file uses 100, SheetJS overrides 56) and the code they wrote is what Excel renders.
     const formatCode = numFmts.get(numFmtId);
+    if (formatCode === undefined && formatsIgnored && numFmtId >= FIRST_CUSTOM_NUMFMT_ID) {
+      isDateByXf[index] = XF_FORMAT_IGNORED;
+      continue;
+    }
     const isDate = formatCode === undefined ? isBuiltinDateId(numFmtId) : isDateFormatCode(formatCode);
-    isDateByXf[index] = isDate ? 1 : 0;
+    isDateByXf[index] = isDate ? XF_DATE : XF_NOT_DATE;
   }
-  return { isDateByXf, numFmts };
+  return { isDateByXf, numFmts, formatsIgnored };
 }

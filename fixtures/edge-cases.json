@@ -459,8 +459,16 @@
     "id": "EC-PACKAGE-ELEMENT-FLOOD",
     "family": "Security",
     "symptom": "A package part lists millions of tiny elements: 5M `<sheet/>` in workbook.xml (58 KB upload), millions of `<Relationship/>` or `<Override/>`, or 50M `<xf/>` in styles.xml. Each becomes an object, so simple-excel 0.2.1 reached 1.9 GB at openWorkbook() and Node ran out of memory.",
-    "seenIn": "Hostile uploads only. No producer writes more `<sheet>`, `<Relationship>` or `<Override>` elements than the archive has entries, or more cellXfs/numFmts than Excel allows (65,490 unique cell formats).",
-    "expected": "LIMIT_EXCEEDED once `<sheet>`, `<Relationship>`, `<Override>` or `<Default>` counts pass limits.maxEntries, or cellXfs/numFmts pass 65,490, before the lists grow with the input.",
+    "seenIn": "Hostile uploads only. No producer writes more `<sheet>`, `<Relationship>` or `<Override>` elements than the archive has entries.",
+    "expected": "LIMIT_EXCEEDED once `<sheet>`, `<Relationship>`, `<Override>` or `<Default>` counts pass limits.maxEntries, before the lists grow with the input. cellXfs/numFmts stop growing at 65,490 and the rest are ignored (EC-STYLES-XF-OVERFLOW).",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
+    "id": "EC-STYLES-XF-OVERFLOW",
+    "family": "Security",
+    "symptom": "styles.xml lists more cellXfs or numFmts than Excel's 65,490 unique cell formats. Unreleased 0.3.0 builds refused such a workbook with LIMIT_EXCEEDED; 0.2.1 stored every entry, so a flood of them reached gigabytes.",
+    "seenIn": "Excel never writes more. Some non-Excel writers emit one xf per styled cell, and a flood of `<xf/>` is a cheap hostile upload.",
+    "expected": "Read the workbook. Keep the first 65,490 entries of each list and ignore the rest, so memory stays bounded; a number cell that uses an ignored xf (or an xf whose custom numFmt was ignored) reads as a plain number, General rather than a date, and onWarning gets CELL_FORMATS_IGNORED once per sheet.",
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {

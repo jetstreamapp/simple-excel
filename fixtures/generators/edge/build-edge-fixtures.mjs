@@ -210,12 +210,17 @@ write(
     'xl/workbook.xml': workbook().replace('</sheets>', `${'<sheet/>'.repeat(20000)}</sheets>`),
   }),
 );
-// 70,000 cellXfs entries: past Excel's 65,490 unique cell formats.
+// 70,000 more cellXfs entries, all dates: past Excel's 65,490 unique cell formats (EC-STYLES-XF-OVERFLOW). The ones
+// past the ceiling are ignored, so C4, which uses xf 69,000, reads as the number 45351 rather than 2024-02-29.
 write(
   HOSTILE,
   'styles-xf-flood.xlsx',
   parts({
-    'xl/styles.xml': styles.replace('</cellXfs>', `${'<xf numFmtId="0"/>'.repeat(70000)}</cellXfs>`),
+    'xl/styles.xml': styles.replace('</cellXfs>', `${'<xf numFmtId="14"/>'.repeat(70000)}</cellXfs>`),
+    'xl/worksheets/sheet1.xml': sheet({ dimension: '<dimension ref="A1:C4"/>' }).replace(
+      '</sheetData>',
+      '<row r="4"><c r="C4" s="69000"><v>45351</v></c></row></sheetData>',
+    ),
   }),
 );
 // styles.xml padded with 33 MiB of whitespace: past the 32 MiB default maxPartBytes for a part read whole.

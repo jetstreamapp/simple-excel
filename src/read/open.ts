@@ -16,7 +16,7 @@ import {
   type Relationship,
 } from '../sml/package-parts';
 import { parseSharedStrings } from '../sml/shared-strings-reader';
-import { parseStyles } from '../sml/styles';
+import { parseStyles, type ParsedStyles } from '../sml/styles';
 import { readWorksheetHead, readWorksheetRows, type WorksheetReadContext, type WorksheetRowsOptions } from '../sml/worksheet-reader';
 import type {
   AnyModeRowsOptions,
@@ -802,10 +802,12 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
   const workbookDirectory = directoryOf(workbookPart);
 
   const sharedStringsPart = relationshipTarget(workbookRels, 'sharedStrings') ?? `${workbookDirectory}sharedStrings.xml`;
+  const styles = await readStyles(zip, workbookRels, workbookDirectory, limits);
   const context: WorksheetReadContext = {
     sharedStrings: sharedStringLoader(zip, sharedStringsPart, limits),
     hasSharedStrings: zip.has(sharedStringsPart),
-    isDateByXf: await readDateStyles(zip, workbookRels, workbookDirectory, limits),
+    isDateByXf: styles.isDateByXf,
+    cellFormatsIgnored: styles.formatsIgnored,
     date1904: parsed.date1904,
     dates: options.dates ?? 'local',
     errors: options.errors ?? 'string',
@@ -855,18 +857,20 @@ function sheetWarnings(report: (warning: ReadWarning) => void, sheet: string): (
 }
 
 /** Without a styles part nothing is a date: every `isDateByXf` lookup on an empty array is `undefined`. */
-async function readDateStyles(
+const NO_STYLES: ParsedStyles = { isDateByXf: new Uint8Array(0), numFmts: new Map(), formatsIgnored: false };
+
+async function readStyles(
   zip: ZipReader,
   workbookRels: readonly Relationship[],
   workbookDirectory: string,
   limits: ResolvedLimits,
-): Promise<Uint8Array> {
+): Promise<ParsedStyles> {
   const stylesPart = relationshipTarget(workbookRels, 'styles') ?? `${workbookDirectory}styles.xml`;
   if (!zip.has(stylesPart)) {
-    return new Uint8Array(0);
+    return NO_STYLES;
   }
   const xml = await zip.readText(stylesPart, limits.maxPartBytes);
-  return parsePart(stylesPart, () => parseStyles(xml)).isDateByXf;
+  return parsePart(stylesPart, () => parseStyles(xml));
 }
 
 /** The shared-string table is parsed on the first `t="s"` cell of the first sheet that has one, then reused. */

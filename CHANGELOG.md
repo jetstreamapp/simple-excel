@@ -20,6 +20,10 @@ All notable changes to this project will be documented in this file.
   entries, and the ESM and CommonJS builds loaded side by side.
 - The `XlsxError` constructor takes an optional fourth `options` argument (`{ cause }`, the standard `ErrorOptions`);
   `new XlsxError(code, message, detail)` is unchanged.
+- `CELL_FORMATS_IGNORED`, a new `ReadWarningCode`: the styles part lists more than 65,490 `cellXfs` or `numFmts`
+  and a number cell uses one past that ceiling, so it reads as a plain number (a date there comes back as its
+  serial).
+- `ReadWarning.detail`: structured facts about a warning (`CELL_FORMATS_IGNORED` sets `maxCellFormats`).
 - `sheet.rows()` accepts a `mode` that is only known at run time (`'array' | 'object'`, the new `AnyModeRowsOptions`
   type) and yields `V[] | Record<string, V>`.
 
@@ -56,9 +60,12 @@ All notable changes to this project will be documented in this file.
 ### Security
 
 - `openWorkbook()` refuses a package part that lists more `<sheet>`, `<Relationship>`, `<Override>` or `<Default>`
-  elements than `limits.maxEntries`, or a `styles.xml` with more than 65,490 `cellXfs` or `numFmts` entries (Excel's
-  own ceiling), with `LIMIT_EXCEEDED`. A 58 KB file listing 5M `<sheet/>` elements reached 1.9 GB and ran Node out
-  of memory.
+  elements than `limits.maxEntries` with `LIMIT_EXCEEDED`. A 58 KB file listing 5M `<sheet/>` elements reached
+  1.9 GB and ran Node out of memory.
+- `styles.xml` keeps at most 65,490 `cellXfs` and `numFmts` entries (Excel's own ceiling) and ignores the rest, so a
+  flood of `<xf/>` elements no longer grows the reader's tables. The workbook still reads: some non-Excel writers
+  emit one xf per cell, and a number cell that uses an ignored xf reads as a plain number with a
+  `CELL_FORMATS_IGNORED` warning.
 - The parts read whole are capped by the new `maxPartBytes` before they are inflated and again as they inflate. A
   698 KB file with 700 MiB of whitespace in `styles.xml` reached 2.2 GB and then failed with a bare
   `ERR_STRING_TOO_LONG` instead of an `XlsxError`.
