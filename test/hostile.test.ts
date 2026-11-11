@@ -30,7 +30,7 @@ const TIGHT_LIMITS: OpenOptions['limits'] = {
 };
 
 /** The reader DoS family: these must hold with the limits a caller gets by default, not only with tight ones. */
-const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = ['EC-PACKAGE-ELEMENT-FLOOD', 'EC-PART-SIZE-PADDING'];
+const DEFAULT_LIMIT_CATALOG_IDS: readonly string[] = ['EC-PACKAGE-ELEMENT-FLOOD', 'EC-PART-SIZE-PADDING', 'EC-CELL-TEXT-RUN-SPLIT'];
 
 /** Read options that make a read-flat fixture hostile, by catalog id. */
 const ROW_OPTIONS_BY_CATALOG_ID: Readonly<Record<string, ArrayRowsOptions>> = {

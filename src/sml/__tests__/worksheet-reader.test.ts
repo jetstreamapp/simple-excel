@@ -32,7 +32,8 @@ function context(overrides: Partial<WorksheetReadContext> = {}): WorksheetReadCo
     dates: 'utc',
     errors: 'string',
     maxXmlDepth: 256,
-    maxTextLength: 64 * 1024 * 1024,
+    maxTextLength: 1024 * 1024,
+    maxRowChars: 64 * 1024 * 1024,
     ...overrides,
   };
 }
@@ -705,6 +706,62 @@ describe('row windows and limits', () => {
   it('reports malformed XML rather than truncating silently', async () => {
     const error = await readRows('<worksheet><sheetData><row r="1"><c r="A1"><v>1</v></c></row>').catch((thrown: unknown) => thrown);
     expect(isXlsxError(error) && error.code).toBe('XML_MALFORMED');
+  });
+});
+
+describe('EC-CELL-TEXT-RUN-SPLIT: text limits hold for a cell and a row, however many runs build them', () => {
+  const limitExceeded = { name: 'XlsxError', code: 'LIMIT_EXCEEDED' };
+  const tight = { maxTextLength: 10, maxRowChars: 25 };
+  const run = (length: number): string => 'a'.repeat(length);
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps a value built from runs split by stray elements', async () => {
+    const atLimit = sheet(`<row r="1"><c r="A1" t="str"><v>${run(5)}<b/>${run(5)}</v></c></row>`);
+    expect(await readCells(atLimit, {}, tight)).toEqual([[run(10)]]);
+    const pastLimit = sheet(`<row r="1"><c r="B1" t="str"><v>${run(6)}<b/>${run(5)}</v></c></row>`);
+    await expect(readCells(pastLimit, {}, tight)).rejects.toMatchObject({ ...limitExceeded, detail: { ref: 'B1', maxTextLength: 10 } });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps an inline string built from rich-text runs', async () => {
+    const runs = `<is><r><t>${run(6)}</t></r><r><t>${run(5)}</t></r></is>`;
+    await expect(readCells(sheet(`<row r="1"><c r="A1" t="inlineStr">${runs}</c></row>`), {}, tight)).rejects.toMatchObject(limitExceeded);
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps captured formula text, and only captured formula text', async () => {
+    const xml = sheet(`<row r="1"><c r="A1"><f>${run(6)}<x/>${run(5)}</f><v>1</v></c></row>`);
+    expect(await readCells(xml, {}, tight)).toEqual([[1]]);
+    await expect(readCells(xml, { formulas: 'text' }, tight)).rejects.toMatchObject(limitExceeded);
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: one run past the limit is refused by the tokenizer as before', async () => {
+    await expect(readCells(sheet(`<row r="1"><c r="A1" t="str"><v>${run(11)}</v></c></row>`), {}, tight)).rejects.toMatchObject(
+      limitExceeded,
+    );
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps the text of one row across its cells and starts afresh on the next row', async () => {
+    const cells = (rowNumber: number, count: number): string =>
+      Array.from({ length: count }, () => `<c t="str"><v>${run(10)}</v></c>`).join('');
+    const rows = `<row r="1">${cells(1, 2)}</row><row r="2">${cells(2, 2)}</row>`;
+    expect(await readCells(sheet(rows), {}, tight)).toEqual([
+      [run(10), run(10)],
+      [run(10), run(10)],
+    ]);
+    await expect(readCells(sheet(`<row r="1">${cells(1, 3)}</row>`), {}, tight)).rejects.toMatchObject({
+      ...limitExceeded,
+      detail: { row: 1, maxRowChars: 25 },
+    });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: head() holds the same limits', async () => {
+    const xml = sheet(`<row r="1"><c r="A1" t="str"><v>${run(6)}<b/>${run(5)}</v></c></row>`);
+    await expect(readWorksheetHead(bytesOf(xml), context(tight), 1)).rejects.toMatchObject(limitExceeded);
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: a string past the engine maximum surfaces as LIMIT_EXCEEDED, not a RangeError', async () => {
+    const tooLong = (): Promise<readonly string[]> => Promise.reject(new RangeError('Invalid string length'));
+    const xml = sheet('<row r="1"><c r="A1" t="s"><v>0</v></c></row>');
+    await expect(readCells(xml, {}, { sharedStrings: tooLong })).rejects.toMatchObject(limitExceeded);
+    await expect(readWorksheetHead(bytesOf(xml), context({ sharedStrings: tooLong }), 1)).rejects.toMatchObject(limitExceeded);
   });
 });
 

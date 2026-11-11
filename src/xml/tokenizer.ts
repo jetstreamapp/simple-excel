@@ -11,7 +11,7 @@ export interface XmlTokenizerHandler {
 export interface XmlTokenizerLimits {
   /** Default 256. */
   readonly maxDepth?: number;
-  /** Default 64 Mi UTF-16 units. */
+  /** Default 1 Mi UTF-16 units, the reader's `limits.maxTextLength` default. */
   readonly maxTextLength?: number;
 }
 
@@ -61,7 +61,7 @@ const SPAN_WIDTH = 4;
 const INITIAL_ATTRIBUTE_CAPACITY = 16;
 
 const DEFAULT_MAX_DEPTH = 256;
-const DEFAULT_MAX_TEXT_LENGTH = 64 * 1024 * 1024;
+const DEFAULT_MAX_TEXT_LENGTH = 1024 * 1024;
 /** A single tag this long is a broken (or hostile) file, not markup any spreadsheet produced. */
 const MAX_TAG_LENGTH = 1024 * 1024;
 /** `&#x10FFFF;` is the longest reference worth waiting for; anything longer is literal text. */

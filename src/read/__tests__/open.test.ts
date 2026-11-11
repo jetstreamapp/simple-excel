@@ -594,6 +594,29 @@ describe('workbook.sheet', () => {
 // Array mode
 // ---------------------------------------------------------------------------------------------------------------
 
+describe('sheet.rows: text limits', () => {
+  const MAX_TEXT_LENGTH = 1024 * 1024;
+  const splitCell = (length: number): string => `<row r="1"><c r="A1" t="str"><v>${'a'.repeat(length - 1)}<b/>a</v></c></row>`;
+
+  it('EC-CELL-TEXT-RUN-SPLIT: maxTextLength defaults to 1,048,576 characters for a cell, however many runs build it', async () => {
+    expect((await readRows(await sheetOnlyBytes(splitCell(MAX_TEXT_LENGTH))))[0]?.[0]).toHaveLength(MAX_TEXT_LENGTH);
+    const tooLong = await sheetOnlyBytes(splitCell(MAX_TEXT_LENGTH + 1));
+    const error = await caught(() => readRows(tooLong));
+    expect(error).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { ref: 'A1', maxTextLength: MAX_TEXT_LENGTH } });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: applies maxTextLength and maxRowChars from options', async () => {
+    const bytes = await sheetOnlyBytes(`<row r="1">${'<c t="str"><v>aaaa</v></c>'.repeat(3)}</row>`);
+    const read = async (limits: OpenOptions['limits']): Promise<CellValue[][]> => {
+      const workbook = await openWorkbook(bytes, { limits });
+      return collect(workbook.sheet(0).rows());
+    };
+    expect(await read({ maxTextLength: 4, maxRowChars: 12 })).toEqual([['aaaa', 'aaaa', 'aaaa']]);
+    expect(await caught(() => read({ maxTextLength: 3 }))).toMatchObject({ code: 'LIMIT_EXCEEDED' });
+    expect(await caught(() => read({ maxRowChars: 11 }))).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { row: 1, maxRowChars: 11 } });
+  });
+});
+
 describe('sheet.rows: array mode', () => {
   const SHEET = `${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}<row r="3"/>${row(4, ['003', 'Ünïcödé'])}`;
 

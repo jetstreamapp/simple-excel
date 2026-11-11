@@ -1129,6 +1129,24 @@
       "generated": false,
       "expectedError": "LIMIT_EXCEEDED",
       "notes": "styles.xml padded with 33 MiB of whitespace (33 KB on disk): past the 32 MiB default maxPartBytes for a part the reader holds whole."
+    },
+    {
+      "id": "hostile-cell-text-split-runs",
+      "path": "hostile/cell-text-split-runs.xlsx",
+      "bytes": 3587,
+      "sha256": "d6b71ffcdbfe7676e0d737d854e9f0c4a58f161d8714d242e55a851aad93bf56",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-CELL-TEXT-RUN-SPLIT"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "One t=\"str\" cell whose value is two 600,000-character runs split by <b/>: each run passes the 1 Mi default maxTextLength, the cell does not."
     }
   ]
 }

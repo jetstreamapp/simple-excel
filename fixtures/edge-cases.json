@@ -472,6 +472,14 @@
     "status": "verified 2026-11-11 (reader DoS review)"
   },
   {
+    "id": "EC-CELL-TEXT-RUN-SPLIT",
+    "family": "Security",
+    "symptom": "One cell built from many text runs (`<v>` text split by `<b/>` into 1 MiB runs, rich-text runs, CDATA pieces) or one row of many large cells. maxTextLength capped each run, not the cell, so about 1 MB of upload built a 400 Mi-character cell and past V8's string limit threw a bare RangeError.",
+    "seenIn": "Hostile uploads only. Excel caps a cell at 32,767 characters; Salesforce's longest text field holds 131,072.",
+    "expected": "maxTextLength (default 1,048,576) applies to the accumulated value of a cell (value, inline string, formula text) and of a shared-string item; maxRowChars (default 64 Mi) caps the characters of one row; LIMIT_EXCEEDED either way, never a RangeError.",
+    "status": "verified 2026-11-11 (reader DoS review)"
+  },
+  {
     "id": "EC-ZIP64-LOCAL-SIZES-BIT3",
     "family": "Container",
     "symptom": "A zip64 entry written with bit 3 (data descriptor) whose local header carries 0xFFFFFFFF in the size fields (as several writers do) makes Excel silently repair the workbook.",

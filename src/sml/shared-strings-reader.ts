@@ -1,4 +1,5 @@
 import { XlsxError } from '../errors';
+import { isStringLengthError } from '../internal/string-length';
 import { decodeCellText } from '../xml/escape';
 import { XmlTokenizer } from '../xml/tokenizer';
 
@@ -70,6 +71,14 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
             { maxChars: options.maxChars },
           );
         }
+        // The tokenizer caps each run; an item built from many runs is held to the same cap (EC-CELL-TEXT-RUN-SPLIT).
+        if (current.length + text.length > options.maxTextLength) {
+          throw new XlsxError(
+            'LIMIT_EXCEEDED',
+            `Shared string ${stringCount} of this workbook is longer than the ${options.maxTextLength} character limit, so it was not read further.`,
+            { index: stringCount, maxTextLength: options.maxTextLength },
+          );
+        }
         current = current.length === 0 ? text : current + text;
       },
       end(name: string): void {
@@ -96,12 +105,22 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
   );
 
   const decoder = new TextDecoder('utf-8');
-  for await (const chunk of chunks) {
-    tokenizer.push(decoder.decode(chunk, { stream: true }));
+  try {
+    for await (const chunk of chunks) {
+      tokenizer.push(decoder.decode(chunk, { stream: true }));
+    }
+    // Flush whatever the decoder held back from a multi-byte character split across the last chunk boundary.
+    tokenizer.push(decoder.decode());
+    tokenizer.end();
+  } catch (error) {
+    // Only reachable with limits raised past what one string can hold; still a limit, not a crash.
+    if (isStringLengthError(error)) {
+      throw new XlsxError('LIMIT_EXCEEDED', "This workbook's shared text holds more than a string can, so it was not read further.", {
+        cause: error,
+      });
+    }
+    throw error;
   }
-  // Flush whatever the decoder held back from a multi-byte character split across the last chunk boundary.
-  tokenizer.push(decoder.decode());
-  tokenizer.end();
 
   strings.length = stringCount;
   return strings;

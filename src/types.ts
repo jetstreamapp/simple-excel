@@ -298,8 +298,13 @@ export interface ReadLimits {
   readonly maxEntries?: number;
   /** Default 256. */
   readonly maxXmlDepth?: number;
-  /** Default 64 Mi UTF-16 units for one text node. */
+  /**
+   * UTF-16 units in one piece of text: one cell's value, inline string or formula text, one shared-string item, or
+   * any single text node, however many runs build it. Default 1,048,576 (Excel holds 32,767 characters in a cell).
+   */
   readonly maxTextLength?: number;
+  /** UTF-16 units of text in one row of a sheet, all its cells together. Default 64 Mi. */
+  readonly maxRowChars?: number;
 }
 
 /**

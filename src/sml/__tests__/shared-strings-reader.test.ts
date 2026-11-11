@@ -98,6 +98,24 @@ describe('parseSharedStrings', () => {
     await expect(parse(xml, { ...OPTIONS, maxChars: 15 })).rejects.toMatchObject({ name: 'XlsxError', code: 'LIMIT_EXCEEDED' });
   });
 
+  it('EC-CELL-TEXT-RUN-SPLIT: holds maxTextLength against an item built from many runs', async () => {
+    const options = { ...OPTIONS, maxTextLength: 10 };
+    await expect(parse(sst('<si><r><t>aaaaa</t></r><r><t>bbbbb</t></r></si>'), options)).resolves.toEqual(['aaaaabbbbb']);
+    await expect(parse(sst('<si><t>aaaaa</t></si><si><r><t>aaaaaa</t></r><r><t>bbbbb</t></r></si>'), options)).rejects.toMatchObject({
+      name: 'XlsxError',
+      code: 'LIMIT_EXCEEDED',
+      detail: { index: 1, maxTextLength: 10 },
+    });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: a string past the engine maximum surfaces as LIMIT_EXCEEDED, not a RangeError', async () => {
+    async function* failing(): AsyncGenerator<Uint8Array> {
+      yield new TextEncoder().encode('<sst><si><t>a');
+      throw new RangeError('Invalid string length');
+    }
+    await expect(parseSharedStrings(failing(), OPTIONS)).rejects.toMatchObject({ name: 'XlsxError', code: 'LIMIT_EXCEEDED' });
+  });
+
   it('EC-XXE-DOCTYPE: refuses a document type declaration', async () => {
     const xml =
       '<?xml version="1.0"?><!DOCTYPE sst [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>' +

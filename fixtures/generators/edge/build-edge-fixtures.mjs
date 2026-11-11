@@ -226,6 +226,18 @@ write(
     'xl/styles.xml': styles.replace('</styleSheet>', `${' '.repeat(33 * 1024 * 1024)}</styleSheet>`),
   }),
 );
+// One cell whose value is two 600,000-character runs split by a stray element: each run is under the 1 Mi default
+// maxTextLength, the cell is not.
+write(
+  HOSTILE,
+  'cell-text-split-runs.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      rows: `<row r="1"><c r="A1" t="str"><v>${'A'.repeat(600000)}<b/>${'A'.repeat(600000)}</v></c></row>`,
+      dimension: '',
+    }),
+  }),
+);
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [

@@ -44,7 +44,9 @@ import { SNIFF_BYTES, sniff } from './sniff';
 const DEFAULT_MAX_INFLATED_BYTES = 1024 * 1024 * 1024;
 const DEFAULT_MAX_SHARED_STRING_CHARS = 256 * 1024 * 1024;
 const DEFAULT_MAX_XML_DEPTH = 256;
-const DEFAULT_MAX_TEXT_LENGTH = 64 * 1024 * 1024;
+/** Excel holds 32,767 characters in a cell and Salesforce's longest text field 131,072; 1 Mi leaves room for both. */
+const DEFAULT_MAX_TEXT_LENGTH = 1024 * 1024;
+const DEFAULT_MAX_ROW_CHARS = 64 * 1024 * 1024;
 
 /** The UI matches on the literal `password-protected`; changing it breaks Jetstream's error copy (ADR-007). */
 const ENCRYPTED_MESSAGE =
@@ -98,6 +100,7 @@ interface ResolvedLimits {
   readonly maxSharedStringChars: number;
   readonly maxXmlDepth: number;
   readonly maxTextLength: number;
+  readonly maxRowChars: number;
 }
 
 function resolveLimits(limits: ReadLimits | undefined): ResolvedLimits {
@@ -108,6 +111,7 @@ function resolveLimits(limits: ReadLimits | undefined): ResolvedLimits {
     maxSharedStringChars: limits?.maxSharedStringChars ?? DEFAULT_MAX_SHARED_STRING_CHARS,
     maxXmlDepth: limits?.maxXmlDepth ?? DEFAULT_MAX_XML_DEPTH,
     maxTextLength: limits?.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH,
+    maxRowChars: limits?.maxRowChars ?? DEFAULT_MAX_ROW_CHARS,
   };
 }
 
@@ -788,6 +792,7 @@ async function readPackage(zip: ZipReader, options: OpenOptions, limits: Resolve
     errors: options.errors ?? 'string',
     maxXmlDepth: limits.maxXmlDepth,
     maxTextLength: limits.maxTextLength,
+    maxRowChars: limits.maxRowChars,
     signal: options.signal,
   };
 

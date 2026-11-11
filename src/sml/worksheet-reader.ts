@@ -1,4 +1,5 @@
 import { XlsxError } from '../errors';
+import { isStringLengthError } from '../internal/string-length';
 import type { CellErrorCode, CellValue, OpenOptions, RawCell, ReadWarning, ReadWarningCode, RowsOptions } from '../types';
 import { decodeCellText } from '../xml/escape';
 import { XmlTokenizer, type XmlTokenizerHandler } from '../xml/tokenizer';
@@ -29,7 +30,10 @@ export interface WorksheetReadContext {
   readonly dates: NonNullable<OpenOptions['dates']>;
   readonly errors: NonNullable<OpenOptions['errors']>;
   readonly maxXmlDepth: number;
+  /** Characters one cell's value, inline string or formula text may accumulate, however many text runs build it. */
   readonly maxTextLength: number;
+  /** Characters the captured text of one row may add up to (EC-CELL-TEXT-RUN-SPLIT). */
+  readonly maxRowChars: number;
   /** Checked between chunks; an aborted signal ends the read with `XlsxError('ABORTED')`. Supplied by the facade. */
   readonly signal?: AbortSignal;
   /**
@@ -175,6 +179,17 @@ function limitExceeded(message: string, detail: Readonly<Record<string, unknown>
   return new XlsxError('LIMIT_EXCEEDED', message, detail);
 }
 
+/**
+ * A string past the engine's maximum length means the caller raised `maxTextLength` or `maxRowChars` further than
+ * one string can go; it is still a limit, not a crash (EC-CELL-TEXT-RUN-SPLIT).
+ */
+function classifyStringLengthError(error: unknown): unknown {
+  if (!isStringLengthError(error)) {
+    return error;
+  }
+  return limitExceeded('This sheet holds more text in one place than a string can, so it was not read further.', { cause: error });
+}
+
 function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted === true) {
     throw new XlsxError('ABORTED', 'Reading this spreadsheet was cancelled.');
@@ -228,6 +243,8 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   protected inlineSeen = false;
   protected inlineText = '';
   protected formulaText = '';
+  /** Characters captured from the open row so far: values, inline strings and formula text. */
+  private rowChars = 0;
   /** False while rows before `startRow` stream past: they are parsed for their numbering and nothing else. */
   protected collecting = false;
 
@@ -353,18 +370,32 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     }
   }
 
+  /**
+   * The tokenizer caps each text run at `maxTextLength`; a cell can be built from any number of runs (rich text,
+   * CDATA pieces, text split by stray elements), so the cap is held here against what the cell has accumulated, and
+   * `maxRowChars` against the row (EC-CELL-TEXT-RUN-SPLIT).
+   */
   text(text: string): void {
-    switch (this.capture) {
+    const capture = this.capture;
+    if (capture === CAPTURE_NONE) {
+      return;
+    }
+    this.rowChars += text.length;
+    if (this.rowChars > this.context.maxRowChars) {
+      throw limitExceeded(
+        `Row ${this.rowNumber} of this sheet holds more than ${this.context.maxRowChars} characters of text, so it was not read further.`,
+        { row: this.rowNumber, maxRowChars: this.context.maxRowChars },
+      );
+    }
+    switch (capture) {
       case CAPTURE_VALUE:
-        this.valueText = this.valueText.length === 0 ? text : this.valueText + text;
+        this.valueText = this.valueText.length === 0 ? text : this.appendCellText(this.valueText, text);
         return;
       case CAPTURE_INLINE:
-        this.inlineText = this.inlineText.length === 0 ? text : this.inlineText + text;
-        return;
-      case CAPTURE_FORMULA:
-        this.formulaText = this.formulaText.length === 0 ? text : this.formulaText + text;
+        this.inlineText = this.inlineText.length === 0 ? text : this.appendCellText(this.inlineText, text);
         return;
       default:
+        this.formulaText = this.formulaText.length === 0 ? text : this.appendCellText(this.formulaText, text);
         return;
     }
   }
@@ -412,6 +443,16 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   // Rows and cells
   // -------------------------------------------------------------------------------------------------------------
 
+  private appendCellText(current: string, text: string): string {
+    if (current.length + text.length > this.context.maxTextLength) {
+      throw limitExceeded(
+        `Cell ${this.currentRef()} of this sheet holds more than ${this.context.maxTextLength} characters of text, so it was not read further.`,
+        { ref: this.currentRef(), maxTextLength: this.context.maxTextLength },
+      );
+    }
+    return current + text;
+  }
+
   /** A missing `<row r>` means the previous row plus one (EC-MISSING-R-ATTRIBUTES). */
   private beginRow(): void {
     const ref = this.tokenizer.attr('r');
@@ -430,6 +471,7 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     }
     this.rowNumber = rowNumber;
     this.column = -1;
+    this.rowChars = 0;
     this.state = STATE_ROW;
     this.onRowStart(rowNumber);
   }
@@ -849,20 +891,24 @@ async function* streamRows(
     return;
   }
   const decoder = new TextDecoder('utf-8');
-  for await (const chunk of chunks) {
-    throwIfAborted(context.signal);
-    await feed(parser, decoder.decode(chunk, { stream: true }));
+  try {
+    for await (const chunk of chunks) {
+      throwIfAborted(context.signal);
+      await feed(parser, decoder.decode(chunk, { stream: true }));
+      for (const row of parser.takeBatch()) {
+        yield row;
+      }
+      if (parser.stopped) {
+        return;
+      }
+    }
+    await feed(parser, decoder.decode());
+    parser.finish();
     for (const row of parser.takeBatch()) {
       yield row;
     }
-    if (parser.stopped) {
-      return;
-    }
-  }
-  await feed(parser, decoder.decode());
-  parser.finish();
-  for (const row of parser.takeBatch()) {
-    yield row;
+  } catch (error) {
+    throw classifyStringLengthError(error);
   }
 }
 
@@ -884,15 +930,19 @@ export async function readWorksheetHead(
     return parser.cells;
   }
   const decoder = new TextDecoder('utf-8');
-  for await (const chunk of chunks) {
-    throwIfAborted(context.signal);
-    await feed(parser, decoder.decode(chunk, { stream: true }));
-    if (parser.stopped) {
-      return parser.cells;
+  try {
+    for await (const chunk of chunks) {
+      throwIfAborted(context.signal);
+      await feed(parser, decoder.decode(chunk, { stream: true }));
+      if (parser.stopped) {
+        return parser.cells;
+      }
     }
+    await feed(parser, decoder.decode());
+    parser.finish();
+  } catch (error) {
+    throw classifyStringLengthError(error);
   }
-  await feed(parser, decoder.decode());
-  parser.finish();
   return parser.cells;
 }
 
