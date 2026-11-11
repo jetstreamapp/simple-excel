@@ -228,7 +228,7 @@ prove it. All tests are vitest in `src/<module>/__tests__/`.
 
 ### C1 `sml/worksheet-reader.ts`
 
-- `readRows(stream: ReadableStream<Uint8Array>, context: { sst: string[]; isDateByXf: Uint8Array; date1904; options }): AsyncIterable<{ row: number; cells: CellValue[] }>` — tokenizer-driven state machine (row/col inference when `r` is missing, `t` handling for n/s/str/inlineStr/b/e/d, `<v/>` empty, `<f>` skipped or captured, `<is>` runs flattened, escapes decoded only when `_x` present, date-ness via `isDateByXf`), batched per decoded chunk, limits.
+- `readRows(stream: ReadableStream<Uint8Array>, context: { sst: string[]; isDateByXf: Uint8Array; date1904; options }): AsyncIterable<{ row: number; cells: CellValue[] }>` — tokenizer-driven state machine (row/col inference when `r` is missing, `t` handling for n/s/str/inlineStr/b/e/d, `<v/>` empty, `<f>` skipped or captured, `<is>` runs flattened, escapes decoded only when `_x` present, date-ness via `isDateByXf`), batched per decoded chunk and capped at about 1M cell slots per batch, limits.
 - Rules: 02 §3, EC-MISSING-R-ATTRIBUTES, EC-EMPTY-V-ELEMENT, EC-INLINE-STRINGS-CDATA, EC-PREFIXED-ELEMENTS, EC-STRICT-ISO-DATE-PRECISION (`t="d"` with any fraction digits and bare times), EC-NUM-MAX-DOUBLE, EC-TIME-ONLY-HAS-DATE-PART (document our marker: 1899-12-30).
 - Tests: every `fixtures/edge` variant against its expected dump; corpus goldens against `canonical.json` with the diff categories allowed per fixture policy.
 

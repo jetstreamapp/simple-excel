@@ -396,7 +396,7 @@ export class XmlTokenizer {
    * Called from a handler callback: stop scanning once the current token is handled, keeping the rest of the input
    * (the way a partial tag is kept) until `resume()`. This is how a consumer bounds what one chunk can make it build:
    * a 16 KiB chunk of sparse rows can otherwise become a gigabyte of row arrays before anything is yielded
-   * (EC-WIDE-SPARSE-ROWS). `push` and `end` must not be called while paused.
+   * (EC-WIDE-SPARSE-ROWS). Input pushed while paused queues behind what the pause left; `end()` scans all of it.
    */
   pause(): void {
     this.pauseRequested = true;
@@ -421,7 +421,11 @@ export class XmlTokenizer {
     if (this.partialTagLength > 0) {
       this.takePartialTag();
     }
-    this.scan(true);
+    // There is no later input to wait for, so a pause, left over or requested now, only splits the final scan.
+    do {
+      this.pauseRequested = false;
+      this.scan(true);
+    } while (this.pauseRequested);
     if (this.mode !== MODE_TEXT) {
       throw malformed('a comment, CDATA section or processing instruction that never ended');
     }

@@ -934,7 +934,8 @@ class HeadParser extends WorksheetParser {
  * Stream typed rows out of a worksheet part: UTF-8 decode -> tokenizer -> cell state machine. Handles missing `r`
  * attributes (row and column inferred), every `t` value (n, s, str, inlineStr, b, e, d), `<v/>`, `<is>` runs,
  * formulas (cached value, or text with `formulas: 'text'`), Strict ISO dates, and decodes `_xHHHH_` only when the
- * text contains `_x`. Yields in batches per decoded chunk; breaking out cancels the underlying stream.
+ * text contains `_x`. Yields in batches per decoded chunk, a chunk split wherever its rows pass `BATCH_SLOT_BUDGET`;
+ * breaking out cancels the underlying stream.
  */
 export function readWorksheetRows(
   chunks: AsyncIterable<Uint8Array>,
@@ -998,16 +999,13 @@ export async function readWorksheetHead(
   if (parser.stopped) {
     return parser.cells;
   }
-  const decoder = new TextDecoder('utf-8');
   try {
-    for await (const chunk of chunks) {
-      throwIfAborted(context.signal);
-      await feed(parser, decoder.decode(chunk, { stream: true }));
+    for await (const text of decodedText(chunks, context.signal)) {
+      await feed(parser, text);
       if (parser.stopped) {
         return parser.cells;
       }
     }
-    await feed(parser, decoder.decode());
     parser.finish();
   } catch (error) {
     throw classifyStringLengthError(error);
