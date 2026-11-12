@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T18:26:24.594Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "phase-d-simple-excel-hostile",
     "node": "v24.18.0",
     "readers": ["simple-excel"],

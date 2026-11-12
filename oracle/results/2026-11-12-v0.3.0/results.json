@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-11-12T15:01:58.555Z",
-    "host": "mac.lan",
+    "host": "darwin-arm64",
     "label": "v0.3.0",
     "node": "v24.22.1",
     "readers": ["simple-excel", "sheetjs", "office-kit", "office-kit-stream", "openpyxl", "calamine", "validator", "libreoffice", "excel"],
@@ -190,7 +190,7 @@
       "status": "PASS",
       "ms": 642,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/sheetjs/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/sheetjs/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -202,7 +202,7 @@
       "status": "PASS",
       "ms": 1752,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/sheetjs/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-sheetjs.libreoffice/canonical.xlsx usi",
+      "stderr": "convert <repo>/fixtures/golden/sheetjs/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-sheetjs.libreoffice/canonical.xlsx usi",
       "resaveDiff": {
         "matches": 596,
         "cells": 658,
@@ -487,7 +487,7 @@
       "status": "FAIL",
       "ms": 482,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/exceljs/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:sz'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/exceljs/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:sz'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [
@@ -507,7 +507,7 @@
       "status": "PASS",
       "ms": 1148,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/exceljs/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-exceljs.libreoffice/canonical.xlsx usi",
+      "stderr": "convert <repo>/fixtures/golden/exceljs/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-exceljs.libreoffice/canonical.xlsx usi",
       "resaveDiff": {
         "matches": 506,
         "cells": 658,
@@ -815,7 +815,7 @@
       "status": "FAIL",
       "ms": 303,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/write-excel-file/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:b'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[2]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/write-excel-file/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:b'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[2]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [
@@ -835,7 +835,7 @@
       "status": "PASS",
       "ms": 1006,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/write-excel-file/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-write-excel-file.libreoffice/",
+      "stderr": "convert <repo>/fixtures/golden/write-excel-file/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-write-excel-file.libreoffice/",
       "resaveDiff": {
         "matches": 499,
         "cells": 655,
@@ -1093,7 +1093,7 @@
       "status": "FAIL",
       "ms": 524,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/openpyxl/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:color'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/openpyxl/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:color'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [
@@ -1113,7 +1113,7 @@
       "status": "PASS",
       "ms": 1315,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/openpyxl/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-openpyxl.libreoffice/canonical.xlsx u",
+      "stderr": "convert <repo>/fixtures/golden/openpyxl/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-openpyxl.libreoffice/canonical.xlsx u",
       "resaveDiff": {
         "matches": 552,
         "cells": 658,
@@ -1371,7 +1371,7 @@
       "status": "PASS",
       "ms": 648,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/xlsxwriter/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/xlsxwriter/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -1383,7 +1383,7 @@
       "status": "PASS",
       "ms": 1825,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/xlsxwriter/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-xlsxwriter.libreoffice/canonical.xl",
+      "stderr": "convert <repo>/fixtures/golden/xlsxwriter/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-xlsxwriter.libreoffice/canonical.xl",
       "resaveDiff": {
         "matches": 587,
         "cells": 658,
@@ -1689,7 +1689,7 @@
       "status": "PASS",
       "ms": 574,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/libreoffice/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/libreoffice/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -1701,7 +1701,7 @@
       "status": "PASS",
       "ms": 1505,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/libreoffice/canonical.from-exceljs.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-libreoffice-resave.li",
+      "stderr": "convert <repo>/fixtures/golden/libreoffice/canonical.from-exceljs.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-libreoffice-resave.li",
       "resaveDiff": {
         "matches": 505,
         "cells": 658,
@@ -1985,7 +1985,7 @@
       "status": "FAIL",
       "ms": 524,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/libreoffice/canonical.from-csv.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'width' has invalid value '296.22'. The MaxInclusive constraint failed. The value must be less than or equal to 255.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:cols[1]/x:col[18]\",\n      \"id\": \"Sem_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/libreoffice/canonical.from-csv.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'width' has invalid value '296.22'. The MaxInclusive constraint failed. The value must be less than or equal to 255.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:cols[1]/x:col[18]\",\n      \"id\": \"Sem_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [
@@ -2005,7 +2005,7 @@
       "status": "PASS",
       "ms": 1264,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/libreoffice/canonical.from-csv.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-libreoffice-from-csv.libr",
+      "stderr": "convert <repo>/fixtures/golden/libreoffice/canonical.from-csv.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-libreoffice-from-csv.libr",
       "resaveDiff": {
         "matches": 465,
         "cells": 620,
@@ -2292,7 +2292,7 @@
       "status": "FAIL",
       "ms": 489,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/office-kit/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:b'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[2]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:color'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/office-kit/canonical.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:b'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[2]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:color'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 2,
       "errorsSample": [
@@ -2319,7 +2319,7 @@
       "status": "PASS",
       "ms": 1276,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/office-kit/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-office-kit.libreoffice/canonical.xl",
+      "stderr": "convert <repo>/fixtures/golden/office-kit/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-office-kit.libreoffice/canonical.xl",
       "resaveDiff": {
         "matches": 541,
         "cells": 658,
@@ -2599,7 +2599,7 @@
       "status": "PASS",
       "ms": 358,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-csv.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-365/canonical.from-csv.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -2611,7 +2611,7 @@
       "status": "PASS",
       "ms": 1431,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-csv.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-from-csv.libreoff",
+      "stderr": "convert <repo>/fixtures/golden/excel-365/canonical.from-csv.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-from-csv.libreoff",
       "resaveDiff": {
         "matches": 412,
         "cells": 641,
@@ -2905,7 +2905,7 @@
       "status": "PASS",
       "ms": 395,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-365/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -2917,7 +2917,7 @@
       "status": "PASS",
       "ms": 1187,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-exceljs.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-resave.libreo",
+      "stderr": "convert <repo>/fixtures/golden/excel-365/canonical.from-exceljs.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-resave.libreo",
       "resaveDiff": {
         "matches": 506,
         "cells": 658,
@@ -3140,7 +3140,7 @@
       "status": "FAIL",
       "ms": 411,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-exceljs.strict.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'baseline' has invalid value '0%'. The string '0%' is not a valid 'Int32' value.\",\n      \"path\": \"/xl/drawings/drawing1.xml\",\n      \"xPath\": \"/xdr:wsDr[1]/mc:AlternateContent[1]/mc:Fallback[1]/xdr:twoCellAnchor[1]/xdr:sp[1]/xdr:txBody[1]/a:p[1]/a:r[1]/a:rPr[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'lim' has invalid value '800%'. The string '800%' is not a valid 'Int32' value.\",\n      \"path\": \"/xl/drawings/drawing1.xml\",\n      \"xPath\": \"/xdr:wsDr[1]/mc:AlternateContent[1]/mc:Fallback[1]/xdr:twoCellAnchor[1]/xdr:sp[1]/xdr:spPr[1]/a:ln[1]/a:miter[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2025-01-01T06:59:59.99899961985647550' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[31]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '07:00:01.50000014109536775' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[31]/x:c[14]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1999-12-31T06:59:59.99999979045242400' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[31]/x:c[13]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1900-01-01T19:00:00.00000010477378800' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[30]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '13:00:00.00000010477378800' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[30]/x:c[14]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2024-02-29T07:00:00.00000041909515875' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[30]/x:c[13]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2000-01-01T06:59:59.99999979045242400' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[29]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1899-12-31T06:59:58.99999987101182550' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[29]/x:c[14]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1904-01-01T07:00:00.00000010477378800' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[29]/x:c[13]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2024-01-02T22:04:05.67799984943121900' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[28]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"d",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-365/canonical.from-exceljs.strict.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'baseline' has invalid value '0%'. The string '0%' is not a valid 'Int32' value.\",\n      \"path\": \"/xl/drawings/drawing1.xml\",\n      \"xPath\": \"/xdr:wsDr[1]/mc:AlternateContent[1]/mc:Fallback[1]/xdr:twoCellAnchor[1]/xdr:sp[1]/xdr:txBody[1]/a:p[1]/a:r[1]/a:rPr[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'lim' has invalid value '800%'. The string '800%' is not a valid 'Int32' value.\",\n      \"path\": \"/xl/drawings/drawing1.xml\",\n      \"xPath\": \"/xdr:wsDr[1]/mc:AlternateContent[1]/mc:Fallback[1]/xdr:twoCellAnchor[1]/xdr:sp[1]/xdr:spPr[1]/a:ln[1]/a:miter[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2025-01-01T06:59:59.99899961985647550' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[31]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '07:00:01.50000014109536775' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[31]/x:c[14]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1999-12-31T06:59:59.99999979045242400' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[31]/x:c[13]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1900-01-01T19:00:00.00000010477378800' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[30]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '13:00:00.00000010477378800' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[30]/x:c[14]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2024-02-29T07:00:00.00000041909515875' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[30]/x:c[13]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2000-01-01T06:59:59.99999979045242400' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[29]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1899-12-31T06:59:58.99999987101182550' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[29]/x:c[14]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '1904-01-01T07:00:00.00000010477378800' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[29]/x:c[13]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"description\": \"Cell contents have invalid value '2024-01-02T22:04:05.67799984943121900' for type 'CellValues { }'.\",\n      \"path\": \"/xl/worksheets/sheet1.xml\",\n      \"xPath\": \"/x:worksheet[1]/x:sheetData[1]/x:row[28]/x:c[15]\",\n      \"id\": \"Sem_CellValue\",\n      \"errorType\": \"Semantic\"\n    },\n    {\n      \"d",
       "stderr": "",
       "schemaErrors": 133,
       "errorsSample": [
@@ -3188,7 +3188,7 @@
       "status": "PASS",
       "ms": 1232,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-exceljs.strict.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-strict",
+      "stderr": "convert <repo>/fixtures/golden/excel-365/canonical.from-exceljs.strict.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-strict",
       "resaveDiff": {
         "matches": 506,
         "cells": 658,
@@ -3461,7 +3461,7 @@
       "status": "PASS",
       "ms": 357,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-office-kit.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-365/canonical.from-office-kit.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -3473,7 +3473,7 @@
       "status": "PASS",
       "ms": 1165,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-office-kit.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-resave-off",
+      "stderr": "convert <repo>/fixtures/golden/excel-365/canonical.from-office-kit.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-resave-off",
       "resaveDiff": {
         "matches": 541,
         "cells": 658,
@@ -3775,7 +3775,7 @@
       "status": "PASS",
       "ms": 440,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/gsheets/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -3787,7 +3787,7 @@
       "status": "PASS",
       "ms": 1223,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.from-exceljs.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-resave.libreoffic",
+      "stderr": "convert <repo>/fixtures/golden/gsheets/canonical.from-exceljs.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-resave.libreoffic",
       "resaveDiff": {
         "matches": 504,
         "cells": 656,
@@ -4000,7 +4000,7 @@
       "status": "ERROR",
       "ms": 102,
       "readerVersion": "openpyxl",
-      "error": "ValueError: Unable to read workbook: could not read worksheets from /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.from-exceljs.xlsx.\nThis is most probably because the workbook source files contain some invalid XML.\nPlease see the exception for more details."
+      "error": "ValueError: Unable to read workbook: could not read worksheets from <repo>/fixtures/golden/numbers/canonical.from-exceljs.xlsx.\nThis is most probably because the workbook source files contain some invalid XML.\nPlease see the exception for more details."
     },
     {
       "fixture": "golden-canonical-numbers",
@@ -4036,7 +4036,7 @@
       "status": "PASS",
       "ms": 411,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/numbers/canonical.from-exceljs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -4048,7 +4048,7 @@
       "status": "PASS",
       "ms": 1246,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.from-exceljs.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-numbers.libreoffice/canon",
+      "stderr": "convert <repo>/fixtures/golden/numbers/canonical.from-exceljs.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-numbers.libreoffice/canon",
       "resaveDiff": {
         "matches": 501,
         "cells": 658,
@@ -4274,7 +4274,7 @@
       "status": "FAIL",
       "ms": 363,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/sfdc-report/canonical.details.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[16]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[16]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[15]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[13]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[11]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:top[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:left[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[8]",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/sfdc-report/canonical.details.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[16]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[16]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[15]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[13]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[11]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:top[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[9]/x:left[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[8]",
       "stderr": "",
       "schemaErrors": 20,
       "errorsSample": [
@@ -4322,7 +4322,7 @@
       "status": "PASS",
       "ms": 1033,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/sfdc-report/canonical.details.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-sfdc-report-details.libreoffice/cano"
+      "stderr": "convert <repo>/fixtures/golden/sfdc-report/canonical.details.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-sfdc-report-details.libreoffice/cano"
     },
     {
       "fixture": "golden-sfdc-report-details",
@@ -4521,7 +4521,7 @@
       "status": "FAIL",
       "ms": 342,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/sfdc-report/canonical.formatted.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[29]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[29]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[28]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[27]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[27]/x:left[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[26]/x:left[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[23]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[23]/x:top[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[23]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:bor",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/sfdc-report/canonical.formatted.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[29]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[29]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value '8E9297'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[28]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[27]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[27]/x:left[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[26]/x:left[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[23]/x:bottom[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[23]/x:top[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:border[23]/x:right[1]/x:color[1]\",\n      \"id\": \"Sch_AttributeValueDataTypeDetailed\",\n      \"errorType\": \"Schema\"\n    },\n    {\n      \"description\": \"The attribute 'rgb' has invalid value 'D5D3D1'. The actual length according to data type 'hexBinary' is not equal to the specified length. The expected length is 4.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:borders[1]/x:bor",
       "stderr": "",
       "schemaErrors": 39,
       "errorsSample": [
@@ -4569,7 +4569,7 @@
       "status": "PASS",
       "ms": 960,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/sfdc-report/canonical.formatted.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-sfdc-report-formatted.libreoffice/"
+      "stderr": "convert <repo>/fixtures/golden/sfdc-report/canonical.formatted.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-sfdc-report-formatted.libreoffice/"
     },
     {
       "fixture": "golden-sfdc-report-formatted",
@@ -4831,7 +4831,7 @@
       "status": "PASS",
       "ms": 376,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.from-csv.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/gsheets/canonical.from-csv.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -4843,7 +4843,7 @@
       "status": "PASS",
       "ms": 1112,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.from-csv.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-from-csv.libreoffice/",
+      "stderr": "convert <repo>/fixtures/golden/gsheets/canonical.from-csv.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-from-csv.libreoffice/",
       "resaveDiff": {
         "matches": 461,
         "cells": 620,
@@ -5128,7 +5128,7 @@
       "status": "PASS",
       "ms": 392,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-sheetjs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-365/canonical.from-sheetjs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -5140,7 +5140,7 @@
       "status": "PASS",
       "ms": 1378,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-sheetjs.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-resave-sheetj",
+      "stderr": "convert <repo>/fixtures/golden/excel-365/canonical.from-sheetjs.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-resave-sheetj",
       "resaveDiff": {
         "matches": 609,
         "cells": 658,
@@ -5423,7 +5423,7 @@
       "status": "PASS",
       "ms": 360,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-exceljs.1904.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-365/canonical.from-exceljs.1904.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -5435,7 +5435,7 @@
       "status": "PASS",
       "ms": 1186,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-365/canonical.from-exceljs.1904.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-1904.lib",
+      "stderr": "convert <repo>/fixtures/golden/excel-365/canonical.from-exceljs.1904.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-365-1904.lib",
       "resaveDiff": {
         "matches": 506,
         "cells": 658,
@@ -5703,7 +5703,7 @@
       "status": "PASS",
       "ms": 354,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/simple-excel/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/simple-excel/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -5715,7 +5715,7 @@
       "status": "PASS",
       "ms": 1048,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/simple-excel/canonical.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-simple-excel.libreoffice/canonica",
+      "stderr": "convert <repo>/fixtures/golden/simple-excel/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-simple-excel.libreoffice/canonica",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -5984,7 +5984,7 @@
       "status": "PASS",
       "ms": 367,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/simple-excel/canonical.inline.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/simple-excel/canonical.inline.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -5996,7 +5996,7 @@
       "status": "PASS",
       "ms": 1432,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/simple-excel/canonical.inline.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-simple-excel-inline.libreo",
+      "stderr": "convert <repo>/fixtures/golden/simple-excel/canonical.inline.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-simple-excel-inline.libreo",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -6244,7 +6244,7 @@
       "status": "PASS",
       "ms": 438,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/simple-excel/canonical.zip64.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/simple-excel/canonical.zip64.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -6256,7 +6256,7 @@
       "status": "PASS",
       "ms": 1072,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/simple-excel/canonical.zip64.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-simple-excel-zip64.libreoff",
+      "stderr": "convert <repo>/fixtures/golden/simple-excel/canonical.zip64.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-simple-excel-zip64.libreoff",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -6547,7 +6547,7 @@
       "status": "PASS",
       "ms": 399,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/gsheets/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -6559,7 +6559,7 @@
       "status": "PASS",
       "ms": 1060,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.from-simple-excel.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-resave-simpl",
+      "stderr": "convert <repo>/fixtures/golden/gsheets/canonical.from-simple-excel.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-resave-simpl",
       "resaveDiff": {
         "matches": 577,
         "cells": 656,
@@ -6852,7 +6852,7 @@
       "status": "PASS",
       "ms": 378,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/gsheets/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -6864,7 +6864,7 @@
       "status": "PASS",
       "ms": 1090,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/gsheets/canonical.inline.from-simple-excel.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-resav",
+      "stderr": "convert <repo>/fixtures/golden/gsheets/canonical.inline.from-simple-excel.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-gsheets-resav",
       "resaveDiff": {
         "matches": 577,
         "cells": 656,
@@ -7075,7 +7075,7 @@
       "status": "ERROR",
       "ms": 78,
       "readerVersion": "openpyxl",
-      "error": "ValueError: Unable to read workbook: could not read worksheets from /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.from-simple-excel.xlsx.\nThis is most probably because the workbook source files contain some invalid XML.\nPlease see the exception for more details."
+      "error": "ValueError: Unable to read workbook: could not read worksheets from <repo>/fixtures/golden/numbers/canonical.from-simple-excel.xlsx.\nThis is most probably because the workbook source files contain some invalid XML.\nPlease see the exception for more details."
     },
     {
       "fixture": "golden-canonical-numbers-resave-simple-excel",
@@ -7111,7 +7111,7 @@
       "status": "PASS",
       "ms": 358,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/numbers/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -7123,7 +7123,7 @@
       "status": "PASS",
       "ms": 1124,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.from-simple-excel.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-numbers-resave-simpl",
+      "stderr": "convert <repo>/fixtures/golden/numbers/canonical.from-simple-excel.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-numbers-resave-simpl",
       "resaveDiff": {
         "matches": 537,
         "cells": 658,
@@ -7341,7 +7341,7 @@
       "status": "ERROR",
       "ms": 83,
       "readerVersion": "openpyxl",
-      "error": "ValueError: Unable to read workbook: could not read worksheets from /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.inline.from-simple-excel.xlsx.\nThis is most probably because the workbook source files contain some invalid XML.\nPlease see the exception for more details."
+      "error": "ValueError: Unable to read workbook: could not read worksheets from <repo>/fixtures/golden/numbers/canonical.inline.from-simple-excel.xlsx.\nThis is most probably because the workbook source files contain some invalid XML.\nPlease see the exception for more details."
     },
     {
       "fixture": "golden-canonical-numbers-resave-simple-excel-inline",
@@ -7375,7 +7375,7 @@
       "status": "PASS",
       "ms": 417,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/numbers/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -7387,7 +7387,7 @@
       "status": "PASS",
       "ms": 1158,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/numbers/canonical.inline.from-simple-excel.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-numbers-resav",
+      "stderr": "convert <repo>/fixtures/golden/numbers/canonical.inline.from-simple-excel.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-numbers-resav",
       "resaveDiff": {
         "matches": 568,
         "cells": 658,
@@ -7667,7 +7667,7 @@
       "status": "PASS",
       "ms": 393,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-web/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-web/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -7679,7 +7679,7 @@
       "status": "PASS",
       "ms": 1111,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-web/canonical.from-simple-excel.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-web-resave-s",
+      "stderr": "convert <repo>/fixtures/golden/excel-web/canonical.from-simple-excel.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-web-resave-s",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -7947,7 +7947,7 @@
       "status": "PASS",
       "ms": 353,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-web/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-web/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -7959,7 +7959,7 @@
       "status": "PASS",
       "ms": 1084,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/excel-web/canonical.inline.from-simple-excel.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-web-r",
+      "stderr": "convert <repo>/fixtures/golden/excel-web/canonical.inline.from-simple-excel.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-canonical-excel-web-r",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -8196,7 +8196,7 @@
       "status": "PASS",
       "ms": 348,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/header-offset/sheetjs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/header-offset/sheetjs.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -8208,7 +8208,7 @@
       "status": "PASS",
       "ms": 941,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/header-offset/sheetjs.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-header-offset-sheetjs.libreoffice/sheetjs.xl"
+      "stderr": "convert <repo>/fixtures/golden/header-offset/sheetjs.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-header-offset-sheetjs.libreoffice/sheetjs.xl"
     },
     {
       "fixture": "golden-header-offset-sheetjs",
@@ -8431,7 +8431,7 @@
       "status": "FAIL",
       "ms": 326,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/header-offset/openpyxl.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:color'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/header-offset/openpyxl.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The element has unexpected child element 'http://schemas.openxmlformats.org/spreadsheetml/2006/main:color'.\",\n      \"path\": \"/xl/styles.xml\",\n      \"xPath\": \"/x:styleSheet[1]/x:fonts[1]/x:font[1]\",\n      \"id\": \"Sch_UnexpectedElementContentExpectingComplex\",\n      \"errorType\": \"Schema\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [
@@ -8451,7 +8451,7 @@
       "status": "PASS",
       "ms": 988,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/header-offset/openpyxl.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-header-offset-openpyxl.libreoffice/openpyxl"
+      "stderr": "convert <repo>/fixtures/golden/header-offset/openpyxl.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-header-offset-openpyxl.libreoffice/openpyxl"
     },
     {
       "fixture": "golden-header-offset-openpyxl",
@@ -8650,7 +8650,7 @@
       "status": "PASS",
       "ms": 383,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/header-offset/libreoffice.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/header-offset/libreoffice.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -8662,7 +8662,7 @@
       "status": "PASS",
       "ms": 962,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/fixtures/golden/header-offset/libreoffice.xlsx as a Calc document -> /Users/austinturner/dev/worktrees/jetstream-simple-excel/compat-audit/.generated/oracle/2026-11-12-v0.3.0/golden-header-offset-libreoffice.libreoffice/li"
+      "stderr": "convert <repo>/fixtures/golden/header-offset/libreoffice.xlsx as a Calc document -> <repo>/.generated/oracle/2026-11-12-v0.3.0/golden-header-offset-libreoffice.libreoffice/li"
     },
     {
       "fixture": "golden-header-offset-libreoffice",

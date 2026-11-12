@@ -55,10 +55,10 @@ Generated 2026-09-12T03:58:03.422Z. Results folder: `bench/results/2026-09-11-ma
   ```
   RangeError: Invalid string length
       at Array.join (<anonymous>)
-      at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)
-      at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)
-      at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)
-      at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)
+      at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)
+      at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)
+      at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)
+      at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)
   ```
 
 - **office-kit / write / mixed / 1m** — ERROR (warm-up) RangeError: Invalid string length
@@ -66,10 +66,10 @@ Generated 2026-09-12T03:58:03.422Z. Results folder: `bench/results/2026-09-11-ma
   ```
   RangeError: Invalid string length
       at Array.join (<anonymous>)
-      at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)
-      at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)
-      at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)
-      at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)
+      at serializeSharedStrings (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)
+      at sharedStringsToBytes (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)
+      at finalizeImpl (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)
+      at async Object.finalize (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)
   ```
 
 - **sheetjs / write / mixed / 18m-cells** — ERROR (warm-up) RangeError: Invalid string length
@@ -77,10 +77,10 @@ Generated 2026-09-12T03:58:03.422Z. Results folder: `bench/results/2026-09-11-ma
   ```
   RangeError: Invalid string length
       at Array.join (<anonymous>)
-      at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)
-      at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)
-      at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)
-      at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)
+      at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)
+      at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)
+      at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)
+      at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)
   ```
 
 - **office-kit / write / mixed / 18m-cells** — ERROR (warm-up) RangeError: Invalid string length
@@ -88,8 +88,8 @@ Generated 2026-09-12T03:58:03.422Z. Results folder: `bench/results/2026-09-11-ma
   ```
   RangeError: Invalid string length
       at Array.join (<anonymous>)
-      at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)
-      at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)
-      at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)
-      at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)
+      at serializeSharedStrings (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)
+      at sharedStringsToBytes (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)
+      at finalizeImpl (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)
+      at async Object.finalize (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)
   ```

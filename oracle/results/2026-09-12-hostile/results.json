@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T15:42:31.907Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "hostile",
     "node": "v24.18.0",
     "readers": ["sheetjs", "office-kit", "office-kit-stream", "openpyxl", "calamine", "validator"],
@@ -82,7 +82,7 @@
       "status": "FAIL",
       "ms": 560,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/fixtures/hostile/biff8-xls-renamed.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"Encrypted packages are not supported.\",\n      \"path\": null,\n      \"xPath\": null,\n      \"id\": null,\n      \"errorType\": \"Exception\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/hostile/biff8-xls-renamed.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"Encrypted packages are not supported.\",\n      \"path\": null,\n      \"xPath\": null,\n      \"id\": null,\n      \"errorType\": \"Exception\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [
@@ -169,7 +169,7 @@
       "status": "FAIL",
       "ms": 343,
       "exit": 1,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/fixtures/hostile/xlsb-renamed.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The document cannot be opened because there is an invalid part with an unexpected content type. \\r\\n[Part Uri=/xl/calcChain.bin], \\r\\n[Content Type=application/vnd.ms-excel.calcChain], \\r\\n[Expected Content Type=application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml].\",\n      \"path\": null,\n      \"xPath\": null,\n      \"id\": null,\n      \"errorType\": \"Exception\"\n    }\n  ]\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/hostile/xlsb-renamed.xlsx\",\n  \"ok\": false,\n  \"errors\": [\n    {\n      \"description\": \"The document cannot be opened because there is an invalid part with an unexpected content type. \\r\\n[Part Uri=/xl/calcChain.bin], \\r\\n[Content Type=application/vnd.ms-excel.calcChain], \\r\\n[Expected Content Type=application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml].\",\n      \"path\": null,\n      \"xPath\": null,\n      \"id\": null,\n      \"errorType\": \"Exception\"\n    }\n  ]\n}\n",
       "stderr": "",
       "schemaErrors": 1,
       "errorsSample": [

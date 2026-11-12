@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-28T15:13:11.017Z",
-    "host": "macbook-air.lan",
+    "host": "darwin-arm64",
     "label": "audit-fixes-excel",
     "node": "v24.21.0",
     "readers": ["excel"],

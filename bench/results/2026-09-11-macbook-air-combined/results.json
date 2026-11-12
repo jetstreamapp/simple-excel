@@ -9,7 +9,6 @@
     "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-ceiling"
   ],
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
@@ -485,7 +484,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 63.42679099999998,
@@ -512,7 +511,7 @@
       "durationMs": 1056.498,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -528,7 +527,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 53.78324999999995,
@@ -555,7 +554,7 @@
       "durationMs": 1135.587,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -571,7 +570,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 77.965375,
@@ -598,7 +597,7 @@
       "durationMs": 1145.2214999999999,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -614,7 +613,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 79.04416700000002,
@@ -641,7 +640,7 @@
       "durationMs": 1209.4365,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -657,7 +656,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 619.271667,
@@ -684,7 +683,7 @@
       "durationMs": 3351.381625,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -700,7 +699,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 962.5922500000001,
@@ -727,7 +726,7 @@
       "durationMs": 4073.135417,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -743,7 +742,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 616.3940419999999,
@@ -770,7 +769,7 @@
       "durationMs": 3487.0647089999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -786,7 +785,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 592.377291,
@@ -813,7 +812,7 @@
       "durationMs": 3307.701583,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -829,7 +828,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6497.6086669999995,
@@ -856,7 +855,7 @@
       "durationMs": 28327.950417,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -872,7 +871,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 9935.843915999998,
@@ -899,7 +898,7 @@
       "durationMs": 34152.749916,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -915,7 +914,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6551.970040999999,
@@ -942,7 +941,7 @@
       "durationMs": 26935.056916,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -958,7 +957,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 8930.464083000003,
@@ -985,7 +984,7 @@
       "durationMs": 38951.797207999996,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1001,7 +1000,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 74.58208400000001,
@@ -1028,7 +1027,7 @@
       "durationMs": 1120.2057089999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1044,7 +1043,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 122.46804099999986,
@@ -1071,7 +1070,7 @@
       "durationMs": 1295.67075,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1087,7 +1086,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 84.47945799999991,
@@ -1114,7 +1113,7 @@
       "durationMs": 1178.217167,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1130,13 +1129,13 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "skipped",
       "reason": "write-excel-file does not implement read-raw",
       "durationMs": 112.76625,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1152,7 +1151,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 622.90825,
@@ -1179,7 +1178,7 @@
       "durationMs": 3451.208833,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1195,7 +1194,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 1031.805292,
@@ -1222,7 +1221,7 @@
       "durationMs": 3720.075458,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1238,7 +1237,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 665.5048750000001,
@@ -1265,7 +1264,7 @@
       "durationMs": 3532.397542,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1281,13 +1280,13 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "skipped",
       "reason": "write-excel-file does not implement read-raw",
       "durationMs": 95.73875,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1303,7 +1302,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6541.531999999999,
@@ -1330,7 +1329,7 @@
       "durationMs": 29671.254709,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1346,7 +1345,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 10090.090833,
@@ -1373,7 +1372,7 @@
       "durationMs": 28808.438417,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1389,7 +1388,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6763.367541,
@@ -1416,7 +1415,7 @@
       "durationMs": 27856.938708,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1432,13 +1431,13 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "skipped",
       "reason": "write-excel-file does not implement read-raw",
       "durationMs": 128.91104099999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1460,7 +1459,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 47265.481708,
       "exitCode": 0,
@@ -1481,7 +1480,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
       },
       "durationMs": 46929.589374999996,
       "exitCode": 1,
@@ -1502,7 +1501,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 36028.912082999996,
       "exitCode": 0,
@@ -1523,7 +1522,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
       },
       "durationMs": 42891.2465,
       "exitCode": 1,
@@ -1682,7 +1681,7 @@
       "phase": "process",
       "error": {
         "name": "ChildProcessError",
-        "message": "child exited with code null signal SIGABRT and no result; stderr tail: re/fnm/node-versions/v24.18.0/installation/bin/node]\n34: 0x103d98d3c uv_run [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n35: 0x102db06a8 node::SpinEventLoopInternal(node::Environment*) [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n36: 0x102f28314 node::NodeMainInstance::Run() [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n37: 0x102e7baa0 node::Start(int, char**) [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n38: 0x18e79fe00 start [/usr/lib/dyld]"
+        "message": "child exited with code null signal SIGABRT and no result; stderr tail: re/fnm/node-versions/v24.18.0/installation/bin/node]\n34: 0x103d98d3c uv_run [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n35: 0x102db06a8 node::SpinEventLoopInternal(node::Environment*) [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n36: 0x102f28314 node::NodeMainInstance::Run() [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n37: 0x102e7baa0 node::Start(int, char**) [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n38: 0x18e79fe00 start [/usr/lib/dyld]"
       },
       "durationMs": 18650.336292,
       "sourceLabel": "shapes"
@@ -1731,7 +1730,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 4088.8941250000007,
@@ -1758,7 +1757,7 @@
       "durationMs": 17581.39175,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 56129700
@@ -1774,7 +1773,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 4989.20975,
@@ -1801,7 +1800,7 @@
       "durationMs": 20701.861582999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 56129700
@@ -1817,7 +1816,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 3157.603541999999,
@@ -1844,7 +1843,7 @@
       "durationMs": 13683.614709000001,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 33894543
@@ -1860,7 +1859,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 4680.414375,
@@ -1887,7 +1886,7 @@
       "durationMs": 19610.711875,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 33894543
@@ -1907,7 +1906,7 @@
       "timeoutMs": 600000,
       "durationMs": 600109.1362910001,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/wide-100k.xlsx",
         "producer": "office-kit",
         "producerVersion": "0.11.0",
         "bytes": 155120474
@@ -1923,7 +1922,7 @@
       "columns": 107,
       "cells": 10700000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/wide-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 63466.408707999995,
@@ -1950,7 +1949,7 @@
       "durationMs": 250343.484541,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/wide-100k.xlsx",
         "producer": "office-kit",
         "producerVersion": "0.11.0",
         "bytes": 155120474
@@ -2007,7 +2006,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 8097.876416,
       "exitCode": 0,
@@ -2028,7 +2027,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
       },
       "durationMs": 20661.915957999998,
       "exitCode": 1,
@@ -2049,7 +2048,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 17736.995125,
       "exitCode": 0,

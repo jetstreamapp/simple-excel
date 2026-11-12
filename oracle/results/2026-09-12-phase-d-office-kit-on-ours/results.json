@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T18:26:43.444Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "phase-d-office-kit-on-ours",
     "node": "v24.18.0",
     "readers": ["office-kit", "office-kit-stream"],

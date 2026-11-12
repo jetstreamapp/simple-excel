@@ -29,7 +29,7 @@ are compared with Jetstream's truncation applied.
 
 ### Run `csv-imports` (2026-09-12-csv-imports)
 
-2026-09-12T15:38:42.898Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T15:38:42.898Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                     | sheetjs                                             | office-kit                                          | calamine                                    |
 | ----------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------- | ------------------------------------------- |
@@ -39,7 +39,7 @@ are compared with Jetstream's truncation applied.
 
 ### Run `edge` (2026-09-12-edge)
 
-2026-09-12T04:13:13.844Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T04:13:13.844Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                               | sheetjs | office-kit | office-kit-stream       | openpyxl             | calamine                      |
 | ------------------------------------------------- | ------- | ---------- | ----------------------- | -------------------- | ----------------------------- |
@@ -50,7 +50,7 @@ are compared with Jetstream's truncation applied.
 
 ### Run `excel-365` (2026-09-12-excel-365)
 
-2026-09-12T15:41:27.883Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T15:41:27.883Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                                | sheetjs                                                                                              | office-kit                                                                                           | openpyxl                                     | calamine                                                     |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------ |
@@ -58,7 +58,7 @@ are compared with Jetstream's truncation applied.
 
 ### Run `excel-web-on-ours` (2026-09-12-excel-web-on-ours)
 
-2026-09-12T23:13:59.157Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T23:13:59.157Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                          | simple-excel                             | sheetjs                                               | validator | calamine                                           | excel |
 | ---------------------------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------- | --------- | -------------------------------------------------- | ----- |
@@ -67,7 +67,7 @@ are compared with Jetstream's truncation applied.
 
 ### Run `goldens` (2026-09-12-goldens)
 
-2026-09-12T04:07:38.145Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T04:07:38.145Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                             | excel              |
 | --------------------------------------------------------------- | ------------------ |
@@ -97,7 +97,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `gsheets-on-ours` (2026-09-12-gsheets-on-ours)
 
-2026-09-12T22:07:06.097Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T22:07:06.097Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                    | simple-excel                                         | sheetjs                                                      | validator | calamine                                                   |
 | ---------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ | --------- | ---------------------------------------------------------- |
@@ -106,7 +106,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `hostile` (2026-09-12-hostile)
 
-2026-09-12T15:42:31.907Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T15:42:31.907Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                                | sheetjs                                                                                              | office-kit                                                                                                                                                                 | office-kit-stream                                                                                                                                                          | openpyxl                                                | calamine                                                                      | validator            |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------- |
@@ -115,7 +115,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `numbers-on-ours` (2026-09-12-numbers-on-ours)
 
-2026-09-12T22:34:47.823Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T22:34:47.823Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                    | simple-excel                                         | sheetjs                                              | validator | calamine                                             | excel              |
 | ---------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | --------- | ---------------------------------------------------- | ------------------ |
@@ -124,7 +124,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `phase-b-writer` (2026-09-12-phase-b-writer)
 
-2026-09-12T17:27:25.181Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T17:27:25.181Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                              | validator | sheetjs                                               | openpyxl                                             | calamine                                           | libreoffice | excel |
 | ---------------------------------------------------------------- | --------- | ----------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ----------- | ----- |
@@ -134,7 +134,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `phase-d-office-kit-on-ours` (2026-09-12-phase-d-office-kit-on-ours)
 
-2026-09-12T18:26:43.444Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T18:26:43.444Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                              | office-kit                                            | office-kit-stream                                            |
 | ---------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
@@ -144,7 +144,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `phase-d-simple-excel-edge` (2026-09-12-phase-d-simple-excel-edge)
 
-2026-09-12T18:24:20.149Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T18:24:20.149Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                   | simple-excel              |
 | ----------------------------------------------------- | ------------------------- |
@@ -166,7 +166,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `phase-d-simple-excel-golden` (2026-09-12-phase-d-simple-excel-golden)
 
-2026-09-12T18:23:58.527Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T18:23:58.527Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                              | simple-excel                                          |
 | -------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -195,7 +195,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `phase-d-simple-excel-hostile` (2026-09-12-phase-d-simple-excel-hostile)
 
-2026-09-12T18:26:24.594Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T18:26:24.594Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                                                                | simple-excel              |
 | ---------------------------------------------------------------------------------- | ------------------------- |
@@ -214,7 +214,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `phase-d-simple-excel-jetstream` (2026-09-27-phase-d-simple-excel-jetstream)
 
-2026-09-27T17:06:31.984Z, MacBook-Air.local, Node v24.21.0.
+2026-09-27T17:06:31.984Z, darwin-arm64, Node v24.21.0.
 
 | fixture (generator)                                                                                 | simple-excel   |
 | --------------------------------------------------------------------------------------------------- | -------------- |
@@ -224,7 +224,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `user-goldens` (2026-09-12-user-goldens)
 
-2026-09-12T15:30:31.725Z, MacBook-Air.local, Node v24.18.0.
+2026-09-12T15:30:31.725Z, darwin-arm64, Node v24.18.0.
 
 | fixture (generator)                        | excel              |
 | ------------------------------------------ | ------------------ |
@@ -232,7 +232,7 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `audit-fixes-writer` (2026-09-27-audit-fixes-writer)
 
-2026-09-27T18:25:19.685Z, MacBook-Air.local, Node v24.21.0.
+2026-09-27T18:25:19.685Z, darwin-arm64, Node v24.21.0.
 
 | fixture (generator)                                              | validator | libreoffice | openpyxl                                             | calamine                                           | sheetjs                                               | simple-excel                             |
 | ---------------------------------------------------------------- | --------- | ----------- | ---------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
@@ -242,13 +242,51 @@ Column `E` control chars, `F` `_x` escape literals, `G` formula-like text, `I` 1
 
 ### Run `audit-fixes-excel` (2026-09-28-audit-fixes-excel)
 
-2026-09-28T15:13:11.017Z, macbook-air.lan, Node v24.21.0.
+2026-09-28T15:13:11.017Z, darwin-arm64, Node v24.21.0.
 
 | fixture (generator)                                              | excel |
 | ---------------------------------------------------------------- | ----- |
 | `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev        | PASS  |
 | `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev | PASS  |
 | `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev  | PASS  |
+
+### Run `v0.3.0` (2026-11-12-v0.3.0)
+
+2026-11-12T15:01:58.555Z, darwin-arm64, Node v24.22.1.
+
+| fixture (generator)                                                              | simple-excel                                          | sheetjs                                                      | office-kit                                                   | office-kit-stream                                            | openpyxl                                                   | calamine                                                   | validator               | libreoffice | excel                                                                   |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------- | ----------------------- | ----------- | ----------------------------------------------------------------------- |
+| `golden-canonical-sheetjs`<br>SheetJS 0.20.3                                     | 92% (date-as-serial 30, escape-sequence-mangled 14)   | 96% (escape-sequence-mangled 14, dst-gap-shift-1h 5)         | 91% (temporal-mismatch 30, escape-sequence-mangled 25)       | 91% (temporal-mismatch 30, escape-sequence-mangled 25)       | 88% (temporal-mismatch 33, escape-sequence-mangled 25)     | 92% (escape-sequence-mangled 25, blank-vs-empty-string 19) | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-exceljs`<br>ExcelJS 4.4.0                                      | 80% (temporal-mismatch 68, control-chars-stripped 22) | 79% (temporal-mismatch 60, control-chars-stripped 22)        | 79% (temporal-mismatch 65, date-tz-offset-shift 25)          | 80% (temporal-mismatch 65, date-tz-offset-shift 25)          | 81% (temporal-mismatch 65, date-tz-offset-shift 25)        | 77% (temporal-mismatch 65, date-tz-offset-shift 25)        | FAIL: 1 schema error    | PASS        | PASS                                                                    |
+| `golden-canonical-write-excel-file`<br>write-excel-file 2.3.10                   | 77% (temporal-mismatch 68, control-chars-stripped 22) | 76% (temporal-mismatch 60, control-chars-stripped 22)        | 77% (temporal-mismatch 65, date-tz-offset-shift 25)          | 77% (temporal-mismatch 65, date-tz-offset-shift 25)          | 78% (temporal-mismatch 65, date-tz-offset-shift 25)        | 77% (temporal-mismatch 65, date-tz-offset-shift 25)        | FAIL: 1 schema error    | PASS        | PASS                                                                    |
+| `golden-canonical-openpyxl`<br>openpyxl 3.1.5                                    | 89% (cell-missing 32, empty-string-vs-blank 15)       | 85% (cell-missing 35, time-only-has-date-part 24)            | ERROR                                                        | ERROR                                                        | 90% (cell-missing 35, empty-string-vs-blank 15)            | 88% (string-mismatch 33, blank-vs-empty-string 19)         | FAIL: 1 schema error    | PASS        | REPAIRED (Removed Records: Formula from /xl/worksheets/sheet1.xml part) |
+| `golden-canonical-xlsxwriter`<br>XlsxWriter 3.2.9                                | 95% (empty-string-vs-blank 15, temporal-mismatch 8)   | 88% (time-only-has-date-part 24, empty-string-vs-blank 15)   | ERROR                                                        | ERROR                                                        | 91% (escape-sequence-mangled 30, empty-string-vs-blank 15) | 94% (blank-vs-empty-string 19, temporal-mismatch 8)        | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-libreoffice-resave`<br>LibreOffice 26.2.5.2                    | 77% (temporal-mismatch 68, control-chars-stripped 22) | 77% (temporal-mismatch 55, control-chars-stripped 22)        | 76% (temporal-mismatch 65, date-tz-offset-shift 25)          | 77% (temporal-mismatch 65, date-tz-offset-shift 25)          | 72% (temporal-mismatch 65, cell-missing 34)                | 76% (temporal-mismatch 65, date-tz-offset-shift 25)        | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-libreoffice-from-csv`<br>LibreOffice 26.2.5.2                  | 76% (text-as-number 42, date-as-text 30)              | 75% (text-as-number 42, date-as-text 30)                     | 76% (text-as-number 42, date-as-text 30)                     | 76% (text-as-number 42, date-as-text 30)                     | 73% (text-as-number 35, date-as-text 30)                   | 76% (text-as-number 42, date-as-text 30)                   | FAIL: 1 schema error    | PASS        | REPAIRED (Removed Records: Formula from /xl/worksheets/sheet1.xml part) |
+| `golden-canonical-office-kit`<br>@office-kit/xlsx 0.11.0                         | 85% (temporal-mismatch 39, date-tz-offset-shift 27)   | 84% (temporal-mismatch 60, date-tz-offset-shift 30)          | 85% (temporal-mismatch 60, date-tz-offset-shift 30)          | 85% (temporal-mismatch 60, date-tz-offset-shift 30)          | 80% (temporal-mismatch 63, escape-sequence-mangled 39)     | 82% (temporal-mismatch 63, date-tz-offset-shift 27)        | FAIL: 2 schema errors   | PASS        | PASS                                                                    |
+| `golden-canonical-excel-365-from-csv`<br>Microsoft Excel 16.112.4 macOS          | 70% (string-mismatch 54, text-as-number 43)           | 65% (string-mismatch 58, text-as-number 43)                  | 65% (string-mismatch 54, text-as-number 43)                  | 65% (string-mismatch 54, text-as-number 43)                  | 66% (string-mismatch 54, text-as-number 33)                | 68% (string-mismatch 63, text-as-number 43)                | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-excel-365-resave`<br>Microsoft Excel 16.112.4 macOS            | 80% (temporal-mismatch 68, control-chars-stripped 22) | 79% (temporal-mismatch 60, control-chars-stripped 22)        | 79% (temporal-mismatch 65, date-tz-offset-shift 25)          | 80% (temporal-mismatch 65, date-tz-offset-shift 25)          | 79% (temporal-mismatch 65, date-tz-offset-shift 25)        | 77% (temporal-mismatch 65, date-tz-offset-shift 25)        | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-excel-365-strict`<br>Microsoft Excel 365 macOS 16.03           | 80% (temporal-mismatch 60, date-tz-offset-shift 30)   | 79% (temporal-mismatch 40, date-tz-offset-shift 30)          | ERROR                                                        | ERROR                                                        | 0% (sheet-missing 4)                                       | ERROR                                                      | FAIL: 133 schema errors | PASS        | PASS                                                                    |
+| `golden-canonical-excel-365-resave-office-kit`<br>Microsoft Excel 16.112.4 macOS | 86% (temporal-mismatch 39, date-tz-offset-shift 27)   | 85% (temporal-mismatch 60, date-tz-offset-shift 30)          | 85% (temporal-mismatch 60, date-tz-offset-shift 30)          | 86% (temporal-mismatch 60, date-tz-offset-shift 30)          | 81% (temporal-mismatch 63, escape-sequence-mangled 30)     | 82% (temporal-mismatch 63, date-tz-offset-shift 27)        | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-gsheets-resave`<br>Google Sheets                               | 79% (temporal-mismatch 68, control-chars-stripped 22) | 79% (temporal-mismatch 60, control-chars-stripped 22)        | 79% (temporal-mismatch 65, date-tz-offset-shift 25)          | 79% (temporal-mismatch 65, date-tz-offset-shift 25)          | 79% (temporal-mismatch 65, date-tz-offset-shift 25)        | 77% (temporal-mismatch 65, date-tz-offset-shift 25)        | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-numbers`<br>Numbers 14.4                                       | 76% (temporal-mismatch 68, control-chars-stripped 22) | 75% (temporal-mismatch 60, control-chars-stripped 22)        | ERROR                                                        | ERROR                                                        | ERROR                                                      | 76% (temporal-mismatch 65, date-tz-offset-shift 25)        | PASS                    | PASS        | REPAIRED (see log)                                                      |
+| `golden-sfdc-report-details`<br>Salesforce report export                         | OPENED                                                | OPENED                                                       | OPENED                                                       | OPENED                                                       | OPENED                                                     | OPENED                                                     | FAIL: 20 schema errors  | PASS        | PASS                                                                    |
+| `golden-sfdc-report-formatted`<br>Salesforce report export                       | OPENED                                                | OPENED                                                       | OPENED                                                       | OPENED                                                       | OPENED                                                     | OPENED                                                     | FAIL: 39 schema errors  | PASS        | PASS                                                                    |
+| `golden-canonical-gsheets-from-csv`<br>Google Sheets                             | 80% (text-as-number 38, number-as-text 16)            | 75% (text-as-number 38, time-only-has-date-part 24)          | 76% (text-as-number 38, time-only-has-date-part 24)          | 76% (text-as-number 38, time-only-has-date-part 24)          | 78% (escape-sequence-mangled 31, text-as-number 31)        | 81% (text-as-number 38, number-as-text 16)                 | PASS                    | PASS        | REPAIRED (Removed Records: Formula from /xl/worksheets/sheet1.xml part) |
+| `golden-canonical-excel-365-resave-sheetjs`<br>Microsoft Excel 16.112.4 macOS    | 92% (date-as-serial 30, escape-sequence-mangled 14)   | 96% (escape-sequence-mangled 14, dst-gap-shift-1h 5)         | 92% (temporal-mismatch 30, escape-sequence-mangled 14)       | 93% (temporal-mismatch 30, escape-sequence-mangled 14)       | 88% (escape-sequence-mangled 39, temporal-mismatch 33)     | 93% (blank-vs-empty-string 19, escape-sequence-mangled 14) | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-excel-365-1904`<br>Microsoft Excel 16.112.4 macOS              | 80% (temporal-mismatch 88, control-chars-stripped 22) | 79% (temporal-mismatch 90, control-chars-stripped 22)        | 79% (temporal-mismatch 65, date-tz-offset-shift 25)          | 80% (temporal-mismatch 65, date-tz-offset-shift 25)          | 79% (temporal-mismatch 88, control-chars-stripped 22)      | 77% (temporal-mismatch 88, control-chars-stripped 22)      | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-simple-excel`<br>simple-excel 0.2.0-dev                        | 99% (dst-gap-shift-1h 5, date-as-text 3)              | 93% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5)       | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5)         | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-simple-excel-inline`<br>simple-excel 0.2.0-dev                 | 99% (dst-gap-shift-1h 5, date-as-text 3)              | 93% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5)       | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5)         | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-simple-excel-zip64`<br>simple-excel 0.2.0-dev                  | 99% (dst-gap-shift-1h 5, date-as-text 3)              | ERROR                                                        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5)       | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5)         | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-gsheets-resave-simple-excel`<br>Google Sheets                  | 96% (escape-sequence-mangled 14, dst-gap-shift-1h 5)  | 91% (time-only-has-date-part 24, escape-sequence-mangled 14) | 92% (time-only-has-date-part 24, escape-sequence-mangled 14) | 92% (time-only-has-date-part 24, escape-sequence-mangled 14) | 94% (escape-sequence-mangled 31, dst-gap-shift-1h 5)       | 93% (blank-vs-empty-string 19, escape-sequence-mangled 14) | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-gsheets-resave-simple-excel-inline`<br>Google Sheets           | 96% (escape-sequence-mangled 14, dst-gap-shift-1h 5)  | 91% (time-only-has-date-part 24, escape-sequence-mangled 14) | 92% (time-only-has-date-part 24, escape-sequence-mangled 14) | 92% (time-only-has-date-part 24, escape-sequence-mangled 14) | 94% (escape-sequence-mangled 31, dst-gap-shift-1h 5)       | 93% (blank-vs-empty-string 19, escape-sequence-mangled 14) | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-numbers-resave-simple-excel`<br>Apple Numbers                  | 83% (temporal-mismatch 40, string-mismatch 22)        | 82% (temporal-mismatch 37, string-mismatch 26)               | ERROR                                                        | ERROR                                                        | ERROR                                                      | 83% (temporal-mismatch 37, string-mismatch 22)             | PASS                    | PASS        | REPAIRED (see log)                                                      |
+| `golden-canonical-numbers-resave-simple-excel-inline`<br>Apple Numbers           | 88% (temporal-mismatch 40, empty-string-vs-blank 15)  | 87% (temporal-mismatch 37, empty-string-vs-blank 15)         | ERROR                                                        | ERROR                                                        | ERROR                                                      | 88% (temporal-mismatch 37, blank-vs-empty-string 19)       | PASS                    | PASS        | REPAIRED (see log)                                                      |
+| `golden-canonical-excel-web-resave-simple-excel`<br>Excel for the web            | 99% (dst-gap-shift-1h 5, date-as-text 3)              | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5)       | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5)         | PASS                    | PASS        | PASS                                                                    |
+| `golden-canonical-excel-web-resave-simple-excel-inline`<br>Excel for the web     | 99% (dst-gap-shift-1h 5, date-as-text 3)              | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (time-only-has-date-part 24, temporal-mismatch 6)        | 94% (escape-sequence-mangled 30, dst-gap-shift-1h 5)       | 95% (blank-vs-empty-string 19, dst-gap-shift-1h 5)         | PASS                    | PASS        | PASS                                                                    |
+| `golden-header-offset-sheetjs`<br>SheetJS 0.20.3                                 | OPENED                                                | OPENED                                                       | OPENED                                                       | OPENED                                                       | OPENED                                                     | OPENED                                                     | PASS                    | PASS        | PASS                                                                    |
+| `golden-header-offset-openpyxl`<br>openpyxl 3.1.5                                | OPENED                                                | OPENED                                                       | OPENED                                                       | OPENED                                                       | OPENED                                                     | OPENED                                                     | FAIL: 1 schema error    | PASS        | PASS                                                                    |
+| `golden-header-offset-libreoffice`<br>LibreOffice 26.2.5.2                       | OPENED                                                | OPENED                                                       | OPENED                                                       | OPENED                                                       | OPENED                                                     | OPENED                                                     | PASS                    | PASS        | PASS                                                                    |
 
 Legend: **PASS** every compared cell equal after fixture policies; **n%** share of matching cells with the two largest mismatch categories (04 maps categories to catalog entries); **FAIL: n schema errors** Open XML SDK validator; **REPAIRED** Excel wrote a recovery log while opening (silent repair under automation); **OPENED** no ground truth; **REJECTED/ACCEPTED** hostile fixture outcome (a classified rejection is the goal); **ERROR** the reader threw on a fixture it should read.
 

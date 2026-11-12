@@ -1,6 +1,6 @@
 # Oracle run 2026-11-12T15:01:58.555Z (v0.3.0)
 
-Host mac.lan, Node v24.22.1. Cell = reader verdict against the fixture's expected dump (PASS = every cell equal after policies; DIFF n% = share of matching cells; OPENED = no ground truth; ERROR = reader threw).
+Host darwin-arm64, Node v24.22.1. Cell = reader verdict against the fixture's expected dump (PASS = every cell equal after policies; DIFF n% = share of matching cells; OPENED = no ground truth; ERROR = reader threw).
 
 | fixture                                               | simple-excel | sheetjs  | office-kit | office-kit-stream | openpyxl  | calamine | validator                | libreoffice | excel    |
 | ----------------------------------------------------- | ------------ | -------- | ---------- | ----------------- | --------- | -------- | ------------------------ | ----------- | -------- |
