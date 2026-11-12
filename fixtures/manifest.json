@@ -472,6 +472,91 @@
       "notes": "state=\"hidden\" and state=\"veryHidden\" sheets; readers must report both as hidden and Jetstream's sheet picker must still list or skip them consistently."
     },
     {
+      "id": "edge-text-cell-no-text",
+      "path": "edge/text-cell-no-text.xlsx",
+      "bytes": 2495,
+      "sha256": "f2ab1fff4f86dba4c6f2630029d972c0ab1a9acb6b7b4e088fc3d2bd6db0faeb",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:corpus", "EC-TEXT-CELL-NO-TEXT"],
+      "expected": "edge/expected-empty-v.json",
+      "generated": false,
+      "notes": "B2 is <c t=\"inlineStr\"/> and C2 <c s=\"1\" t=\"str\"/>, text-typed cells with no value child; rows 4 and 5 hold only such cells (and a <c t=\"s\"/>). All blank, so the dump is empty-v-element's; SheetJS reads each as '' and gives rows 4 and 5 records of ''."
+    },
+    {
+      "id": "edge-accounting-numfmt",
+      "path": "edge/accounting-numfmt.xlsx",
+      "bytes": 2510,
+      "sha256": "e4e17ec7d41c6f943c55af45ee0886e86e25dd4ffede94632e9a9b017dcdc5ae",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:corpus", "EC-NUMFMT-ACCOUNTING-BUILTIN"],
+      "expected": "edge/expected-accounting-numfmt.json",
+      "generated": false,
+      "notes": "B2 uses numFmtId 44 and row 4 uses 41, 42 and 43, none declared in <numFmts>: plain numbers. SheetJS with cellDates and cellText:false drops the sheet without an error."
+    },
+    {
+      "id": "edge-ncr-above-bmp",
+      "path": "edge/ncr-above-bmp.xlsx",
+      "bytes": 2513,
+      "sha256": "d06d0e4d305246dd6aa52ea40aadb904b18182576be836ab91d361c426017bdc",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:corpus", "EC-XML-NCR-ABOVE-BMP"],
+      "expected": "edge/expected-ncr-above-bmp.json",
+      "generated": false,
+      "notes": "&#128515; in a shared string (A2), &#x1F600; in an inline string (A3) and in a t=\"str\" value (A4): the emoji themselves. SheetJS gives U+F603, U+F600 and U+0000."
+    },
+    {
+      "id": "edge-chartsheet-cached-series",
+      "path": "edge/chartsheet-cached-series.xlsx",
+      "bytes": 4517,
+      "sha256": "5a0e8743f23d157b434abc4f54dfd8ba2c16b55d052318d941b065af0ea4f729",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:corpus", "EC-CHARTSHEET-CACHED-SERIES"],
+      "expected": "edge/expected-chartsheet.json",
+      "generated": false,
+      "notes": "The minimal workbook plus a chartsheet, Chart1, whose bar chart caches the values 5 and 7 in <c:numCache>. Chart1 has no rows; SheetJS invents cells A1:A2 for it."
+    },
+    {
+      "id": "edge-error-only-rows",
+      "path": "edge/error-only-rows.xlsx",
+      "bytes": 2506,
+      "sha256": "8a4ef3c3ae975476da51621f311520eed051da1d89b93b8ac6a40e84d648746c",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:corpus", "EC-OBJECTS-ERROR-ONLY-ROW"],
+      "expected": "edge/expected-error-only-rows.json",
+      "generated": false,
+      "notes": "Row 4 holds #N/A and a formula's cached #DIV/0!, row 5 only #NULL!. Object mode keeps them as records with errors: 'string' and builds none for them with errors: 'null', as SheetJS does."
+    },
+    {
       "id": "hostile-xxe-doctype-in-sharedstrings",
       "path": "hostile/xxe-doctype-in-sharedstrings.xlsx",
       "bytes": 2523,

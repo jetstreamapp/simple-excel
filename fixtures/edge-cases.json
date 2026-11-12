@@ -40,6 +40,14 @@
     "status": "office-kit reader bug (upstream issue; related to open issue #131 on numeric char refs)"
   },
   {
+    "id": "EC-XML-NCR-ABOVE-BMP",
+    "family": "Strings",
+    "symptom": "A numeric character reference past U+FFFF, decimal or hex (&#128515;, &#x1F600;), in a shared string, an inline string or a t=\"str\" value: an emoji from a writer that escapes non-ASCII text (openpyxl inline strings, 1 Sheetpedia file).",
+    "seenIn": "SheetJS 0.20.3 keeps the low 16 bits in shared and inline strings (U+1F603 becomes U+F603, a private-use character) and reads one in a t=\"str\" value as U+0000.",
+    "expected": "The character itself, a surrogate pair in a JS string (String.fromCodePoint).",
+    "status": "observed 2026-11-11 (corpus audit; SheetJS 0.20.3)"
+  },
+  {
     "id": "EC-CRLF-NORMALIZED",
     "family": "Strings",
     "symptom": "A raw CR inside <t> is collapsed to LF by XML line-end normalization; Excel writes CR as _x000D_.",
@@ -94,6 +102,14 @@
     "seenIn": "openpyxl reads its own output as inf; office-kit drops the cell (null) from openpyxl/XlsxWriter files. Excel stores and re-saves 1.7976931348623157e308 exactly (golden-canonical-excel-365-*), displays it as 1.79769313486231E+308, and rejects any formula literal above its 9.99999999999999E+307 cap ('there is a problem with this formula'), so the value cannot be compared with a typed literal inside Excel.",
     "expected": "Parse xsd:double exactly; treat overflow as an error cell rather than dropping the cell.",
     "status": "observed"
+  },
+  {
+    "id": "EC-NUMFMT-ACCOUNTING-BUILTIN",
+    "family": "Numbers",
+    "symptom": "A number cell styled with a built-in accounting format, numFmtId 41 to 44, that styles.xml references without a <numFmt> declaration. openpyxl writes them that way (63 of the 3,000 Sheetpedia files); Excel declares them (88 of the 1,186 FUSE files).",
+    "seenIn": "SheetJS 0.20.3 with Jetstream's options (cellDates: true, cellText: false) throws inside fmt_is_date (it has no format string for the id) and swallows the error, so the sheet is listed in SheetNames but missing from Sheets: Jetstream gets no rows and no error (31 Sheetpedia files). cellDates or cellText:false alone read it.",
+    "expected": "A plain number: the accounting formats are not date formats.",
+    "status": "observed 2026-11-11 (corpus audit; SheetJS 0.20.3)"
   },
   {
     "id": "EC-NUM-NEGATIVE-ZERO",
@@ -336,6 +352,14 @@
     "status": "verified"
   },
   {
+    "id": "EC-TEXT-CELL-NO-TEXT",
+    "family": "Cells",
+    "symptom": "A text-typed cell with no value child: <c t=\"inlineStr\"/> or <c t=\"str\"/>, usually styled. openpyxl rewrites leave one wherever a styled cell was empty: 75,062 inlineStr and 1,940 str cells in 61 of the 3,000 Sheetpedia files, often whole rows of them, and some in header rows.",
+    "seenIn": "SheetJS 0.20.3 reads each one as '', so sheet_to_json (blankrows: false) gives every row of them a record of '' (runs of empty records in Jetstream), and a header cell of one names its column '' (then _1, _2, ...). <c t=\"s\"/> with no <v> is blank to both. An empty value child (<is/>, <is><t/></is>, <c t=\"str\"><v/></c>) is '' to both.",
+    "expected": "Blank, as for EC-EMPTY-V-ELEMENT: no value child, no value. A row of nothing else is a blank row and object mode builds no record for it; such a header cell is a blank header (__EMPTY). An empty value child still reads ''.",
+    "status": "observed 2026-11-11 (corpus audit, Sheetpedia; SheetJS 0.20.3); Excel not checked"
+  },
+  {
     "id": "EC-INLINE-STRINGS-CDATA",
     "family": "Strings",
     "symptom": "CDATA sections and rich-text runs inside <is>.",
@@ -406,6 +430,14 @@
     "seenIn": "All readers list them; Jetstream's picker shows every sheet name today. Numbers 14.4 makes hidden sheets visible on import and says so in a banner ('hidden sheets were made visible'); its export has no state=\"hidden\" (golden-canonical-numbers, manual check of golden-canonical-simple-excel 2026-09-12).",
     "expected": "Expose the state so the UI can hide or mark them.",
     "status": "verified"
+  },
+  {
+    "id": "EC-CHARTSHEET-CACHED-SERIES",
+    "family": "Structure",
+    "symptom": "A chartsheet: a sheet that is only a chart, whose chart part caches the plotted values in <c:numCache> (7 of the 1,186 FUSE files).",
+    "seenIn": "SheetJS 0.20.3 gives the sheet !type 'chart' and invents cells from the cache, one column per series, so sheet_to_json returns records for a sheet with no cells. Its point pattern matches only one-character values, so which cached points become cells is arbitrary.",
+    "expected": "A chartsheet has no rows: SheetInfo.kind is 'chartsheet' and rows() yields nothing.",
+    "status": "observed 2026-11-11 (corpus audit, FUSE; SheetJS 0.20.3)"
   },
   {
     "id": "EC-XXE-DOCTYPE",
@@ -862,6 +894,14 @@
     "seenIn": "SheetJS names the column #N/A; simple-excel 0.1.1 named it __EMPTY.",
     "expected": "Name the column with the error text, whatever the errors option says.",
     "status": "verified 2026-09-27 (readiness audit)"
+  },
+  {
+    "id": "EC-OBJECTS-ERROR-ONLY-ROW",
+    "family": "Cells",
+    "symptom": "A data row whose only values are error cells (#N/A, a formula's cached #DIV/0!, #NULL!), including one whose errors all sit right of the last header.",
+    "seenIn": "SheetJS sheet_to_json turns an error into defval (#NULL! into null), so the row holds no value and blankrows: false drops it. Common in real Excel files: lookup columns left at #N/A or #REF! below the data.",
+    "expected": "Object mode follows the errors option. errors: 'string' (the default) keeps the row as a record holding the error text (and defval for the rest, or only defval when the errors lie right of the header). errors: 'null' (Jetstream's mode) reads the errors as null, so the row has no value and builds no record, as in SheetJS.",
+    "status": "verified 2026-11-11 (corpus audit; edge-error-only-rows)"
   },
   {
     "id": "EC-HEADER-NUMBER-GENERAL",
