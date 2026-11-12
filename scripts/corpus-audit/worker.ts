@@ -23,6 +23,17 @@ import { collectToBytes, createWorkbookWriter, fromFile, isXlsxError, openWorkbo
 import type { CellInput, Workbook } from '../../src/types';
 import { compareDumps, type DiffReport } from '../../test/helpers/diff';
 import { a1, fromJsDate, normalizeRows, toTyped, type TypedDump, type TypedValue } from '../../test/helpers/typed';
+import {
+  BLANK_HEADER_KEY,
+  EMPTY_TEXT_HEADER_KEY,
+  ERROR_LITERALS,
+  knownSheetjsDivergence,
+  RawSheets,
+  sameHeader,
+  SHEET_TO_JSON_OPTIONS,
+  sheetjsKeyColumns,
+  writerConvention,
+} from './divergence';
 
 /** Past this many cells the comparison dumps (ours and SheetJS's, fully materialized) are skipped. */
 const DUMP_CELL_LIMIT = 3_000_000;
@@ -124,153 +135,6 @@ function peakRssMb(): number {
   return Math.round(process.resourceUsage().maxRSS / 1024);
 }
 
-/** The writer's documented conventions (ADR-003 pre-1900 dates as ISO text, EC-DATE-DST-GAP), not round-trip losses. */
-function writerConvention(expected: unknown, actual: unknown): string | null {
-  const expectedTime = temporalMs(expected);
-  if (expectedTime !== undefined && typeof actual === 'string' && expectedTime < Date.parse('1900-03-01T00:00:00.000Z')) {
-    return 'writer-pre-1900-as-text';
-  }
-  const actualTime = temporalMs(actual);
-  if (expectedTime !== undefined && actualTime !== undefined && Math.abs(actualTime - expectedTime) === 3_600_000) {
-    return 'writer-dst-gap';
-  }
-  return null;
-}
-
-function temporalMs(value: unknown): number | undefined {
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-  const record = value as Record<string, unknown>;
-  if (typeof record.$datetime === 'string') {
-    return Date.parse(`${record.$datetime}Z`);
-  }
-  if (typeof record.$date === 'string') {
-    return Date.parse(`${record.$date}T00:00:00.000Z`);
-  }
-  if (typeof record.$time === 'string') {
-    return Date.parse(`1899-12-30T${record.$time}Z`);
-  }
-  return undefined;
-}
-
-/** A character past U+FFFF. */
-const ASTRAL = /[\u{10000}-\u{10FFFF}]/gu;
-
-/** Year of a `$date` or `$datetime` value, read off its text: `Date.parse` cannot read a five-digit year. */
-function temporalYear(value: unknown): number | undefined {
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-  const record = value as Record<string, unknown>;
-  const text = typeof record.$datetime === 'string' ? record.$datetime : typeof record.$date === 'string' ? record.$date : undefined;
-  const year = text === undefined ? undefined : /^(-?\d+)-/.exec(text)?.[1];
-  return year === undefined ? undefined : Number(year);
-}
-
-/** 9999-12-31 in the 1904 date system, the lower of the two systems' last serials (2,958,465 in the 1900 system). */
-const LAST_SERIAL_1904 = 2_957_003;
-const MARKER_DAY_START = Date.parse('1899-12-31T00:00:00.000Z');
-const MARKER_DAY_LENGTH = 86_400_000;
-const ERROR_LITERALS = new Set([
-  '#NULL!',
-  '#DIV/0!',
-  '#VALUE!',
-  '#REF!',
-  '#NAME?',
-  '#NUM!',
-  '#N/A',
-  '#GETTING_DATA',
-  '#SPILL!',
-  '#CALC!',
-  '#FIELD!',
-  '#BLOCKED!',
-  '#UNKNOWN!',
-  '#CONNECT!',
-  '#BUSY!',
-]);
-
-/**
- * SheetJS behaviour already documented in `test/corpus-policies.json` and the catalog, so a difference it explains is
- * not a finding: `theirs` is SheetJS's value, `ours` ours. Returns the reason, or null when the difference is unexplained.
- */
-function knownSheetjsDivergence(theirs: unknown, ours: unknown): string | null {
-  const theirTime = temporalMs(theirs);
-  const ourTime = temporalMs(ours);
-  if (theirTime !== undefined && ourTime !== undefined) {
-    // EC-TIME-ONLY-HAS-DATE-PART: SheetJS hangs a time of day on 1899-12-31, we on 1899-12-30.
-    if (
-      theirTime >= MARKER_DAY_START &&
-      theirTime < MARKER_DAY_START + MARKER_DAY_LENGTH &&
-      Math.abs(theirTime - MARKER_DAY_LENGTH - ourTime) <= 1
-    ) {
-      return 'sheetjs-time-only-marker';
-    }
-    // SheetJS truncates the serial-to-milliseconds conversion where we round.
-    if (Math.abs(theirTime - ourTime) <= 1) {
-      return 'sheetjs-ms-truncation';
-    }
-    return null;
-  }
-  // EC-DATE-SERIAL-OVER-9999: past 9999-12-31 (serial 2,958,465, or 2,957,003 in the 1904 system) SheetJS still makes
-  // a Date, of year 10000 or later or invalid, where we return the number. The lower 1904 bound covers both systems;
-  // the year SheetJS gives is what proves the serial is past the end.
-  if (typeof ours === 'number' && ours > LAST_SERIAL_1904 && (theirs === '$invalidDate' || (temporalYear(theirs) ?? 0) > 9999)) {
-    return 'sheetjs-date-over-9999';
-  }
-  // Errors become defval in sheet_to_json with cellText:false (objects mode reads them as their text), except #NULL!
-  // (BIFF code 0), which sheet_to_json turns into null whatever defval says.
-  const ourError = typeof ours === 'object' && ours !== null && '$error' in ours ? (ours as { $error: string }).$error : ours;
-  if ((theirs === '' || (theirs === null && ourError === '#NULL!')) && typeof ourError === 'string' && ERROR_LITERALS.has(ourError)) {
-    return 'sheetjs-error-defval';
-  }
-  // EC-TEXT-CELL-NO-TEXT: a text-typed cell with no text (`<c t="inlineStr"/>`, `<c t="str"/>`) is blank for us and
-  // '' for SheetJS.
-  if (theirs === '' && ours === null) {
-    return 'sheetjs-empty-text-cell';
-  }
-  if (typeof theirs === 'string' && typeof ours === 'string') {
-    // EC-CRLF-NORMALIZED: SheetJS drops the CR of a CRLF (or a decoded _x000D_).
-    if (ours.replace(/\r\n/g, '\n').replace(/\r/g, '\n') === theirs.replace(/\r/g, '\n') || ours.replace(/\r/g, '') === theirs) {
-      return 'sheetjs-cr-collapse';
-    }
-    // EC-XML-NCR-ABOVE-BMP: SheetJS keeps the low 16 bits of a character reference past U+FFFF (U+1F603 -> U+F603),
-    // or reads it as U+0000 in a t="str" value.
-    if (
-      ours.replace(ASTRAL, character => String.fromCharCode((character.codePointAt(0) as number) & 0xffff)) === theirs ||
-      ours.replace(ASTRAL, '\0') === theirs
-    ) {
-      return 'sheetjs-ncr-above-bmp';
-    }
-    // EC-XML-ESCAPE-CASE: SheetJS also decodes `_X0041_`, which Excel leaves literal.
-    const decoded = ours.replace(/_[xX]([0-9A-Fa-f]{4})_/g, (_match, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
-    if (decoded === theirs || decoded.replace(/\r/g, '') === theirs) {
-      return 'sheetjs-escape-case';
-    }
-    return null;
-  }
-  // EC-DATE-PRE-1900 / EC-DATE-TIME-ONLY-NEGATIVE-SERIAL: serial 60 and negative serials stay numbers for us.
-  if (theirTime !== undefined && typeof ours === 'number' && (ours === 60 || ours < 0)) {
-    return 'sheetjs-fake-serial';
-  }
-  // SheetJS refuses to date serial 60 (Excel's fake 1900-02-29) and leaves it a number; we read 1900-03-01.
-  if (
-    typeof theirs === 'number' &&
-    theirs >= 60 &&
-    theirs < 61 &&
-    ourTime !== undefined &&
-    ourTime >= Date.parse('1900-02-28T00:00:00.000Z') &&
-    ourTime < Date.parse('1900-03-02T00:00:00.000Z')
-  ) {
-    return 'sheetjs-serial-60';
-  }
-  // A number cell holding text past the double range ('inf', '1.797693134862316e+308'): SheetJS drops it, we keep the text.
-  if (theirs === null && typeof ours === 'string' && /^(-?inf|nan|-?\d(\.\d+)?e\+30[89])$/i.test(ours)) {
-    return 'sheetjs-unparseable-number';
-  }
-  return null;
-}
-
 /** The full value of `cell` (A1) on a sheet of a dump, or undefined when the dump has no such sheet. */
 function cellAt(dump: { sheets: { name: string; rows: TypedValue[][] }[] }, sheetName: string, cell: string): TypedValue | undefined {
   const sheet = dump.sheets.find(candidate => candidate.name === sheetName);
@@ -284,11 +148,12 @@ function cellAt(dump: { sheets: { name: string; rows: TypedValue[][] }[] }, shee
 /**
  * `knownSheets` maps a sheet to the known reason every mismatch on it has: a sheet SheetJS dropped for a documented
  * cause (`droppedSheets`) has nothing to compare with. `dumps` are the two dumps compared: `compareDumps` keeps only a
- * 60-character preview of a long string in the mismatch, so `explain` reads the full values from them instead.
+ * 60-character preview of a long string in the mismatch, so `explain` reads the full values from them instead. `explain`
+ * also gets the expected sheet's name and the cell (A1), to prove facts about the expected side's cell.
  */
 function summarize(
   report: DiffReport,
-  explain?: (expected: unknown, actual: unknown) => string | null,
+  explain?: (expected: unknown, actual: unknown, where: { sheet: string; cell: string }) => string | null,
   knownSheets: ReadonlyMap<string, string> = new Map(),
   dumps?: { expected: { sheets: { name: string; rows: TypedValue[][] }[] }; actual: TypedDump },
 ): CompareSummary {
@@ -307,7 +172,7 @@ function summarize(
     for (const mismatch of sheet.mismatches) {
       const expected = dumps ? (cellAt(dumps.expected, sheet.name, mismatch.cell) ?? mismatch.expected) : mismatch.expected;
       const actual = dumps ? (cellAt(dumps.actual, actualName, mismatch.cell) ?? mismatch.actual) : mismatch.actual;
-      const reason = explain?.(expected, actual) ?? null;
+      const reason = explain?.(expected, actual, { sheet: sheet.name, cell: mismatch.cell }) ?? null;
       if (reason) {
         known[reason] = (known[reason] ?? 0) + 1;
         continue;
@@ -473,11 +338,13 @@ function sheetjsTyped(cell: XLSX.CellObject | undefined): TypedValue {
 }
 
 /**
- * Last row and column (0-based) of the cells SheetJS actually parsed, or null when it parsed none. Not `!ref`: SheetJS
- * keeps `!ref` from the sheet's `<dimension>` but parses every cell, so a dimension written from a low row-count hint
- * (EC-DIMENSION-FROM-HINT) leaves cells outside it. The workbook is read in SheetJS's default sparse mode (A1 keys).
+ * First and last row and column (0-based) of the cells SheetJS actually parsed, or null when it parsed none. Not `!ref`:
+ * SheetJS keeps `!ref` from the sheet's `<dimension>` but parses every cell, so a dimension written from a low row-count
+ * hint (EC-DIMENSION-FROM-HINT) leaves cells outside it. The workbook is read in SheetJS's default sparse mode (A1 keys).
  */
-function parsedExtent(worksheet: XLSX.WorkSheet): { rows: number; columns: number } | null {
+function parsedExtent(worksheet: XLSX.WorkSheet): { firstRow: number; firstColumn: number; rows: number; columns: number } | null {
+  let firstRow = Number.POSITIVE_INFINITY;
+  let firstColumn = Number.POSITIVE_INFINITY;
   let lastRow = -1;
   let lastColumn = -1;
   for (const key of Object.keys(worksheet)) {
@@ -485,24 +352,45 @@ function parsedExtent(worksheet: XLSX.WorkSheet): { rows: number; columns: numbe
       continue;
     }
     const { r, c } = XLSX.utils.decode_cell(key);
+    firstRow = Math.min(firstRow, r);
+    firstColumn = Math.min(firstColumn, c);
     lastRow = Math.max(lastRow, r);
     lastColumn = Math.max(lastColumn, c);
   }
-  return lastRow < 0 ? null : { rows: lastRow, columns: lastColumn };
+  return lastRow < 0 ? null : { firstRow, firstColumn, rows: lastRow, columns: lastColumn };
 }
 
-/** True when SheetJS parsed cells below or right of the sheet's `!ref` (EC-DIMENSION-FROM-HINT). */
-function dimensionUndersized(worksheet: XLSX.WorkSheet): boolean {
+/**
+ * The range sheet_to_json should read: the sheet's `!ref`, widened to every cell SheetJS parsed when some lie outside it
+ * (EC-DIMENSION-FROM-HINT: sheet_to_json reads only `!ref`, so a short `<dimension>` cuts records and columns that
+ * Jetstream would lose to SheetJS, not to us). `widened` says whether `!ref` fell short. Undefined for a sheet with
+ * neither a `!ref` nor a cell.
+ */
+function objectsRange(worksheet: XLSX.WorkSheet): { range: XLSX.Range; widened: boolean } | undefined {
   const extent = parsedExtent(worksheet);
   const ref = worksheet['!ref'];
+  const declared = ref ? XLSX.utils.decode_range(ref) : undefined;
   if (extent === null) {
-    return false;
+    return declared ? { range: declared, widened: false } : undefined;
   }
-  if (!ref) {
-    return true;
+  if (
+    declared &&
+    extent.firstRow >= declared.s.r &&
+    extent.firstColumn >= declared.s.c &&
+    extent.rows <= declared.e.r &&
+    extent.columns <= declared.e.c
+  ) {
+    return { range: declared, widened: false };
   }
-  const range = XLSX.utils.decode_range(ref);
-  return extent.rows > range.e.r || extent.columns > range.e.c;
+  const start = declared?.s ?? { r: extent.firstRow, c: extent.firstColumn };
+  const end = declared?.e ?? { r: extent.rows, c: extent.columns };
+  return {
+    range: {
+      s: { r: Math.min(start.r, extent.firstRow), c: Math.min(start.c, extent.firstColumn) },
+      e: { r: Math.max(end.r, extent.rows), c: Math.max(end.c, extent.columns) },
+    },
+    widened: true,
+  };
 }
 
 function sheetjsDump(workbook: XLSX.WorkBook): TypedDump {
@@ -526,15 +414,20 @@ function sheetjsDump(workbook: XLSX.WorkBook): TypedDump {
   return { reader: `sheetjs ${XLSX.version}`, sheets };
 }
 
-const SHEET_TO_JSON_OPTIONS: XLSX.Sheet2JSONOpts = {
-  dateNF: 'yyyy"-"mm"-"dd"T"hh:mm:ss',
-  defval: '',
-  blankrows: false,
-  rawNumbers: true,
-};
-
-/** A key SheetJS gives a column whose header cell is blank: `__EMPTY`, `__EMPTY_1`, ... */
-const BLANK_HEADER_KEY = /^__EMPTY(?:_\d+)?$/;
+/** sheet_to_json over `range`; it returns nothing for a sheet without `!ref`, so one is lent for the call. */
+function sheetToJson(worksheet: XLSX.WorkSheet, range: XLSX.Range): Record<string, unknown>[] {
+  const ref = worksheet['!ref'];
+  if (ref === undefined) {
+    worksheet['!ref'] = XLSX.utils.encode_range(range);
+  }
+  try {
+    return XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { ...SHEET_TO_JSON_OPTIONS, range });
+  } finally {
+    if (ref === undefined) {
+      delete worksheet['!ref'];
+    }
+  }
+}
 
 /**
  * Where `toObjects()` found the header (0-based row) and the source row of each record it built, from a parallel
@@ -559,63 +452,20 @@ async function ourRecordRows(workbook: Workbook): Promise<{ headerRow: number | 
   return { headerRow, recordRows };
 }
 
-/**
- * True when the first row of the sheet's `!ref`, which sheet_to_json takes for the header, holds no value. A '' counts
- * as none: SheetJS reads a text-typed cell with no text as '' where it is blank to us (EC-TEXT-CELL-NO-TEXT), so a row
- * of only those is the header to SheetJS and skipped by our header search. A real empty string is a value to us too,
- * so that row is our header as well and nothing is re-run.
- */
-function sheetjsHeaderRowBlank(worksheet: XLSX.WorkSheet): boolean {
-  const ref = worksheet['!ref'];
-  if (!ref) {
-    return false;
-  }
-  const range = XLSX.utils.decode_range(ref);
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    const cell = worksheet[a1(range.s.r, c)] as XLSX.CellObject | undefined;
-    if (cell && cell.t !== 'z' && cell.v !== undefined && cell.v !== '') {
-      return false;
-    }
-  }
-  return true;
-}
-
-/** SheetJS's key for a header cell whose text is '' (a text-typed cell with no text): '', then `_1`, `_2`, ... */
-const EMPTY_TEXT_HEADER_KEY = /^(?:_\d+)?$/;
-/** SheetJS's dateNF text of a time-only header cell: Excel's "day 0" of January 1900, as Excel shows it (`_N` dedupes). */
-const TIME_ONLY_HEADER_KEY = /^1900-01-00T(\d\d:\d\d:\d\d(?:_\d+)?)$/;
-
-/**
- * 'same' when SheetJS's key and ours name the same column, the known reason when they differ for one, or null.
- * - Two blank-header names (`__EMPTY_N`) are the same column even when an earlier difference shifted the numbering.
- * - EC-TEXT-CELL-NO-TEXT: a text-typed header cell with no text is '' (then `_1`, ...) to SheetJS, blank to us.
- * - A time-only header cell (a serial below 1) is named by its wall clock on Excel's day 0 of 1900 by SheetJS and on
- *   1899-12-30 by us, the marker day our values use (EC-TIME-ONLY-HAS-DATE-PART).
- */
-function sameHeader(theirKey: string, ourKey: string): string | null {
-  if (theirKey === ourKey || (BLANK_HEADER_KEY.test(theirKey) && BLANK_HEADER_KEY.test(ourKey))) {
-    return 'same';
-  }
-  if (BLANK_HEADER_KEY.test(ourKey) && EMPTY_TEXT_HEADER_KEY.test(theirKey)) {
-    return 'sheetjs-empty-text-cell';
-  }
-  const time = TIME_ONLY_HEADER_KEY.exec(theirKey)?.[1];
-  if (time !== undefined && ourKey === `1899-12-30T${time}`) {
-    return 'header-time-only-marker';
-  }
-  return null;
-}
-
 /** Every value of the record is blank (`''` or null), the shape of a record built only from defval. */
 function allBlank(record: Record<string, unknown>, keys: readonly string[]): boolean {
   return keys.every(key => record[key] === '' || record[key] === null || record[key] === undefined);
 }
 
-/** Phase 6: Jetstream's parseWorkbook against toObjects(), first sheet only, records lined up by source row. */
+/**
+ * Phase 6: Jetstream's parseWorkbook against toObjects(), first sheet only, records lined up by source row. `raw` is
+ * the raw XML of the workbook's sheets, which proves the shapes the SheetJS-side rules name.
+ */
 async function objectsParity(
   bytes: Uint8Array,
   sheetjs: XLSX.WorkBook,
   dropped: NonNullable<WorkerResult['sheetjs']>['dropped'],
+  raw: RawSheets,
 ): Promise<NonNullable<WorkerResult['objects']>> {
   const firstName = sheetjs.SheetNames[0];
   const firstSheet = firstName ? sheetjs.Sheets[firstName] : undefined;
@@ -629,7 +479,25 @@ async function objectsParity(
   }
   // EC-CHARTSHEET-CACHED-SERIES: the records SheetJS builds from a chartsheet's invented cells are not data.
   const isChart = firstSheet?.['!type'] === 'chart';
-  let theirs = firstSheet && !isChart ? XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, SHEET_TO_JSON_OPTIONS) : [];
+  const sheet = firstSheet && !isChart ? firstSheet : undefined;
+  const planned = sheet ? objectsRange(sheet) : undefined;
+  let range = planned?.range;
+  if (planned?.widened) {
+    note('sheetjs-dimension-from-hint');
+  }
+  let theirs = sheet && range ? sheetToJson(sheet, range) : [];
+
+  // What the SheetJS-side rules need proven about SheetJS's cell at a 0-based row and column of the first sheet.
+  const cellOf = (row: number, column: number): XLSX.CellObject | undefined => sheet?.[a1(row, column)] as XLSX.CellObject | undefined;
+  // EC-TEXT-CELL-NO-TEXT: '' to SheetJS, and a text-typed cell with no value child in the sheet XML.
+  const textCellWithoutValue = (row: number, column: number): boolean =>
+    cellOf(row, column)?.v === '' && raw.textCellWithoutValue(0, a1(row, column));
+  // No value for us either: no cell, a stub, or the text-typed cell with no value child.
+  const sheetjsBlank = (row: number, column: number): boolean => {
+    const cell = cellOf(row, column);
+    return !cell || cell.t === 'z' || cell.v === undefined || textCellWithoutValue(row, column);
+  };
+
   let beyondHeaderWarned = false;
   const workbook = await openWorkbook(bytes, {
     onWarning: warning => {
@@ -652,17 +520,45 @@ async function objectsParity(
     }
     const ours = await workbook.sheet(0).toObjects();
     const { headerRow, recordRows } = await ourRecordRows(workbook);
-    // EC-HEADER-ROW-FIRST-NONEMPTY: sheet_to_json takes the first row of `!ref` for the header even when it holds no
-    // value (an honest dimension starting at a row of styled blank cells); ask it for ours instead.
-    if (firstSheet && headerRow !== undefined && sheetjsHeaderRowBlank(firstSheet)) {
-      const start = XLSX.utils.decode_range(firstSheet['!ref'] as string).s.r;
-      if (headerRow > start) {
-        theirs = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { ...SHEET_TO_JSON_OPTIONS, range: headerRow });
+    // EC-HEADER-ROW-FIRST-NONEMPTY: sheet_to_json takes the first row of its range for the header even when it holds no
+    // value (an honest dimension starting at a row of styled blank cells); ask it for ours instead. A '' is no value
+    // only for the text-typed cell with no value child (EC-TEXT-CELL-NO-TEXT): a real empty string is a value to us
+    // too, so that row is our header as well and nothing is re-run.
+    if (sheet && range && headerRow !== undefined && headerRow > range.s.r) {
+      const start = range.s;
+      let blank = true;
+      for (let column = start.c; column <= range.e.c && blank; column++) {
+        blank = sheetjsBlank(start.r, column);
+      }
+      if (blank) {
+        range = { s: { r: headerRow, c: start.c }, e: range.e };
+        theirs = sheetToJson(sheet, range);
         note('sheetjs-header-row-blank');
       }
     }
+    const headerSheetRow = range?.s.r ?? 0;
     const normalize = (value: unknown): unknown => (value instanceof Date ? fromJsDate(value, 'local') : value);
     const theirKeys = theirs.length > 0 ? Object.keys(theirs[0] as object) : [];
+    const theirColumnOf = sheet && range ? sheetjsKeyColumns(sheet, range, theirKeys) : new Map<string, number>();
+    // The header cell of SheetJS's key at `position` in `theirKeys` names its column '' (then `_N`) for SheetJS and is
+    // blank for us: a text-typed cell with no value child (EC-TEXT-CELL-NO-TEXT), or a stub SheetJS made for a comment
+    // on a cell with no value. An unknown column proves nothing.
+    const headerCellWithoutValue = (position: number): boolean => {
+      const column = theirColumnOf.get(theirKeys[position] as string);
+      return column !== undefined && (cellOf(headerSheetRow, column)?.t === 'z' || textCellWithoutValue(headerSheetRow, column));
+    };
+    // A SheetJS record whose values are all blank, each '' proven to be no value for us either.
+    const theirRecordBlank = (record: Record<string, unknown>, keys: readonly string[]): boolean => {
+      const row = (record as { __rowNum__?: number }).__rowNum__;
+      return keys.every(key => {
+        const value = record[key];
+        if (value === null || value === undefined) {
+          return true;
+        }
+        const column = theirColumnOf.get(key);
+        return value === '' && typeof row === 'number' && column !== undefined && sheetjsBlank(row, column);
+      });
+    };
     let ourHeaders = ours.rows.length > 0 ? Object.keys(ours.rows[0] as object) : [];
     // Keys compared column by column, so a column both sides name differently for a known reason still lines up.
     const headerReasons = new Set<string>();
@@ -672,7 +568,7 @@ async function objectsParity(
         return false;
       }
       for (let column = 0; column < keys.length; column++) {
-        const reason = sameHeader(theirKeys[column] as string, keys[column] as string);
+        const reason = sameHeader(theirKeys[column] as string, keys[column] as string, () => headerCellWithoutValue(column));
         if (reason === null) {
           return false;
         }
@@ -683,8 +579,9 @@ async function objectsParity(
       return true;
     };
     let headersMatch = headersLineUp(ourHeaders);
-    // EC-HEADER-DIMENSION-START-COLUMN without a <dimension>: our columns start at A, SheetJS's at the first column
-    // of the cells it parsed. Leading blank-header columns that are '' in every record are that difference.
+    // EC-HEADER-DIMENSION-START-COLUMN for a sheet part with no <dimension>: our columns start at A, SheetJS's at the
+    // first column of the cells it parsed. Leading blank-header columns that are '' in every record are that
+    // difference. With a <dimension>, both start at its first column, so the rule does not apply.
     let leading = 0;
     while (leading < ourHeaders.length && BLANK_HEADER_KEY.test(ourHeaders[leading] as string)) {
       leading++;
@@ -693,6 +590,7 @@ async function objectsParity(
     if (
       !headersMatch &&
       leading > 0 &&
+      raw.lacksDimension(0) &&
       ours.rows.every(record => allBlank(record, leadingBlank)) &&
       headersLineUp(ourHeaders.slice(leading))
     ) {
@@ -703,12 +601,15 @@ async function objectsParity(
     // EC-DATA-BEYOND-HEADER: our records stop at the last header cell with a value, where SheetJS adds a blank-header
     // key for every column out to the widest row. Those trailing keys are the intended divergence when we reported the
     // values we left out, or when there were none to leave out (a dimension wider than the data). A trailing '' or
-    // `_N` key is a text-typed header cell with no text (EC-TEXT-CELL-NO-TEXT), blank to us.
+    // `_N` key is a text-typed header cell with no value child (EC-TEXT-CELL-NO-TEXT), blank to us.
     const extra = theirKeys.slice(ourHeaders.length);
     if (headersMatch && extra.length > 0) {
       headersMatch =
-        extra.every(key => BLANK_HEADER_KEY.test(key) || EMPTY_TEXT_HEADER_KEY.test(key)) &&
-        (beyondHeaderWarned || theirs.every(record => allBlank(record, extra)));
+        extra.every(
+          (key, index) =>
+            BLANK_HEADER_KEY.test(key) || (EMPTY_TEXT_HEADER_KEY.test(key) && headerCellWithoutValue(ourHeaders.length + index)),
+        ) &&
+        (beyondHeaderWarned || theirs.every(record => theirRecordBlank(record, extra)));
       if (headersMatch) {
         note('data-beyond-header');
       }
@@ -726,6 +627,21 @@ async function objectsParity(
       if (samples.length < SAMPLE_MISMATCHES) {
         samples.push(item);
       }
+    };
+    // EC-OBJECTS-ERROR-ONLY-ROW: SheetJS's row holds at least one error and nothing else with a value.
+    const sheetjsErrorOnlyRow = (row: number): boolean => {
+      if (!sheet || !range) {
+        return false;
+      }
+      let errors = 0;
+      for (let column = range.s.c; column <= range.e.c; column++) {
+        if (cellOf(row, column)?.t === 'e') {
+          errors++;
+        } else if (!sheetjsBlank(row, column)) {
+          return false;
+        }
+      }
+      return errors > 0;
     };
     // Line the records up by source row (`__rowNum__` is sheet_to_json's 0-based row) rather than by position, so a
     // record only one side builds shows up as that record instead of shifting every record after it.
@@ -745,7 +661,11 @@ async function objectsParity(
         // EC-OBJECTS-ERROR-ONLY-ROW: with errors: 'string' a row whose only values are errors is a record; SheetJS
         // drops it (its errors become defval, so the row has no value), as we do with errors: 'null'.
         // The errors may all sit right of the header (EC-DATA-BEYOND-HEADER), leaving a record of defval.
-        if (Object.values(ourRow).every(value => value === '' || (typeof value === 'string' && ERROR_LITERALS.has(value)))) {
+        if (
+          aligned &&
+          sheetjsErrorOnlyRow(row) &&
+          Object.values(ourRow).every(value => value === '' || (typeof value === 'string' && ERROR_LITERALS.has(value)))
+        ) {
           note('objects-error-only-row');
         } else {
           mismatches++;
@@ -754,9 +674,12 @@ async function objectsParity(
         continue;
       }
       theirByRow.delete(row);
+      // SheetJS's own row for the record, whatever the alignment, for the facts about its cells.
+      const sheetRow = (theirRow as { __rowNum__?: number }).__rowNum__;
       const keys = headersMatch ? ourHeaders : [...new Set([...theirHeaders, ...Object.keys(ourRow)])];
       for (const key of keys) {
-        const theirValue = normalize(theirRow[theirKeyFor.get(key) ?? key]);
+        const theirKey = theirKeyFor.get(key) ?? key;
+        const theirValue = normalize(theirRow[theirKey]);
         const ourValue = normalize(ourRow[key]);
         if (JSON.stringify(theirValue) === JSON.stringify(ourValue)) {
           continue;
@@ -768,7 +691,16 @@ async function objectsParity(
         ) {
           continue;
         }
-        const reason = knownSheetjsDivergence(theirValue, ourValue);
+        const column = theirColumnOf.get(theirKey);
+        const facts =
+          typeof sheetRow === 'number' && column !== undefined
+            ? {
+                textCellWithoutValue: () => textCellWithoutValue(sheetRow, column),
+                sheetjsError: () => cellOf(sheetRow, column)?.t === 'e',
+                strCellText: () => raw.strCellText(0, a1(sheetRow, column)),
+              }
+            : {};
+        const reason = knownSheetjsDivergence(theirValue, ourValue, facts);
         if (reason) {
           note(reason);
           continue;
@@ -778,9 +710,9 @@ async function objectsParity(
       }
     }
     for (const [row, theirRow] of theirByRow) {
-      // EC-TEXT-CELL-NO-TEXT: a row whose only cells are text-typed cells with no text is blank for us and a record
-      // of '' for SheetJS.
-      if (allBlank(theirRow, Object.keys(theirRow))) {
+      // EC-TEXT-CELL-NO-TEXT: a row whose only cells are text-typed cells with no value child is blank for us and a
+      // record of '' for SheetJS.
+      if (theirRecordBlank(theirRow, Object.keys(theirRow))) {
         note('sheetjs-empty-text-cell');
         continue;
       }
@@ -792,12 +724,6 @@ async function objectsParity(
     }
     if (!headersMatch) {
       samples.unshift({ headers: { sheetjs: theirHeaders.slice(0, 20), ours: ourHeaders.slice(0, 20) } });
-    }
-    // EC-DIMENSION-FROM-HINT: sheet_to_json reads only the rows and columns of `!ref`, so with cells beyond it SheetJS
-    // gives Jetstream fewer records or columns than the sheet has. A known SheetJS divergence, not ours to match.
-    if (firstSheet && (mismatches > 0 || !headersMatch) && dimensionUndersized(firstSheet)) {
-      note('sheetjs-dimension-from-hint', Math.max(mismatches, 1));
-      return { pass: true, rows: ours.rows.length, headersMatch, mismatches: 0, known, samples };
     }
     return { pass: mismatches === 0 && headersMatch, rows: ours.rows.length, headersMatch, mismatches, known, samples };
   } finally {
@@ -918,12 +844,21 @@ async function main(): Promise<void> {
     const dropped = result.sheetjs?.dropped;
     const knownSheets = new Map(dropped?.reason ? dropped.sheets.map(name => [name, dropped.reason as string]) : []);
     const dumps = { expected: theirs, actual: ours };
-    result.parity = await timed(result, 'compare', async () =>
-      summarize(compareDumps(theirs, ours), knownSheetjsDivergence, knownSheets, dumps),
-    );
     const workbook = sheetjs;
+    const raw = new RawSheets(bytes);
+    // The facts a rule needs about SheetJS's cell, proven from that cell and the raw sheet XML only when asked.
+    const explain = (expected: unknown, actual: unknown, where: { sheet: string; cell: string }): string | null => {
+      const index = workbook.SheetNames.indexOf(where.sheet);
+      const cell = where.cell ? (workbook.Sheets[where.sheet]?.[where.cell] as XLSX.CellObject | undefined) : undefined;
+      return knownSheetjsDivergence(expected, actual, {
+        textCellWithoutValue: () => index >= 0 && cell?.v === '' && raw.textCellWithoutValue(index, where.cell),
+        sheetjsError: () => cell?.t === 'e',
+        strCellText: () => (index >= 0 && where.cell ? raw.strCellText(index, where.cell) : undefined),
+      });
+    };
+    result.parity = await timed(result, 'compare', async () => summarize(compareDumps(theirs, ours), explain, knownSheets, dumps));
     try {
-      result.objects = await timed(result, 'objects', () => objectsParity(bytes, workbook, result.sheetjs?.dropped));
+      result.objects = await timed(result, 'objects', () => objectsParity(bytes, workbook, result.sheetjs?.dropped, raw));
     } catch (error) {
       result.objects = { pass: false, rows: 0, headersMatch: false, mismatches: 0, samples: [], error: errorInfo(error) };
     }
