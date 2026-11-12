@@ -118,7 +118,8 @@ All notable changes to this project will be documented in this file.
   already finished.
 - `workbook.abort()` cancels a write stuck on back-pressure: the abort reaches the sink at once instead of queueing
   behind the pending write, so `abort()` resolves and the pending `writeRow` rejects with `ABORTED`, for a stalled
-  `WritableStream` and a paused Node stream alike.
+  `WritableStream` and a paused Node stream alike. The same holds for a `WritableStream` whose `close()` never
+  finishes: `abort()` resolves and the pending `workbook.close()` rejects with `ABORTED`.
 - `openWorkbook` closes a `RandomAccessSource` (such as `fromFile`) when the sniff step or the zip directory read
   rejects; an encrypted, `.xls`, CSV, empty or truncated upload used to leak the file handle.
 - `toFile` no longer leaves a partial file at the target after an abort or a failed write.

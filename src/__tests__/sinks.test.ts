@@ -331,6 +331,41 @@ describe('fromWritableStream', () => {
     expect(stream.locked).toBe(false);
   });
 
+  it('resolves an abort while a close is stuck in a stream that never settles it', async () => {
+    const stream = new WritableStream<Uint8Array>({
+      close(): Promise<void> {
+        return new Promise<void>(() => undefined);
+      },
+    });
+    const sink = guardSink(fromWritableStream(stream));
+    await sink.write(new Uint8Array(1));
+    const stuck = sink.close();
+    expect(await isPending(stuck)).toBe(true);
+
+    const aborting = sink.abort(new Error('the user cancelled'));
+    expect(await isPending(aborting)).toBe(false);
+    await aborting;
+    await expect(stuck).rejects.toMatchObject({ code: 'ABORTED' });
+    expect(stream.locked).toBe(false);
+  });
+
+  it('resolves an unguarded abort while its close is stuck', async () => {
+    const stream = new WritableStream<Uint8Array>({
+      close(): Promise<void> {
+        return new Promise<void>(() => undefined);
+      },
+    });
+    const sink = fromWritableStream(stream);
+    await sink.write(new Uint8Array(1));
+    const stuck = sink.close();
+    void stuck.catch(() => undefined);
+    expect(await isPending(stuck)).toBe(true);
+
+    const aborting = sink.abort('the user cancelled');
+    expect(await isPending(aborting)).toBe(false);
+    expect(stream.locked).toBe(false);
+  });
+
   it('forwards the abort reason and releases the lock', async () => {
     const reasons: unknown[] = [];
     const stream = new WritableStream<Uint8Array>({
