@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T19:13:50.405Z",
   "resultsDir": "bench/results/2026-09-12-macbook-air-phase-d-chrome",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",

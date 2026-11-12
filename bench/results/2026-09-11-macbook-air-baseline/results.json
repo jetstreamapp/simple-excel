@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T03:52:00.584Z",
   "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-baseline",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
@@ -466,7 +465,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 63.42679099999998,
@@ -493,7 +492,7 @@
       "durationMs": 1056.498,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -508,7 +507,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 53.78324999999995,
@@ -535,7 +534,7 @@
       "durationMs": 1135.587,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -550,7 +549,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 77.965375,
@@ -577,7 +576,7 @@
       "durationMs": 1145.2214999999999,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -592,7 +591,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 79.04416700000002,
@@ -619,7 +618,7 @@
       "durationMs": 1209.4365,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -634,7 +633,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 619.271667,
@@ -661,7 +660,7 @@
       "durationMs": 3351.381625,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -676,7 +675,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 962.5922500000001,
@@ -703,7 +702,7 @@
       "durationMs": 4073.135417,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -718,7 +717,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 616.3940419999999,
@@ -745,7 +744,7 @@
       "durationMs": 3487.0647089999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -760,7 +759,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 592.377291,
@@ -787,7 +786,7 @@
       "durationMs": 3307.701583,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -802,7 +801,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6497.6086669999995,
@@ -829,7 +828,7 @@
       "durationMs": 28327.950417,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -844,7 +843,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 9935.843915999998,
@@ -871,7 +870,7 @@
       "durationMs": 34152.749916,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -886,7 +885,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6551.970040999999,
@@ -913,7 +912,7 @@
       "durationMs": 26935.056916,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -928,7 +927,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 8930.464083000003,
@@ -955,7 +954,7 @@
       "durationMs": 38951.797207999996,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -970,7 +969,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 74.58208400000001,
@@ -997,7 +996,7 @@
       "durationMs": 1120.2057089999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1012,7 +1011,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 122.46804099999986,
@@ -1039,7 +1038,7 @@
       "durationMs": 1295.67075,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1054,7 +1053,7 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 84.47945799999991,
@@ -1081,7 +1080,7 @@
       "durationMs": 1178.217167,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1096,13 +1095,13 @@
       "columns": 20,
       "cells": 20000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
       "status": "skipped",
       "reason": "write-excel-file does not implement read-raw",
       "durationMs": 112.76625,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-1k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-1k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 2656640
@@ -1117,7 +1116,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 622.90825,
@@ -1144,7 +1143,7 @@
       "durationMs": 3451.208833,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1159,7 +1158,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 1031.805292,
@@ -1186,7 +1185,7 @@
       "durationMs": 3720.075458,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1201,7 +1200,7 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 665.5048750000001,
@@ -1228,7 +1227,7 @@
       "durationMs": 3532.397542,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1243,13 +1242,13 @@
       "columns": 20,
       "cells": 200000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
       "status": "skipped",
       "reason": "write-excel-file does not implement read-raw",
       "durationMs": 95.73875,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-10k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-10k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 26063925
@@ -1264,7 +1263,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6541.531999999999,
@@ -1291,7 +1290,7 @@
       "durationMs": 29671.254709,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1306,7 +1305,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 10090.090833,
@@ -1333,7 +1332,7 @@
       "durationMs": 28808.438417,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1348,7 +1347,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 6763.367541,
@@ -1375,7 +1374,7 @@
       "durationMs": 27856.938708,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -1390,13 +1389,13 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "skipped",
       "reason": "write-excel-file does not implement read-raw",
       "durationMs": 128.91104099999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672

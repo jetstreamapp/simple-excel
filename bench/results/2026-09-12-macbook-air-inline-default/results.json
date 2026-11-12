@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T22:44:37.775Z",
   "resultsDir": "bench/results/2026-09-12-macbook-air-inline-default",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
@@ -118,7 +117,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 1643.0283330000002,
@@ -145,7 +144,7 @@
       "durationMs": 7664.0987079999995,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -160,7 +159,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 1686.691125,
@@ -187,7 +186,7 @@
       "durationMs": 7663.035292,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -202,7 +201,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 1475.511458,
@@ -229,7 +228,7 @@
       "durationMs": 6773.131665999999,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672
@@ -244,7 +243,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 1524.1023329999998,
@@ -271,7 +270,7 @@
       "durationMs": 6954.394625,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/jetstream-simple-excel/.generated/bench/fixtures/mixed-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/mixed-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 99829672

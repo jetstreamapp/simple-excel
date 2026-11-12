@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T23:13:59.157Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "excel-web-on-ours",
     "node": "v24.18.0",
     "readers": ["simple-excel", "sheetjs", "validator", "calamine", "excel"],
@@ -61,7 +61,7 @@
       "status": "PASS",
       "ms": 740,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/excel-web/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-web/canonical.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -245,7 +245,7 @@
       "status": "PASS",
       "ms": 443,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/excel-web/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/excel-web/canonical.inline.from-simple-excel.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []

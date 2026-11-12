@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T04:00:59.261Z",
   "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-shapes",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
@@ -190,7 +189,7 @@
       "phase": "process",
       "error": {
         "name": "ChildProcessError",
-        "message": "child exited with code null signal SIGABRT and no result; stderr tail: re/fnm/node-versions/v24.18.0/installation/bin/node]\n34: 0x103d98d3c uv_run [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n35: 0x102db06a8 node::SpinEventLoopInternal(node::Environment*) [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n36: 0x102f28314 node::NodeMainInstance::Run() [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n37: 0x102e7baa0 node::Start(int, char**) [/Users/austinturner/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n38: 0x18e79fe00 start [/usr/lib/dyld]"
+        "message": "child exited with code null signal SIGABRT and no result; stderr tail: re/fnm/node-versions/v24.18.0/installation/bin/node]\n34: 0x103d98d3c uv_run [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n35: 0x102db06a8 node::SpinEventLoopInternal(node::Environment*) [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n36: 0x102f28314 node::NodeMainInstance::Run() [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n37: 0x102e7baa0 node::Start(int, char**) [~/.local/share/fnm/node-versions/v24.18.0/installation/bin/node]\n38: 0x18e79fe00 start [/usr/lib/dyld]"
       },
       "durationMs": 18650.336292
     },
@@ -237,7 +236,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 4088.8941250000007,
@@ -264,7 +263,7 @@
       "durationMs": 17581.39175,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 56129700
@@ -279,7 +278,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 4989.20975,
@@ -306,7 +305,7 @@
       "durationMs": 20701.861582999998,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/strings-unique-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/strings-unique-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 56129700
@@ -321,7 +320,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 3157.603541999999,
@@ -348,7 +347,7 @@
       "durationMs": 13683.614709000001,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 33894543
@@ -363,7 +362,7 @@
       "columns": 20,
       "cells": 2000000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 4680.414375,
@@ -390,7 +389,7 @@
       "durationMs": 19610.711875,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/numeric-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/numeric-100k.xlsx",
         "producer": "sheetjs",
         "producerVersion": "0.20.3",
         "bytes": 33894543
@@ -409,7 +408,7 @@
       "timeoutMs": 600000,
       "durationMs": 600109.1362910001,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/wide-100k.xlsx",
         "producer": "office-kit",
         "producerVersion": "0.11.0",
         "bytes": 155120474
@@ -424,7 +423,7 @@
       "columns": 107,
       "cells": 10700000,
       "runs": 3,
-      "fixturePath": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+      "fixturePath": "<repo>/.generated/bench/fixtures/wide-100k.xlsx",
       "status": "ok",
       "timing": {
         "medianMs": 63466.408707999995,
@@ -451,7 +450,7 @@
       "durationMs": 250343.484541,
       "exitCode": 0,
       "fixture": {
-        "path": "/Users/austinturner/dev/worktrees/jetstream/workspace-5/tools/xlsx-engine/.generated/bench/fixtures/wide-100k.xlsx",
+        "path": "<repo>/.generated/bench/fixtures/wide-100k.xlsx",
         "producer": "office-kit",
         "producerVersion": "0.11.0",
         "bytes": 155120474

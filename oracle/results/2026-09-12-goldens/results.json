@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T04:07:38.145Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "goldens",
     "node": "v24.18.0",
     "readers": ["excel"],

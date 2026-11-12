@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T17:27:25.181Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "phase-b-writer",
     "node": "v24.18.0",
     "readers": ["validator", "sheetjs", "openpyxl", "calamine", "libreoffice", "excel"],
@@ -15,7 +15,7 @@
       "status": "PASS",
       "ms": 508,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/simple-excel/canonical.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -103,7 +103,7 @@
       "status": "PASS",
       "ms": 1750,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel.libreoffice/canonical.xlsx using filter : Calc Office Open",
+      "stderr": "convert <repo>/fixtures/golden/simple-excel/canonical.xlsx as a Calc document -> <repo>/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel.libreoffice/canonical.xlsx using filter : Calc Office Open",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -232,7 +232,7 @@
       "status": "PASS",
       "ms": 394,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.inline.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/simple-excel/canonical.inline.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -320,7 +320,7 @@
       "status": "PASS",
       "ms": 2394,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.inline.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel-inline.libreoffice/canonical.inline.xlsx using filt",
+      "stderr": "convert <repo>/fixtures/golden/simple-excel/canonical.inline.xlsx as a Calc document -> <repo>/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel-inline.libreoffice/canonical.inline.xlsx using filt",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,
@@ -449,7 +449,7 @@
       "status": "PASS",
       "ms": 1192,
       "exit": 0,
-      "stdout": "{\n  \"file\": \"/Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.zip64.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
+      "stdout": "{\n  \"file\": \"<repo>/fixtures/golden/simple-excel/canonical.zip64.xlsx\",\n  \"ok\": true,\n  \"errors\": []\n}\n",
       "stderr": "",
       "schemaErrors": 0,
       "errorsSample": []
@@ -516,7 +516,7 @@
       "status": "PASS",
       "ms": 1348,
       "exit": 0,
-      "stderr": "convert /Users/austinturner/dev/jetstream-simple-excel/fixtures/golden/simple-excel/canonical.zip64.xlsx as a Calc document -> /Users/austinturner/dev/jetstream-simple-excel/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel-zip64.libreoffice/canonical.zip64.xlsx using filter ",
+      "stderr": "convert <repo>/fixtures/golden/simple-excel/canonical.zip64.xlsx as a Calc document -> <repo>/.generated/oracle/2026-09-12-phase-b-writer/golden-canonical-simple-excel-zip64.libreoffice/canonical.zip64.xlsx using filter ",
       "resaveDiff": {
         "matches": 588,
         "cells": 658,

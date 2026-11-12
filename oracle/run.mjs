@@ -11,9 +11,9 @@
 // `simple-excel` is this package itself, read through `dist/esm` - run `npm run build` before the oracle.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
+import { machineLabel, scrubLocalPaths, stringifyScrubbed } from '../scripts/lib/local-paths.mjs';
 
 const HERE = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 const ROOT = join(HERE, '..');
@@ -321,13 +321,13 @@ for (const fixture of fixtures) {
 
 const meta = {
   date: new Date().toISOString(),
-  host: hostname(),
+  host: machineLabel(),
   label: options.label,
   node: process.version,
   readers,
   fixtures: fixtures.map(fixture => fixture.id),
 };
-writeFileSync(join(outDir, 'results.json'), JSON.stringify({ meta, results }, null, 2) + '\n');
+writeFileSync(join(outDir, 'results.json'), stringifyScrubbed({ meta, results }) + '\n');
 
 // summary.md: one row per fixture, one column per reader
 const header = `| fixture | ${readers.join(' | ')} |`;
@@ -365,5 +365,5 @@ const summary = [
   ...rows,
   '',
 ].join('\n');
-writeFileSync(join(outDir, 'summary.md'), summary);
+writeFileSync(join(outDir, 'summary.md'), scrubLocalPaths(summary));
 console.log(`\nwrote ${outDir}/summary.md`);

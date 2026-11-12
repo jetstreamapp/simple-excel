@@ -70,10 +70,10 @@ Generated 2026-09-12T20:26:02.729Z. Results folder: `bench/results/2026-09-12-ma
   ```
   RangeError: Invalid string length
       at Array.join (<anonymous>)
-      at write_ws_xml_data (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16417:11)
-      at write_ws_xml (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16458:11)
-      at write_zip_xlsx (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27056:25)
-      at write_zip (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27294:19)
+      at write_ws_xml_data (file://<repo>/node_modules/xlsx/xlsx.mjs:16417:11)
+      at write_ws_xml (file://<repo>/node_modules/xlsx/xlsx.mjs:16458:11)
+      at write_zip_xlsx (file://<repo>/node_modules/xlsx/xlsx.mjs:27056:25)
+      at write_zip (file://<repo>/node_modules/xlsx/xlsx.mjs:27294:19)
   ```
 
 - **sheetjs / write / mixed / 18m-cells** — ERROR (warm-up) RangeError: Invalid string length
@@ -81,8 +81,8 @@ Generated 2026-09-12T20:26:02.729Z. Results folder: `bench/results/2026-09-12-ma
   ```
   RangeError: Invalid string length
       at Array.join (<anonymous>)
-      at write_ws_xml_data (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16417:11)
-      at write_ws_xml (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16458:11)
-      at write_zip_xlsx (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27056:25)
-      at write_zip (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27294:19)
+      at write_ws_xml_data (file://<repo>/node_modules/xlsx/xlsx.mjs:16417:11)
+      at write_ws_xml (file://<repo>/node_modules/xlsx/xlsx.mjs:16458:11)
+      at write_zip_xlsx (file://<repo>/node_modules/xlsx/xlsx.mjs:27056:25)
+      at write_zip (file://<repo>/node_modules/xlsx/xlsx.mjs:27294:19)
   ```

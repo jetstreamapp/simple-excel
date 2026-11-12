@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T04:20:17.388Z",
   "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-ceiling",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
@@ -90,7 +89,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 8097.876416,
       "exitCode": 0
@@ -110,7 +109,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at serializeSharedStrings (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:203:15)\n    at sharedStringsToBytes (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/workbook-CARZS94U.mjs:196:34)\n    at finalizeImpl (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:555:78)\n    at async Object.finalize (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/@office-kit+xlsx@0.11.0/node_modules/@office-kit/xlsx/dist/streaming.mjs:536:4)"
       },
       "durationMs": 20661.915957999998,
       "exitCode": 1
@@ -130,7 +129,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://~/dev/worktrees/jetstream/workspace-5/node_modules/.pnpm/xlsx@https+++cdn.sheetjs.com+xlsx-0.20.3+xlsx-0.20.3.tgz/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 17736.995125,
       "exitCode": 0

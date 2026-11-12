@@ -1,7 +1,7 @@
 {
   "meta": {
     "date": "2026-09-12T15:41:27.883Z",
-    "host": "MacBook-Air.local",
+    "host": "darwin-arm64",
     "label": "excel-365",
     "node": "v24.18.0",
     "readers": ["sheetjs", "office-kit", "openpyxl", "calamine"],

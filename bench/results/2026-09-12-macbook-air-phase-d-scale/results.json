@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T18:48:09.831Z",
   "resultsDir": "bench/results/2026-09-12-macbook-air-phase-d-scale",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
@@ -60,7 +59,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://<repo>/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://<repo>/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://<repo>/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://<repo>/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 47011.305250000005,
       "exitCode": 0
@@ -148,7 +147,7 @@
       "error": {
         "name": "RangeError",
         "message": "Invalid string length",
-        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file:///Users/austinturner/dev/jetstream-simple-excel/node_modules/xlsx/xlsx.mjs:27294:19)"
+        "stack": "RangeError: Invalid string length\n    at Array.join (<anonymous>)\n    at write_ws_xml_data (file://<repo>/node_modules/xlsx/xlsx.mjs:16417:11)\n    at write_ws_xml (file://<repo>/node_modules/xlsx/xlsx.mjs:16458:11)\n    at write_zip_xlsx (file://<repo>/node_modules/xlsx/xlsx.mjs:27056:25)\n    at write_zip (file://<repo>/node_modules/xlsx/xlsx.mjs:27294:19)"
       },
       "durationMs": 37102.804125,
       "exitCode": 0

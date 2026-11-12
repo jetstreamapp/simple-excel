@@ -3,7 +3,6 @@
   "createdAt": "2026-09-12T04:30:05.601Z",
   "resultsDir": "tools/xlsx-engine/bench/results/2026-09-11-macbook-air-chrome",
   "machine": {
-    "hostname": "MacBook-Air.local",
     "platform": "darwin",
     "release": "25.5.0",
     "arch": "arm64",
