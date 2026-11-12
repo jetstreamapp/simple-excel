@@ -53,16 +53,31 @@ def fetch(record, attempts=5):
     return b""
 
 
+CHUNK_SIZE = re.compile(rb"[0-9A-Fa-f]+")
+
+
 def dechunk(body):
+    """Undo chunked transfer encoding. The framing is crawl content: a size that is not plain hex (int() would take a
+    sign, and a negative size moves backwards for ever) or a body that ends before the last chunk raises ValueError."""
     out = bytearray()
     position = 0
     while True:
-        end = body.index(b"\r\n", position)
-        size = int(body[position:end].split(b";")[0], 16)
+        if position >= len(body):
+            raise ValueError("chunked body ends before its last chunk")
+        end = body.find(b"\r\n", position)
+        if end < 0:
+            raise ValueError("chunked body ends inside a chunk-size line")
+        size_text = body[position:end].split(b";")[0].strip()
+        if not CHUNK_SIZE.fullmatch(size_text):
+            raise ValueError(f"bad chunk size {size_text[:20]!r}")
+        size = int(size_text, 16)
         if size == 0:
             return bytes(out)
-        out += body[end + 2 : end + 2 + size]
-        position = end + 2 + size + 2
+        data_end = end + 2 + size
+        if data_end > len(body):
+            raise ValueError("chunked body ends inside a chunk")
+        out += body[end + 2 : data_end]
+        position = data_end + 2
 
 
 def payload(member):

@@ -64,7 +64,9 @@ def writer_key(path):
     else:
         excel_mark = "fv"
     key = f"{name} {major} {excel_mark}".strip() if name.lower().startswith("microsoft") else name
-    return re.sub(r"[^A-Za-z0-9.+-]+", "_", key).strip("_") or "unknown"
+    # The key names a directory under <out> and comes from crawl content: never '.', '..' or a dot name.
+    key = re.sub(r"[^A-Za-z0-9.+-]+", "_", key).strip("_.")
+    return "unknown" if not key or key in (".", "..") or key.startswith(".") else key
 
 
 def main():
