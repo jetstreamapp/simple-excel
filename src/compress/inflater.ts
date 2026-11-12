@@ -19,15 +19,18 @@ export interface Inflater {
 
 /**
  * Whatever the decompressor rejects with (corrupt or truncated deflate data) becomes `ZIP_TRUNCATED` with the
- * platform error in `detail.cause`; errors we classified ourselves pass through unchanged.
+ * platform error as its `cause`; errors we classified ourselves pass through unchanged.
  */
 function asXlsxError(error: unknown): XlsxError {
   if (error instanceof XlsxError) {
     return error;
   }
-  return new XlsxError('ZIP_TRUNCATED', 'This file contains compressed data that could not be decoded; it is probably damaged.', {
-    cause: error,
-  });
+  return new XlsxError(
+    'ZIP_TRUNCATED',
+    'This file contains compressed data that could not be decoded; it is probably damaged.',
+    undefined,
+    { cause: error },
+  );
 }
 
 function bombError(maxBytes: number): XlsxError {
@@ -35,7 +38,10 @@ function bombError(maxBytes: number): XlsxError {
 }
 
 function abortError(reason: unknown): XlsxError {
-  return reason instanceof XlsxError ? reason : new XlsxError('ABORTED', 'The read was aborted.', { cause: reason });
+  if (reason instanceof XlsxError) {
+    return reason;
+  }
+  return new XlsxError('ABORTED', 'The read was aborted.', undefined, reason === undefined ? undefined : { cause: reason });
 }
 
 /** `method: 'store'` entries are already the bytes we want: pass them straight through, still counting the cap. */
@@ -94,6 +100,7 @@ function createDecompressionStream(): DecompressionStream {
     throw new XlsxError(
       'UNSUPPORTED_ENVIRONMENT',
       'Reading xlsx files needs DecompressionStream("deflate-raw"), which this environment does not support. Use Node.js 20.12 or later, or a current browser.',
+      undefined,
       { cause: error },
     );
   }

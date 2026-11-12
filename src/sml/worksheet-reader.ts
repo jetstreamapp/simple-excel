@@ -1,9 +1,11 @@
 import { XlsxError } from '../errors';
+import { isStringLengthError } from '../internal/string-length';
 import type { CellErrorCode, CellValue, OpenOptions, RawCell, ReadWarning, ReadWarningCode, RowsOptions } from '../types';
 import { decodeCellText } from '../xml/escape';
 import { XmlTokenizer, type XmlTokenizerHandler } from '../xml/tokenizer';
 import { columnIndexOfRef, formatRef, MAX_COLUMNS, MAX_ROWS } from './cell-ref';
 import { componentsFromIso, componentsFromSerial, dateFromComponents, serialFromComponents } from './date';
+import { MAX_READ_CELL_FORMATS, XF_DATE, XF_NOT_DATE } from './styles';
 
 /** What the facade's object mode adds to a row read. */
 export interface WorksheetRowsOptions extends RowsOptions {
@@ -24,12 +26,18 @@ export interface WorksheetReadContext {
    * the deferred path instead and resolves against the same empty table.
    */
   readonly hasSharedStrings: boolean;
+  /** Per cellXfs entry, `XF_DATE`, `XF_NOT_DATE` or `XF_FORMAT_IGNORED` (see `parseStyles`). */
   readonly isDateByXf: Uint8Array;
+  /** The styles part had more than `MAX_READ_CELL_FORMATS` formats; the rest were ignored (EC-STYLES-XF-OVERFLOW). */
+  readonly cellFormatsIgnored: boolean;
   readonly date1904: boolean;
   readonly dates: NonNullable<OpenOptions['dates']>;
   readonly errors: NonNullable<OpenOptions['errors']>;
   readonly maxXmlDepth: number;
+  /** Characters one cell's value, inline string or formula text may accumulate, however many text runs build it. */
   readonly maxTextLength: number;
+  /** Characters the captured text of one row may add up to (EC-CELL-TEXT-RUN-SPLIT). */
+  readonly maxRowChars: number;
   /** Checked between chunks; an aborted signal ends the read with `XlsxError('ABORTED')`. Supplied by the facade. */
   readonly signal?: AbortSignal;
   /**
@@ -69,6 +77,17 @@ const TYPE_ISO_DATE = 6;
 
 /** `t="s"` is five characters, so four kept from the previous chunk catch one split across the boundary. */
 const SHARED_TYPE_SCAN_TAIL = 4;
+
+/**
+ * What one batch of rows may materialize before it is yielded, in array slots: each row costs its cells plus
+ * `ROW_SLOT_OVERHEAD` for the row object and its array. Rows used to be batched per decoded chunk, and a 16 KiB chunk
+ * of rows with one cell at XFD is 300-odd 16,384-slot arrays, about 40 MB before the first yield (EC-WIDE-SPARSE-ROWS);
+ * a `blankRows` gap of a million rows was a million objects (EC-BLANK-ROWS-GAP-FILL). About 8 MB of slots per batch
+ * holds whatever the sheet looks like, and ordinary rows never come near it: a chunk of them is a few hundred slots.
+ */
+const BATCH_SLOT_BUDGET = 1024 * 1024;
+/** A yielded row's own cost in slots beyond its cells: the row object, the array header, the index. */
+const ROW_SLOT_OVERHEAD = 8;
 
 const CODE_SPACE = 0x20;
 const CODE_DOLLAR = 0x24;
@@ -175,6 +194,22 @@ function limitExceeded(message: string, detail: Readonly<Record<string, unknown>
   return new XlsxError('LIMIT_EXCEEDED', message, detail);
 }
 
+/**
+ * A string past the engine's maximum length means the caller raised `maxTextLength` or `maxRowChars` further than
+ * one string can go; it is still a limit, not a crash (EC-CELL-TEXT-RUN-SPLIT).
+ */
+function classifyStringLengthError(error: unknown): unknown {
+  if (!isStringLengthError(error)) {
+    return error;
+  }
+  return new XlsxError(
+    'LIMIT_EXCEEDED',
+    'This sheet holds more text in one place than a string can, so it was not read further.',
+    undefined,
+    { cause: error },
+  );
+}
+
 function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted === true) {
     throw new XlsxError('ABORTED', 'Reading this spreadsheet was cancelled.');
@@ -228,6 +263,8 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   protected inlineSeen = false;
   protected inlineText = '';
   protected formulaText = '';
+  /** Characters captured from the open row so far: values, inline strings and formula text. */
+  private rowChars = 0;
   /** False while rows before `startRow` stream past: they are parsed for their numbering and nothing else. */
   protected collecting = false;
 
@@ -275,6 +312,16 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
 
   push(text: string): void {
     this.tokenizer.push(text);
+  }
+
+  /** The tokenizer stopped mid-input for a full batch: yield it, then `resume()` before pushing anything more. */
+  get paused(): boolean {
+    return this.tokenizer.paused;
+  }
+
+  /** Continue the input a full batch paused; it may pause again. */
+  resume(): void {
+    this.tokenizer.resume();
   }
 
   /** Fill in cells whose `t="s"` the pre-scan missed (an exotic attribute spelling); normally a no-op. */
@@ -353,18 +400,32 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     }
   }
 
+  /**
+   * The tokenizer caps each text run at `maxTextLength`; a cell can be built from any number of runs (rich text,
+   * CDATA pieces, text split by stray elements), so the cap is held here against what the cell has accumulated, and
+   * `maxRowChars` against the row (EC-CELL-TEXT-RUN-SPLIT).
+   */
   text(text: string): void {
-    switch (this.capture) {
+    const capture = this.capture;
+    if (capture === CAPTURE_NONE) {
+      return;
+    }
+    this.rowChars += text.length;
+    if (this.rowChars > this.context.maxRowChars) {
+      throw limitExceeded(
+        `Row ${this.rowNumber} of this sheet holds more than ${this.context.maxRowChars} characters of text, so it was not read further.`,
+        { row: this.rowNumber, maxRowChars: this.context.maxRowChars },
+      );
+    }
+    switch (capture) {
       case CAPTURE_VALUE:
-        this.valueText = this.valueText.length === 0 ? text : this.valueText + text;
+        this.valueText = this.valueText.length === 0 ? text : this.appendCellText(this.valueText, text);
         return;
       case CAPTURE_INLINE:
-        this.inlineText = this.inlineText.length === 0 ? text : this.inlineText + text;
-        return;
-      case CAPTURE_FORMULA:
-        this.formulaText = this.formulaText.length === 0 ? text : this.formulaText + text;
+        this.inlineText = this.inlineText.length === 0 ? text : this.appendCellText(this.inlineText, text);
         return;
       default:
+        this.formulaText = this.formulaText.length === 0 ? text : this.appendCellText(this.formulaText, text);
         return;
     }
   }
@@ -412,6 +473,16 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
   // Rows and cells
   // -------------------------------------------------------------------------------------------------------------
 
+  private appendCellText(current: string, text: string): string {
+    if (current.length + text.length > this.context.maxTextLength) {
+      throw limitExceeded(
+        `Cell ${this.currentRef()} of this sheet holds more than ${this.context.maxTextLength} characters of text, so it was not read further.`,
+        { ref: this.currentRef(), maxTextLength: this.context.maxTextLength },
+      );
+    }
+    return current + text;
+  }
+
   /** A missing `<row r>` means the previous row plus one (EC-MISSING-R-ATTRIBUTES). */
   private beginRow(): void {
     const ref = this.tokenizer.attr('r');
@@ -430,6 +501,7 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     }
     this.rowNumber = rowNumber;
     this.column = -1;
+    this.rowChars = 0;
     this.state = STATE_ROW;
     this.onRowStart(rowNumber);
   }
@@ -546,7 +618,15 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     }
     // -0 has no spreadsheet representation (EC-NUM-NEGATIVE-ZERO).
     const value = parsed === 0 ? 0 : parsed;
-    if (this.serialDates || this.context.isDateByXf[this.style] !== 1) {
+    if (this.serialDates) {
+      return value;
+    }
+    const dateFlag = this.context.isDateByXf[this.style];
+    if (dateFlag !== XF_DATE) {
+      // Undefined past the end of the table and XF_FORMAT_IGNORED for a dropped format: a number either way.
+      if (dateFlag !== XF_NOT_DATE && this.context.cellFormatsIgnored) {
+        this.warnCellFormatIgnored();
+      }
       return value;
     }
     const components = componentsFromSerial(value, this.context.date1904);
@@ -633,6 +713,23 @@ abstract class WorksheetParser implements XmlTokenizerHandler {
     report({ code, message, ref });
   }
 
+  /** Reached only for a number cell whose format was ignored, so the message is built at most once per read. */
+  private warnCellFormatIgnored(): void {
+    const report = this.context.onWarning;
+    const code: ReadWarningCode = 'CELL_FORMATS_IGNORED';
+    if (report === undefined || this.warned.has(code)) {
+      return;
+    }
+    this.warned.add(code);
+    const ref = this.currentRef();
+    report({
+      code,
+      message: `This workbook lists more than ${MAX_READ_CELL_FORMATS} cell formats, more than Excel allows, and cell ${ref} uses one past that; it reads as a plain number, so a date there shows as its serial.`,
+      ref,
+      detail: { maxCellFormats: MAX_READ_CELL_FORMATS },
+    });
+  }
+
   private async loadSharedStrings(): Promise<readonly string[]> {
     this.sharedStrings ??= await this.context.sharedStrings();
     return this.sharedStrings;
@@ -654,6 +751,13 @@ class RowsParser extends WorksheetParser {
 
   private cells: CellValue[] = [];
   private batch: SheetRow[] = [];
+  /** Slots the rows in `batch` hold; see `BATCH_SLOT_BUDGET`. */
+  private batchSlots = 0;
+  /**
+   * With `blankRows`, a row that ended while the gap before it was still being filled when the batch filled up: the
+   * rest of the gap and then this row are emitted on `resume()`.
+   */
+  private pendingRow: SheetRow | undefined;
   private emitted = 0;
   /** No row with a value has been emitted yet: with `errorTextRow: 'first'`, the next one is the header row. */
   private awaitingFirstRow = true;
@@ -681,7 +785,20 @@ class RowsParser extends WorksheetParser {
   takeBatch(): SheetRow[] {
     const batch = this.batch;
     this.batch = [];
+    this.batchSlots = 0;
     return batch;
+  }
+
+  /** Finish a gap the last batch cut short, then let the tokenizer continue the input. */
+  override resume(): void {
+    const pending = this.pendingRow;
+    if (pending !== undefined) {
+      this.pendingRow = undefined;
+      if (!this.emitWithGap(pending)) {
+        return;
+      }
+    }
+    super.resume();
   }
 
   protected override onRowStart(rowNumber: number): void {
@@ -708,16 +825,28 @@ class RowsParser extends WorksheetParser {
     if (end === 0 && !this.blankRows) {
       return;
     }
+    this.emitWithGap({ index: rowNumber, cells });
+  }
+
+  /**
+   * Emit `row`, after the blank rows that keep a `blankRows` read aligned with the sheet when row numbers jump.
+   * False when the batch filled up first: the row waits in `pendingRow` and the tokenizer is paused.
+   */
+  private emitWithGap(row: SheetRow): boolean {
     if (this.blankRows) {
-      // Row numbers can jump; the blank rows in between keep the yielded sequence aligned with the sheet.
-      for (let index = this.nextIndex; index < rowNumber; index++) {
+      for (let index = this.nextIndex; index < row.index; index++) {
         this.emit({ index, cells: [] });
         if (this.stopped) {
-          return;
+          return false;
+        }
+        if (this.batchSlots >= BATCH_SLOT_BUDGET) {
+          this.pendingRow = row;
+          return false;
         }
       }
     }
-    this.emit({ index: rowNumber, cells });
+    this.emit(row);
+    return true;
   }
 
   protected override onCell(value: CellValue): void {
@@ -758,14 +887,19 @@ class RowsParser extends WorksheetParser {
   private place(value: CellValue): void {
     const cells = this.cells;
     const column = this.column;
-    if (column < cells.length) {
+    const length = cells.length;
+    if (column === length) {
+      cells.push(value);
+      return;
+    }
+    if (column < length) {
       cells[column] = value;
       return;
     }
-    while (cells.length < column) {
-      cells.push(null);
-    }
-    cells.push(value);
+    // A gap: one resize and one fill rather than a push per hole, which is 16,384 calls for a cell at XFD.
+    cells.length = column + 1;
+    cells.fill(null, length, column);
+    cells[column] = value;
   }
 
   private emit(row: SheetRow): void {
@@ -774,6 +908,11 @@ class RowsParser extends WorksheetParser {
     this.nextIndex = row.index + 1;
     if (this.emitted >= this.maxRows) {
       this.stop();
+      return;
+    }
+    this.batchSlots += row.cells.length + ROW_SLOT_OVERHEAD;
+    if (this.batchSlots >= BATCH_SLOT_BUDGET) {
+      this.tokenizer.pause();
     }
   }
 }
@@ -829,7 +968,8 @@ class HeadParser extends WorksheetParser {
  * Stream typed rows out of a worksheet part: UTF-8 decode -> tokenizer -> cell state machine. Handles missing `r`
  * attributes (row and column inferred), every `t` value (n, s, str, inlineStr, b, e, d), `<v/>`, `<is>` runs,
  * formulas (cached value, or text with `formulas: 'text'`), Strict ISO dates, and decodes `_xHHHH_` only when the
- * text contains `_x`. Yields in batches per decoded chunk; breaking out cancels the underlying stream.
+ * text contains `_x`. Yields in batches per decoded chunk, a chunk split wherever its rows pass `BATCH_SLOT_BUDGET`;
+ * breaking out cancels the underlying stream.
  */
 export function readWorksheetRows(
   chunks: AsyncIterable<Uint8Array>,
@@ -848,21 +988,31 @@ async function* streamRows(
   if (parser.stopped) {
     return;
   }
-  const decoder = new TextDecoder('utf-8');
-  for await (const chunk of chunks) {
-    throwIfAborted(context.signal);
-    await feed(parser, decoder.decode(chunk, { stream: true }));
+  try {
+    for await (const text of decodedText(chunks, context.signal)) {
+      await feed(parser, text);
+      // A batch that fills up pauses the parser mid-chunk; it resumes once the rows so far are in the caller's hands.
+      for (;;) {
+        for (const row of parser.takeBatch()) {
+          yield row;
+        }
+        if (parser.stopped) {
+          return;
+        }
+        if (!parser.paused) {
+          break;
+        }
+        throwIfAborted(context.signal);
+        parser.resume();
+        await parser.resolveDeferredCells();
+      }
+    }
+    parser.finish();
     for (const row of parser.takeBatch()) {
       yield row;
     }
-    if (parser.stopped) {
-      return;
-    }
-  }
-  await feed(parser, decoder.decode());
-  parser.finish();
-  for (const row of parser.takeBatch()) {
-    yield row;
+  } catch (error) {
+    throw classifyStringLengthError(error);
   }
 }
 
@@ -883,17 +1033,28 @@ export async function readWorksheetHead(
   if (parser.stopped) {
     return parser.cells;
   }
+  try {
+    for await (const text of decodedText(chunks, context.signal)) {
+      await feed(parser, text);
+      if (parser.stopped) {
+        return parser.cells;
+      }
+    }
+    parser.finish();
+  } catch (error) {
+    throw classifyStringLengthError(error);
+  }
+  return parser.cells;
+}
+
+/** The part as UTF-8 text, chunk by chunk, then whatever the decoder held back of a character split at the end. */
+async function* decodedText(chunks: AsyncIterable<Uint8Array>, signal: AbortSignal | undefined): AsyncGenerator<string> {
   const decoder = new TextDecoder('utf-8');
   for await (const chunk of chunks) {
-    throwIfAborted(context.signal);
-    await feed(parser, decoder.decode(chunk, { stream: true }));
-    if (parser.stopped) {
-      return parser.cells;
-    }
+    throwIfAborted(signal);
+    yield decoder.decode(chunk, { stream: true });
   }
-  await feed(parser, decoder.decode());
-  parser.finish();
-  return parser.cells;
+  yield decoder.decode();
 }
 
 async function feed(parser: WorksheetParser, text: string): Promise<void> {

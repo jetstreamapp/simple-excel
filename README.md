@@ -123,6 +123,16 @@ await workbook.close();
 `rows()` streams; nothing but the shared-string table stays resident. `sheet.head(5)` returns the first rows as an
 A1-keyed map without inflating the rest of the sheet, which is how you inspect a template before reading it.
 
+The defaults are set for untrusted uploads: a file past one of them fails fast with `LIMIT_EXCEEDED` (or `ZIP_BOMB`)
+instead of exhausting the host. `limits` caps each part's inflated size (`maxInflatedBytes`, 1 GiB), the parts read
+whole (`maxPartBytes`, 32 MiB), the number of parts and package entries (`maxEntries`, 10,000), the shared-string table
+(`maxSharedStringChars`, 256 Mi, each item counting 16 on top of its text), one cell's text (`maxTextLength`, 1 Mi
+characters) and one row's (`maxRowChars`, 64 Mi), XML nesting (`maxXmlDepth`, 256) and the record cells
+`toObjects()` holds (`maxObjectCells`, 100M); see [Reading](docs/docs/reading.md#limits).
+
+Object mode keys each record by the header row, as SheetJS `sheet_to_json` does, but stops at the last header: a
+value to the right of it is left out and reported once per sheet through `onWarning` as `DATA_BEYOND_HEADER`.
+
 ## Node
 
 ```ts
@@ -133,7 +143,17 @@ const source = await fromFile('upload.xlsx');
 ```
 
 The `/node` entry re-exports everything from the core entry and adds file-backed sources and sinks plus a
-zlib-backed deflater with a compression level (the platform `CompressionStream` has no level).
+zlib-backed deflater with a compression level (the platform `CompressionStream` has no level). `toFile` writes to a
+hidden temporary file and renames it into place on `close()`, so the target never holds a partial file;
+`toWritable` fails a pending write with `IO_ERROR` when an HTTP client disconnects mid-download.
+
+## Errors
+
+Every failure is an `XlsxError` with a stable `code` (`ENCRYPTED`, `NOT_XLSX`, `LIMIT_EXCEEDED`, ...). `ABORTED`
+means you cancelled (an `AbortSignal` or `abort()`); `IO_ERROR` means something underneath failed — a sink, a
+stream, a file, a source, the compressor or one of your callbacks — with the original error as the standard
+`cause`. `instanceof XlsxError` and `isXlsxError()` hold across the core and `/node` entries and across the ESM and
+CommonJS builds.
 
 ## Browser support
 

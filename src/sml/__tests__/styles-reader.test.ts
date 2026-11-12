@@ -4,7 +4,15 @@ import { XmlTokenizer } from '../../xml/tokenizer';
 import { sourceFrom } from '../../zip/source';
 import { ZipReader } from '../../zip/zip-reader';
 import { parseRels, parseWorkbook, relTypeIs } from '../package-parts';
-import { parseStyles } from '../styles';
+import {
+  MAX_READ_CELL_FORMATS,
+  parseStyles,
+  XF_DATE,
+  XF_FORMAT_IGNORED,
+  XF_NOT_DATE,
+  type ParsedStyles,
+  type ParseStylesOptions,
+} from '../styles';
 
 const SPREADSHEET_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
@@ -18,74 +26,94 @@ function cellXfs(...numFmtIds: readonly number[]): string {
     .join('')}</cellXfs>`;
 }
 
-function dateFlags(xml: string): number[] {
-  return [...parseStyles(xml).isDateByXf];
+const OPTIONS: ParseStylesOptions = { maxDepth: 256, maxTextLength: 1024 * 1024 };
+
+async function* chunksOf(text: string, chunkSize = 64 * 1024): AsyncGenerator<Uint8Array> {
+  const bytes = new TextEncoder().encode(text);
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    yield bytes.subarray(offset, offset + chunkSize);
+  }
+}
+
+function parse(xml: string, options: ParseStylesOptions = OPTIONS, chunkSize?: number): Promise<ParsedStyles> {
+  return parseStyles(chunksOf(xml, chunkSize), options);
+}
+
+async function dateFlags(xml: string): Promise<number[]> {
+  return [...(await parse(xml)).isDateByXf];
 }
 
 describe('parseStyles', () => {
-  it('EC-DATE-DETECTION-VIA-NUMFMT: flags built-in date ids and nothing else', () => {
-    expect(dateFlags(styleSheet(cellXfs(0, 1, 2, 9, 49, 14, 22, 45, 47, 56)))).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+  it('EC-DATE-DETECTION-VIA-NUMFMT: flags built-in date ids and nothing else', async () => {
+    expect(await dateFlags(styleSheet(cellXfs(0, 1, 2, 9, 49, 14, 22, 45, 47, 56)))).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
   });
 
-  it('flags a custom format whose code renders a date', () => {
+  it('flags a custom format whose code renders a date', async () => {
     const xml = styleSheet(
       '<numFmts count="3"><numFmt numFmtId="164" formatCode="yyyy-mm-dd hh:mm:ss"/>' +
         '<numFmt numFmtId="165" formatCode="&quot;USD&quot; #,##0.00"/>' +
         '<numFmt numFmtId="166" formatCode="[h]:mm:ss"/></numFmts>' +
         cellXfs(164, 165, 166),
     );
-    expect(dateFlags(xml)).toEqual([1, 0, 1]);
-    expect(parseStyles(xml).numFmts.get(164)).toBe('yyyy-mm-dd hh:mm:ss');
-    // The format code is an attribute, so the tokenizer has already decoded `&quot;`.
-    expect(parseStyles(xml).numFmts.get(165)).toBe('"USD" #,##0.00');
+    expect(await dateFlags(xml)).toEqual([1, 0, 1]);
   });
 
-  it('accepts a custom format inside the reserved id range (write-excel-file writes 100)', () => {
+  it('classifies the decoded format code: an entity-quoted literal hides the date letters inside it', async () => {
+    // The format code is an attribute, so the tokenizer has already turned `&quot;` into the quotes that make `yyyy`
+    // a literal; undecoded, the `y` would read as a year token.
+    const xml = styleSheet('<numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;yyyy&quot; 0.00"/></numFmts>' + cellXfs(164));
+    expect(await dateFlags(xml)).toEqual([0]);
+  });
+
+  it('accepts a custom format inside the reserved id range (write-excel-file writes 100)', async () => {
     expect(
-      dateFlags(styleSheet('<numFmts count="1"><numFmt numFmtId="100" formatCode="mm/dd/yyyy"/></numFmts>' + cellXfs(0, 100))),
+      await dateFlags(styleSheet('<numFmts count="1"><numFmt numFmtId="100" formatCode="mm/dd/yyyy"/></numFmts>' + cellXfs(0, 100))),
     ).toEqual([0, 1]);
   });
 
-  it('lets an explicit format code win over the built-in table', () => {
+  it('lets an explicit format code win over the built-in table', async () => {
     // Id 14 is the built-in `mm-dd-yy`, but a producer that redefines it means what it wrote.
-    expect(dateFlags(styleSheet('<numFmts count="1"><numFmt numFmtId="14" formatCode="0.00"/></numFmts>' + cellXfs(14)))).toEqual([0]);
-  });
-
-  it('reads numFmts declared after cellXfs (out of schema order)', () => {
-    expect(dateFlags(styleSheet(cellXfs(164) + '<numFmts count="1"><numFmt numFmtId="164" formatCode="d-mmm-yy"/></numFmts>'))).toEqual([
-      1,
+    expect(await dateFlags(styleSheet('<numFmts count="1"><numFmt numFmtId="14" formatCode="0.00"/></numFmts>' + cellXfs(14)))).toEqual([
+      0,
     ]);
   });
 
-  it('only indexes cellXfs: cellStyleXfs and dxfs entries never shift the indices', () => {
+  it('reads numFmts declared after cellXfs (out of schema order)', async () => {
+    expect(
+      await dateFlags(styleSheet(cellXfs(164) + '<numFmts count="1"><numFmt numFmtId="164" formatCode="d-mmm-yy"/></numFmts>')),
+    ).toEqual([1]);
+  });
+
+  it('only indexes cellXfs: cellStyleXfs and dxfs entries never shift the indices', async () => {
     const xml = styleSheet(
       '<cellStyleXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellStyleXfs>' +
         cellXfs(0, 14) +
         '<dxfs count="1"><dxf><numFmt numFmtId="170" formatCode="yyyy"/><font><b/></font></dxf></dxfs>',
     );
-    expect(dateFlags(xml)).toEqual([0, 1]);
-    expect(parseStyles(xml).numFmts.has(170)).toBe(false);
+    expect(await dateFlags(xml)).toEqual([0, 1]);
+    // The dxf's `yyyy` format with id 170 is not a cell number format, so an xf on 170 is not a date.
+    expect(await dateFlags(xml.replace('</cellXfs>', '<xf numFmtId="170"/></cellXfs>'))).toEqual([0, 1, 0]);
   });
 
-  it('returns an empty array when there is no cellXfs element', () => {
-    const parsed = parseStyles(styleSheet('<fonts count="1"><font><sz val="11"/></font></fonts>'));
+  it('returns an empty array when there is no cellXfs element', async () => {
+    const parsed = await parse(styleSheet('<fonts count="1"><font><sz val="11"/></font></fonts>'));
     expect(parsed.isDateByXf).toEqual(new Uint8Array(0));
-    expect(parsed.numFmts.size).toBe(0);
+    expect(parsed.formatsIgnored).toBe(false);
   });
 
-  it('treats an xf with no numFmtId as the General format (write-excel-file writes `<xf ></xf>`)', () => {
-    expect(dateFlags(styleSheet('<cellXfs count="2"><xf ></xf><xf numFmtId="14"/></cellXfs>'))).toEqual([0, 1]);
+  it('treats an xf with no numFmtId as the General format (write-excel-file writes `<xf ></xf>`)', async () => {
+    expect(await dateFlags(styleSheet('<cellXfs count="2"><xf ></xf><xf numFmtId="14"/></cellXfs>'))).toEqual([0, 1]);
   });
 
-  it('ignores applyNumberFormat: Excel renders the xf numFmtId either way', () => {
+  it('ignores applyNumberFormat: Excel renders the xf numFmtId either way', async () => {
     expect(
-      dateFlags(
+      await dateFlags(
         styleSheet('<cellXfs count="2"><xf numFmtId="14" applyNumberFormat="0"/><xf numFmtId="0" applyNumberFormat="1"/></cellXfs>'),
       ),
     ).toEqual([1, 0]);
   });
 
-  it('EC-POI-UNDERLINE-NONE-REJECTED, EC-POI-RGB-6-HEX: reads a Salesforce report export shape', () => {
+  it('EC-POI-UNDERLINE-NONE-REJECTED, EC-POI-RGB-6-HEX: reads a Salesforce report export shape', async () => {
     const xml = styleSheet(
       '<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;USD&quot; #,##0.00;&quot;USD&quot; -#,##0.00"/>' +
         '<numFmt numFmtId="165" formatCode="#,##0%"/></numFmts>' +
@@ -96,16 +124,16 @@ describe('parseStyles', () => {
         '<borders count="2"><border><left/></border><border><right style="thin"><color rgb="8E9297"/></right></border></borders>' +
         cellXfs(0, 164, 165, 14),
     );
-    expect(dateFlags(xml)).toEqual([0, 0, 0, 1]);
+    expect(await dateFlags(xml)).toEqual([0, 0, 0, 1]);
   });
 
-  it('EC-STRICT-NAMESPACES: reads a Strict styles part', () => {
+  it('EC-STRICT-NAMESPACES: reads a Strict styles part', async () => {
     const xml =
       '<?xml version="1.0"?><styleSheet xmlns="http://purl.oclc.org/ooxml/spreadsheetml/main">' + cellXfs(0, 14) + '</styleSheet>';
-    expect(dateFlags(xml)).toEqual([0, 1]);
+    expect(await dateFlags(xml)).toEqual([0, 1]);
   });
 
-  it('EC-PREFIXED-ELEMENTS: reads a prefixed styles part and ignores mc:Ignorable / x14ac noise', () => {
+  it('EC-PREFIXED-ELEMENTS: reads a prefixed styles part and ignores mc:Ignorable / x14ac noise', async () => {
     const xml =
       `<x:styleSheet xmlns:x="${SPREADSHEET_NS}" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"` +
       ' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" mc:Ignorable="x14ac x16r2">' +
@@ -113,16 +141,59 @@ describe('parseStyles', () => {
       '<x:cellXfs count="2"><x:xf numFmtId="0" x14ac:dyDescent="0.25"/><x:xf numFmtId="164"/></x:cellXfs>' +
       '<x:extLst><x:ext uri="{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}"><x14:slicerStyles xmlns:x14="http://x14" defaultSlicerStyle="S"/></x:ext></x:extLst>' +
       '</x:styleSheet>';
-    expect(dateFlags(xml)).toEqual([0, 1]);
+    expect(await dateFlags(xml)).toEqual([0, 1]);
   });
 
-  it('keeps alignment and protection children from disturbing the xf order', () => {
+  it('keeps alignment and protection children from disturbing the xf order', async () => {
     const xml = styleSheet(
       '<cellXfs count="3"><xf numFmtId="0"><alignment horizontal="center"/></xf>' +
         '<xf numFmtId="14" applyNumberFormat="1"><alignment wrapText="1"/><protection locked="0"/></xf>' +
         '<xf numFmtId="0"/></cellXfs>',
     );
-    expect(dateFlags(xml)).toEqual([0, 1, 0]);
+    expect(await dateFlags(xml)).toEqual([0, 1, 0]);
+  });
+
+  it('reads the same flags however the bytes are chunked', async () => {
+    const xml = styleSheet(
+      '<numFmts count="2"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/><numFmt numFmtId="165" formatCode="&quot;€&quot; 0.00"/></numFmts>' +
+        cellXfs(0, 14, 164, 165, 22),
+    );
+    for (const chunkSize of [1, 3, 7, 64]) {
+      expect([...(await parse(xml, OPTIONS, chunkSize)).isDateByXf], `chunk size ${chunkSize}`).toEqual([0, 1, 1, 0, 1]);
+    }
+  });
+
+  it('streams: holds the tokenizer limits and an aborted signal', async () => {
+    const deep = styleSheet(`${'<a>'.repeat(300)}${'</a>'.repeat(300)}`);
+    await expect(parse(deep)).rejects.toMatchObject({ name: 'XlsxError', code: 'LIMIT_EXCEEDED' });
+    const padded = styleSheet(`${cellXfs(0)}${' '.repeat(2048)}`);
+    await expect(parse(padded, { ...OPTIONS, maxTextLength: 1024 })).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED' });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(parse(styleSheet(cellXfs(0)), { ...OPTIONS, signal: controller.signal })).rejects.toMatchObject({ code: 'ABORTED' });
+  });
+
+  it("EC-STYLES-XF-OVERFLOW: keeps Excel's maximum of cell formats and ignores the rest", async () => {
+    const atMaximum = await parse(styleSheet(`<cellXfs>${'<xf/>'.repeat(MAX_READ_CELL_FORMATS)}</cellXfs>`));
+    expect(atMaximum.isDateByXf).toHaveLength(MAX_READ_CELL_FORMATS);
+    expect(atMaximum.formatsIgnored).toBe(false);
+    // The ignored xfs are dates: a cell that uses one reads as a number instead, which the row reader reports.
+    const past = await parse(styleSheet(`<cellXfs>${'<xf/>'.repeat(MAX_READ_CELL_FORMATS)}${'<xf numFmtId="14"/>'.repeat(10)}</cellXfs>`));
+    expect(past.isDateByXf).toHaveLength(MAX_READ_CELL_FORMATS);
+    expect(past.isDateByXf.includes(XF_DATE)).toBe(false);
+    expect(past.formatsIgnored).toBe(true);
+    // cellStyleXfs and dxfs are never indexed, so they do not count.
+    const styleXfs = await parse(styleSheet(`<cellStyleXfs>${'<xf/>'.repeat(MAX_READ_CELL_FORMATS + 1)}</cellStyleXfs>`));
+    expect(styleXfs.isDateByXf).toHaveLength(0);
+    expect(styleXfs.formatsIgnored).toBe(false);
+  });
+
+  it('EC-STYLES-XF-OVERFLOW: ignores numFmt elements past the maximum and marks the xfs that used them', async () => {
+    const filler = '<numFmt numFmtId="164" formatCode="0.0"/>'.repeat(MAX_READ_CELL_FORMATS);
+    const numFmts = `<numFmts>${filler}<numFmt numFmtId="165" formatCode="yyyy-mm-dd"/></numFmts>`;
+    const parsed = await parse(styleSheet(numFmts + cellXfs(0, 14, 164, 165)));
+    expect(parsed.formatsIgnored).toBe(true);
+    expect([...parsed.isDateByXf]).toEqual([XF_NOT_DATE, XF_DATE, XF_NOT_DATE, XF_FORMAT_IGNORED]);
   });
 });
 
@@ -167,7 +238,7 @@ describe('every corpus styles part parses', () => {
 
     const stylesPart = workbookRels.find(relationship => relTypeIs(relationship.type, 'styles'))?.target;
     expect(stylesPart, 'every corpus fixture has a styles part').toBeDefined();
-    const styles = parseStyles(await zip.readText(stylesPart ?? ''));
+    const styles = await parseStyles(zip.stream(stylesPart ?? ''), OPTIONS);
     expect(styles.isDateByXf.length).toBeGreaterThan(0);
 
     // Every hand-built edge fixture shares one styles.xml: the default xf plus a `mm-dd-yy` one for the date column.

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { inflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { isXlsxError } from '../../errors';
+import { isXlsxError, XlsxError } from '../../errors';
 import type { ChunkHandler, Deflater } from '../../types';
 import { createDeflater, createStoredDeflater, hasNativeDeflate } from '../deflater';
 
@@ -164,7 +164,7 @@ describe('createDeflater (native)', () => {
     expect(events.at(-1)).toBe('chunk:end');
   });
 
-  it('latches a failure from the chunk handler and rejects every later call with it', async () => {
+  it('latches a failure from the chunk handler as IO_ERROR and rejects every later call with it', async () => {
     const boom = new Error('the sink exploded');
     let calls = 0;
     const deflater = createDeflater(
@@ -176,10 +176,52 @@ describe('createDeflater (native)', () => {
     );
 
     await deflater.push(random(512 * 1024)).catch(() => {});
-    await expect(deflater.finish()).rejects.toBe(boom);
-    await expect(deflater.push(random(16))).rejects.toBe(boom);
-    await expect(deflater.finish()).rejects.toBe(boom);
+    const failure = await deflater.finish().then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(failure).toMatchObject({ code: 'IO_ERROR', cause: boom });
+    await expect(deflater.push(random(16))).rejects.toBe(failure);
+    await expect(deflater.finish()).rejects.toBe(failure);
     expect(calls).toBe(1);
+  });
+
+  it('passes an XlsxError from the chunk handler through unchanged', async () => {
+    const classified = new XlsxError('IO_ERROR', 'the disk is full');
+    const deflater = createDeflater(
+      async (): Promise<void> => {
+        throw classified;
+      },
+      { method: 'deflate' },
+    );
+    await deflater.push(random(512 * 1024)).catch(() => {});
+    await expect(deflater.finish()).rejects.toBe(classified);
+  });
+
+  it('reports a failing CompressionStream as IO_ERROR with the platform error as the cause', async () => {
+    const platformFailure = new TypeError('simulated platform failure');
+    const RealCompressionStream = globalThis.CompressionStream;
+    class FailingCompressionStream {
+      readonly writable: WritableStream<Uint8Array>;
+      readonly readable: ReadableStream<Uint8Array>;
+      constructor() {
+        const transform = new TransformStream<Uint8Array, Uint8Array>({
+          transform(): void {
+            throw platformFailure;
+          },
+        });
+        this.writable = transform.writable;
+        this.readable = transform.readable;
+      }
+    }
+    globalThis.CompressionStream = FailingCompressionStream as unknown as typeof CompressionStream;
+    try {
+      const deflater = createDeflater(async () => undefined, { method: 'deflate' });
+      await deflater.push(random(16)).catch(() => undefined);
+      await expect(deflater.finish()).rejects.toMatchObject({ name: 'XlsxError', code: 'IO_ERROR', cause: platformFailure });
+    } finally {
+      globalThis.CompressionStream = RealCompressionStream;
+    }
   });
 
   it('aborts mid-stream and rejects later calls with the abort reason', async () => {
@@ -190,8 +232,8 @@ describe('createDeflater (native)', () => {
     const cancelled = new Error('the user cancelled the download');
     await deflater.abort(cancelled);
 
-    await expect(deflater.push(random(16))).rejects.toBe(cancelled);
-    await expect(deflater.finish()).rejects.toBe(cancelled);
+    await expect(deflater.push(random(16))).rejects.toMatchObject({ code: 'ABORTED', cause: cancelled });
+    await expect(deflater.finish()).rejects.toMatchObject({ code: 'ABORTED', cause: cancelled });
   });
 
   it('aborts with a classified error when no reason is given', async () => {
@@ -294,8 +336,8 @@ describe('stored deflater', () => {
     const failing = createStoredDeflater(async (): Promise<void> => {
       throw boom;
     });
-    await expect(failing.push(random(16))).rejects.toBe(boom);
-    await expect(failing.finish()).rejects.toBe(boom);
+    await expect(failing.push(random(16))).rejects.toMatchObject({ code: 'IO_ERROR', cause: boom });
+    await expect(failing.finish()).rejects.toMatchObject({ code: 'IO_ERROR', cause: boom });
 
     const aborted = createStoredDeflater(async (): Promise<void> => {});
     await aborted.abort();

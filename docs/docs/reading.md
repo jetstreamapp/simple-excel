@@ -100,29 +100,44 @@ ones, so a `switch` over it needs a default branch.
 
 ### Warnings
 
-Some damage Excel shrugs off, and so does the reader: the cell reads blank and the read carries on. `onWarning`
-lets you notice. Each `ReadWarning` has a `code`, a `message`, the `sheet` and the `ref` of the first cell that hit
-it, and each code is reported at most once per sheet however many cells hit it.
+Some damage Excel shrugs off, and so does the reader: the cell reads as best it can and the read carries on.
+`onWarning` lets you notice. Each `ReadWarning` has a `code`, a `message`, the `sheet`, the `ref` of the first cell
+that hit it and, for some codes, a `detail` object with structured facts for a UI. Each code is reported at most once
+per sheet however many cells hit it.
 
-| `code`                   | What happened                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| `SST_INDEX_OUT_OF_RANGE` | A shared-string cell points past the end of the table; it reads as `''`, as in Excel |
-| `SHARED_STRINGS_MISSING` | A shared-string cell in a workbook that has no shared-string part; it reads as `''`  |
+| `code`                   | What happened                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SST_INDEX_OUT_OF_RANGE` | A shared-string cell points past the end of the table; it reads as `''`, as in Excel                                                                                                                                                                                                                                                                               |
+| `SHARED_STRINGS_MISSING` | A shared-string cell in a workbook that has no shared-string part; it reads as `''`                                                                                                                                                                                                                                                                                |
+| `DATA_BEYOND_HEADER`     | Object mode only: values to the right of the last header were left out of the records. Reported once per sheet when the read ends, counting only the records returned (a failed `toObjects()` reports nothing); `ref` is the first such cell and `detail` holds `columns` (`'E:XFD'`), `columnCount`, `cellCount` and `lastHeaderColumn` (`EC-DATA-BEYOND-HEADER`) |
+| `CELL_FORMATS_IGNORED`   | `styles.xml` lists more than 65,490 `cellXfs` or `numFmts` (Excel's ceiling; some non-Excel writers emit one per cell) and a number cell uses one past it. The formats past the ceiling are ignored, so the cell reads as a plain number and a date there comes back as its serial (`EC-STYLES-XF-OVERFLOW`). `detail.maxCellFormats` is the ceiling               |
 
 A sheet full of blank text cells with one of these warnings usually means a damaged file, not an empty one.
 
 ### Limits
 
-| `ReadLimits`           | Default             | Guards                                               |
-| ---------------------- | ------------------- | ---------------------------------------------------- |
-| `maxInflatedBytes`     | 1 GiB per part      | Zip bombs; exceeded raises `ZIP_BOMB`                |
-| `maxSharedStringChars` | 256 Mi UTF-16 units | A shared-string table designed to exhaust memory     |
-| `maxEntries`           | 10,000              | Archives with an absurd number of parts              |
-| `maxXmlDepth`          | 256                 | Deeply nested rich-text runs (`EC-XML-DEEP-NESTING`) |
-| `maxTextLength`        | 64 Mi UTF-16 units  | One text node swallowing the heap                    |
+| `ReadLimits`           | Default                | Guards                                                                                                                                                                                                   |
+| ---------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxInflatedBytes`     | 1 GiB per part         | Zip bombs; exceeded raises `ZIP_BOMB`. The cap that applies to streamed parts: worksheets, the shared-string table and `styles.xml`                                                                      |
+| `maxPartBytes`         | 32 MiB per part        | A part the reader holds whole — `[Content_Types].xml`, the package and workbook relationships, `workbook.xml` — padded to exhaust memory (`EC-PART-SIZE-PADDING`). `styles.xml` is streamed like a sheet |
+| `maxSharedStringChars` | 256 Mi UTF-16 units    | A shared-string table designed to exhaust memory. Each item counts its text plus 16 units for its slot, so millions of empty `<si/>` items hit it too (`EC-SST-EMPTY-ITEM-FLOOD`)                        |
+| `maxEntries`           | 10,000                 | Archives with an absurd number of parts, and package parts that list more sheets, relationships or content types than that (`EC-PACKAGE-ELEMENT-FLOOD`)                                                  |
+| `maxXmlDepth`          | 256                    | Deeply nested rich-text runs (`EC-XML-DEEP-NESTING`)                                                                                                                                                     |
+| `maxTextLength`        | 1,048,576 UTF-16 units | One cell's value, inline string or formula text, one shared-string item, or one text node, however many runs build it (`EC-CELL-TEXT-RUN-SPLIT`)                                                         |
+| `maxRowChars`          | 64 Mi UTF-16 units     | The text of one row, all its cells together                                                                                                                                                              |
+| `maxObjectCells`       | 100,000,000            | The cells `toObjects()` holds at once, records × keys; stream with `rows({ mode: 'object' })` past it                                                                                                    |
 
 Raise them for a legitimately huge file you trust; lower them for user uploads. Exceeding a limit raises
 `LIMIT_EXCEEDED` (or `ZIP_BOMB` for the inflate caps), and the message names what was hit.
+
+A few caps are fixed rather than configurable, because Excel never writes past them: more than 65,490 `cellXfs` or
+`numFmts` entries in `styles.xml` (Excel's ceiling on unique cell formats) and a single tag longer than 1 Mi
+characters. Excel holds 32,767 characters in a cell, so the `maxTextLength` default leaves 32 times that; raise it
+if your files carry longer generated text.
+
+Rows are yielded in batches as the sheet is parsed, and a batch is bounded by the cells it holds rather than by
+the input it came from: a sheet whose rows each hold one cell at column XFD, or a `blankRows` read across a jump of
+a million rows, streams in a few megabytes (`EC-WIDE-SPARSE-ROWS`, `EC-BLANK-ROWS-GAP-FILL`).
 
 ## Listing sheets
 
@@ -188,6 +203,7 @@ Object mode takes one row as headers and keys every later row by it.
 | `ObjectRowsOptions` | Type                   | Default                | Meaning                                                   |
 | ------------------- | ---------------------- | ---------------------- | --------------------------------------------------------- |
 | `headerRow`         | number                 | first row with a value | 1-based row holding the headers                           |
+| `headers`           | `string[]`             | —                      | Name the columns yourself, from column A; no header row   |
 | `defval`            | `CellValue`            | `''`                   | Value for cells absent from a row                         |
 | `headerNaming`      | `'sheetjs' \| 'index'` | `'sheetjs'`            | How headers become keys                                   |
 | `dropEmptyHeaders`  | boolean                | `false`                | Drop columns whose header is empty instead of naming them |
@@ -196,8 +212,12 @@ Without `headerRow`, the header row is the first row at or after `startRow` (def
 empty string or an error included. A sheet whose first row or two are blank therefore still finds its headers,
 which is what `sheet_to_json` does when the sheet's range starts below row 1 (`EC-HEADER-ROW-FIRST-NONEMPTY`). It
 does better than `sheet_to_json` when row 1 is formatted but empty: SheetJS then names every column `__EMPTY` and
-reads the real header row as data. Pass `headerRow` to pin the row; an explicit `headerRow` on a blank row gives
-`__EMPTY` columns, as before.
+reads the real header row as data. Pass `headerRow` to pin the row; an explicit `headerRow` on a blank row names no
+columns, so its records are empty and every value is reported as `DATA_BEYOND_HEADER`.
+
+`headers: ['Id', 'Name']` names the columns instead of a header row: `headers[i]` is the key for the i-th column from
+A, and every record has exactly those keys (a name given twice keeps the later column's value). No row is read as
+headers, so the data starts at `startRow`; give `headerRow` as well to skip the file's own header row.
 
 `startRow`, `maxRows`, `maxColumns` and `formulas` apply as well. The header row is consumed, not yielded: the
 first object is the row after the header row, or `startRow` if that is later. `blankRows` does not apply — object
@@ -210,8 +230,10 @@ field in an application:
 
 - A header cell with text becomes that text. Non-string headers are spelled the way Excel spells them (`TRUE` /
   `FALSE`, an ISO-style timestamp for a date, the code for an error cell such as `#N/A`, whatever `errors` says,
-  `EC-HEADER-ERROR-CELL`). Numbers keep their JavaScript spelling (`123456789012`), where SheetJS shows Excel's
-  General format (`1.23457E+11`).
+  `EC-HEADER-ERROR-CELL`). A number is spelled the way Excel's General format shows it, as SheetJS names it:
+  `4.27289175` for a stored `4.2728917499999985`, `1.23457E-07` for a very small one (`EC-HEADER-NUMBER-GENERAL`).
+  Integers keep every digit (`123456789012`, where SheetJS shows `1.23457E+11`). A header cell with any other number
+  format (currency, percentage, fixed decimals) is still spelled as General, since there is no number formatter.
 - Every header becomes an own property of the record, `__proto__` and `constructor` included; the record's
   prototype never changes (`EC-HEADER-PROTO-KEY`).
 - An **absent** header cell becomes `__EMPTY`, and each later absent header gets a counter: `__EMPTY_1`,
@@ -227,16 +249,21 @@ field in an application:
 That is usually what you want for a report export with trailing blank columns.
 
 :::note
-The column list comes from the widest of the header row, the widest data row and the sheet's declared
-`<dimension>`. Excel, Google Sheets and Numbers all re-save with a dimension wider than the data, so a file from
-one of them can grow trailing `__EMPTY` columns. This is deliberate: it is what `sheet_to_json` does, and object
-mode is built to match it. The first column is the dimension's first column, so an all-blank column A that Excel
-left out of the range does not become `__EMPTY` either (`EC-HEADER-DIMENSION-START-COLUMN`); a value that turns up
-left of it is still kept, under a blank-header name.
+The columns run from the sheet's first column to the **last header cell that holds a value** (an empty string or an
+error counts). Blank header cells in between are named `__EMPTY`, `__EMPTY_1`, … as above. A value to the right of
+the last header is left out of the records, and `onWarning` gets one `DATA_BEYOND_HEADER` per sheet when the read
+ends (counting only the records it returned; a `toObjects()` that fails reports nothing), with the columns (`detail.columns`, such as `'E:XFD'`), how many columns and values were left out, and the last
+header's column (`EC-DATA-BEYOND-HEADER`). This is where object mode parts ways with `sheet_to_json`, which names
+every column out to the widest row and to the sheet's `<dimension>`: one stray value at XFD gave every record 16,384
+keys. A file whose dimension is wider than its data (every Excel, Google Sheets and Numbers re-save) no longer grows
+trailing `__EMPTY` columns either. A merged header, such as one title across A1:C1, names only its first column, so
+the values under the rest of it are left out and reported.
 
-`toObjects()` gives every record every key: a column that only appears in a later, wider row is added to the
-earlier records with `defval`. Streaming `rows({ mode: 'object' })` cannot go back, so there a record only has the
-keys named by the time it was read.
+The first column is the dimension's first column, so an all-blank column A that Excel left out of the range does
+not become `__EMPTY` (`EC-HEADER-DIMENSION-START-COLUMN`); a value that turns up left of it is still kept, under a
+blank-header name. `toObjects()` gives every record that column too, filling earlier records with `defval`.
+Streaming `rows({ mode: 'object' })` cannot go back, so there a record only has the keys named by the time it was
+read.
 :::
 
 #### `defval` and blank cells
@@ -257,6 +284,11 @@ const { rows, headers, truncated } = await sheet.toObjects({ maxRows: 10_000 });
 
 `truncated` is `true` when `maxRows` stopped the read before the sheet ended — which is how you tell "the file
 has 10,000 rows" from "the file has more and you only asked for 10,000".
+
+`toObjects` holds at most `limits.maxObjectCells` cells (records × keys, 100,000,000 by default) and throws
+`LIMIT_EXCEEDED` past it; the message points at `rows({ mode: 'object' })`, which holds one record at a time. A
+record cell costs roughly 40 to 60 bytes in Node, so the default never refuses a legitimate wide load (200,000 rows
+by 300 columns is 60M cells) while stopping a pathological one early.
 
 ## `head()`: reading a prefix
 
@@ -316,7 +348,9 @@ For a read you need to cancel from elsewhere, pass a `signal` to `openWorkbook`.
 ends the iteration with `ABORTED`.
 
 Call `workbook.close()` when you are done; it releases the source's handles (for a file-backed source, the file
-descriptor). Reading any sheet of a closed workbook fails with `ABORTED`, whatever the source.
+descriptor). Reading any sheet of a closed workbook fails with `ABORTED`, whatever the source. `openWorkbook` owns a
+source from the moment it is called: when opening fails, it closes the source before rejecting. A source whose
+`read` fails is reported as `IO_ERROR`, with the source's error as the `cause`.
 
 ## Sniffing before you open
 

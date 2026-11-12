@@ -312,6 +312,36 @@ describe('openWorkbook: inputs that are not a modern workbook', () => {
     expect(error.detail?.maxEntries).toBe(3);
   });
 
+  it('EC-PACKAGE-ELEMENT-FLOOD: the entry limit also caps the sheets a workbook part lists', async () => {
+    const sheets = Array.from({ length: 11 }, (_, index) => ({ name: `S${index}` }));
+    const bytes = await workbookBytes({ 'xl/workbook.xml': workbookXml(sheets) });
+    const error = await caught(() => openWorkbook(bytes, { limits: { maxEntries: 10 } }));
+    expect(error).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { element: 'sheet', maxEntries: 10 } });
+    expect((await openWorkbook(bytes, { limits: { maxEntries: 11 } })).sheets).toHaveLength(11);
+  });
+
+  it('EC-PART-SIZE-PADDING: applies maxPartBytes to every part it reads whole, but not to streamed sheets or styles', async () => {
+    const padded = (xml: string): string => xml.replace(/<\/(\w+)>$/, `${' '.repeat(4096)}</$1>`);
+    for (const part of ['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels']) {
+      const parts = packageParts();
+      const bytes = await zip({ ...parts, [part]: padded(parts[part] ?? '') });
+      const error = await caught(() => openWorkbook(bytes, { limits: { maxPartBytes: 4096 } }));
+      expect(error, part).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { part, maxPartBytes: 4096 } });
+      await expect(openWorkbook(bytes, { limits: { maxPartBytes: 8192 } }), part).resolves.toBeDefined();
+    }
+    // styles.xml is streamed: a heavily styled workbook's part may be larger than any part read whole.
+    const parts = packageParts();
+    const stylesXml = parts['xl/styles.xml'] ?? '';
+    const manyFonts = `<fonts count="400">${'<font><sz val="11"/><name val="Calibri"/></font>'.repeat(400)}</fonts>`;
+    const bigStylesXml = stylesXml.replace('<cellXfs', `${manyFonts}<cellXfs`);
+    expect(bigStylesXml.length).toBeGreaterThan(16_384);
+    const bigStyles = await zip({ ...parts, 'xl/styles.xml': bigStylesXml });
+    await expect(openWorkbook(bigStyles, { limits: { maxPartBytes: 4096 } })).resolves.toBeDefined();
+    const bigSheet = await sheetOnlyBytes(row(1, ['x'.repeat(8192)]));
+    const workbook = await openWorkbook(bigSheet, { limits: { maxPartBytes: 4096 } });
+    expect(await collect(workbook.sheet(0).rows())).toEqual([['x'.repeat(8192)]]);
+  });
+
   it('reports a damaged part as XML_MALFORMED rather than a bare error', async () => {
     const bytes = await workbookBytes({ 'xl/workbook.xml': `${XML}<workbook><sheets>` });
     const error = await caught(() => openWorkbook(bytes));
@@ -572,6 +602,29 @@ describe('workbook.sheet', () => {
 // Array mode
 // ---------------------------------------------------------------------------------------------------------------
 
+describe('sheet.rows: text limits', () => {
+  const MAX_TEXT_LENGTH = 1024 * 1024;
+  const splitCell = (length: number): string => `<row r="1"><c r="A1" t="str"><v>${'a'.repeat(length - 1)}<b/>a</v></c></row>`;
+
+  it('EC-CELL-TEXT-RUN-SPLIT: maxTextLength defaults to 1,048,576 characters for a cell, however many runs build it', async () => {
+    expect((await readRows(await sheetOnlyBytes(splitCell(MAX_TEXT_LENGTH))))[0]?.[0]).toHaveLength(MAX_TEXT_LENGTH);
+    const tooLong = await sheetOnlyBytes(splitCell(MAX_TEXT_LENGTH + 1));
+    const error = await caught(() => readRows(tooLong));
+    expect(error).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { ref: 'A1', maxTextLength: MAX_TEXT_LENGTH } });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: applies maxTextLength and maxRowChars from options', async () => {
+    const bytes = await sheetOnlyBytes(`<row r="1">${'<c t="str"><v>aaaa</v></c>'.repeat(3)}</row>`);
+    const read = async (limits: OpenOptions['limits']): Promise<CellValue[][]> => {
+      const workbook = await openWorkbook(bytes, { limits });
+      return collect(workbook.sheet(0).rows());
+    };
+    expect(await read({ maxTextLength: 4, maxRowChars: 12 })).toEqual([['aaaa', 'aaaa', 'aaaa']]);
+    expect(await caught(() => read({ maxTextLength: 3 }))).toMatchObject({ code: 'LIMIT_EXCEEDED' });
+    expect(await caught(() => read({ maxRowChars: 11 }))).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { row: 1, maxRowChars: 11 } });
+  });
+});
+
 describe('sheet.rows: array mode', () => {
   const SHEET = `${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}<row r="3"/>${row(4, ['003', 'Ünïcödé'])}`;
 
@@ -749,16 +802,35 @@ describe('sheet.toObjects: the sheet_to_json contract', () => {
     expect((await objects(rows, { maxRows: 3 })).truncated).toBe(false);
   });
 
-  it('gives a column the sheet declares but never fills a blank header', async () => {
-    const result = await objects(`${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}`, {}, 'A1:C2');
-    expect(result.headers).toEqual(['Id', 'Name', '__EMPTY']);
-    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë', __EMPTY: '' }]);
+  it('EC-DATA-BEYOND-HEADER: stops at the last header even when the dimension declares more columns', async () => {
+    // SheetJS names the declared but empty column C `__EMPTY`; nothing is lost by stopping at the header.
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(
+      `${row(1, ['Id', 'Name'])}${row(2, ['001', 'Zoë'])}`,
+      { onWarning: warning => warnings.push(warning) },
+      {},
+      'A1:C2',
+    );
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
+    expect(warnings).toEqual([]);
   });
 
-  it('keeps values from a row wider than both the header and the dimension', async () => {
-    const result = await objects(`${row(1, ['Id'])}${row(2, ['001', 'extra'])}`, {}, 'A1:A2');
-    expect(result.headers).toEqual(['Id', '__EMPTY']);
-    expect(result.rows).toEqual([{ Id: '001', __EMPTY: 'extra' }]);
+  it('EC-DATA-BEYOND-HEADER: leaves out a value right of the last header and warns once', async () => {
+    const warnings: ReadWarning[] = [];
+    const rows = `${row(1, ['Id'])}${row(2, ['001', 'extra'])}${row(3, ['002', null, 'more'])}${row(4, ['003', 'again'])}`;
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) }, {}, 'A1:A2');
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '001' }, { Id: '002' }, { Id: '003' }]);
+    expect(warnings).toEqual([
+      {
+        code: 'DATA_BEYOND_HEADER',
+        message: expect.stringContaining('3 value(s) in 2 column(s) (B:C) to the right of its last header, in column A'),
+        sheet: 'Data',
+        ref: 'B2',
+        detail: { columns: 'B:C', columnCount: 2, cellCount: 3, lastHeaderColumn: 'A' },
+      },
+    ]);
   });
 
   it('streams the same records through rows({ mode: "object" })', async () => {
@@ -834,17 +906,22 @@ describe('object mode: which row holds the headers', () => {
     const result = await objects(rows, { startRow: 2 });
     expect(result.headers).toEqual(['Id', 'Name']);
     expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
-    // A startRow that lands on a row with values uses that row, as before (the wider row 4 adds a blank header).
-    expect((await objects(rows, { startRow: 1 })).headers).toEqual(['Title', '__EMPTY']);
+    // A startRow that lands on a row with values uses that row, as before; row 4's Name column is past its header.
+    expect((await objects(rows, { startRow: 1 })).headers).toEqual(['Title']);
   });
 
   it('EC-HEADER-ROW-FIRST-NONEMPTY: an explicit headerRow is that exact row, blank or not', async () => {
-    const result = await objects(HEADERS_ON_ROW_2, { headerRow: 1 });
-    expect(result.headers).toEqual(['__EMPTY', '__EMPTY_1']);
-    expect(result.rows).toEqual([
-      { __EMPTY: 'Id', __EMPTY_1: 'Name' },
-      { __EMPTY: '001', __EMPTY_1: 'Zoë' },
-      { __EMPTY: '002', __EMPTY_1: 'Bob' },
+    // A blank header row names no columns, so every value is past the header (EC-DATA-BEYOND-HEADER).
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(HEADERS_ON_ROW_2, { onWarning: warning => warnings.push(warning) }, { headerRow: 1 });
+    expect(result.headers).toEqual([]);
+    expect(result.rows).toEqual([{}, {}, {}]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        ref: 'A2',
+        detail: { columns: 'A:B', columnCount: 2, cellCount: 6, lastHeaderColumn: '' },
+      }),
     ]);
     expect((await objects(HEADERS_ON_ROW_2, { headerRow: 2 })).headers).toEqual(['Id', 'Name']);
   });
@@ -869,13 +946,25 @@ describe('object mode: which columns get names', () => {
       `<row r="2">${'<c r="B2" t="inlineStr"><is><t>Id</t></is></c><c r="C2" t="inlineStr"><is><t>Name</t></is></c>'}</row>` +
       `<row r="3"><c r="B3" t="inlineStr"><is><t>001</t></is></c><c r="C3" t="inlineStr"><is><t>Zoë</t></is></c></row>`;
     const result = await objects(rows, {}, 'B2:D3');
-    // The dimension runs to D, so D is a trailing blank header, exactly as SheetJS names it.
-    expect(result.headers).toEqual(['Id', 'Name', '__EMPTY']);
-    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë', __EMPTY: '' }]);
+    // The dimension runs to D, which SheetJS names `__EMPTY`; the keys stop at the last header (EC-DATA-BEYOND-HEADER).
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([{ Id: '001', Name: 'Zoë' }]);
     expect((await objects(rows, { dropEmptyHeaders: true }, 'B2:D3')).headers).toEqual(['Id', 'Name']);
-    expect((await objects(rows, { headerNaming: 'index' }, 'B2:D3')).headers).toEqual(['1', '2', '3']);
+    expect((await objects(rows, { headerNaming: 'index' }, 'B2:D3')).headers).toEqual(['1', '2']);
     // Without a dimension the columns start at A.
     expect((await objects(rows)).headers).toEqual(['__EMPTY', 'Id', 'Name']);
+  });
+
+  it('EC-DIMENSION-FROM-HINT: a dimension smaller than the data still reads every row', async () => {
+    const workbook = await openWorkbook(readFixture(fixtureById('edge-dimension-smaller-than-data')));
+    try {
+      expect(await collect(workbook.sheet(0).rows())).toHaveLength(3);
+      const { rows, headers } = await workbook.sheet(0).toObjects();
+      expect(headers).toEqual(['Name', 'Amount', 'When']);
+      expect(rows).toHaveLength(2);
+    } finally {
+      await workbook.close();
+    }
   });
 
   it('EC-HEADER-DIMENSION-START-COLUMN: a value left of a wrong dimension is kept under a blank header', async () => {
@@ -935,28 +1024,178 @@ describe('object mode: which columns get names', () => {
       }),
     );
     const result = await (await openWorkbook(bytes)).sheet(0).toObjects();
-    // The dimension runs to D, so D is a trailing blank header, exactly as when the fragment is absent.
-    expect(result.headers).toEqual(['Id', '__EMPTY', '__EMPTY_1']);
+    // The dimension starts at B, so column A gets no blank header, exactly as when the fragment is absent.
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '001' }]);
   });
 
-  it('EC-HEADER-DIMENSION-START-COLUMN: toObjects gives every record the columns a later, wider row named', async () => {
+  it('EC-DATA-BEYOND-HEADER: a later, wider row names no columns; its values are left out, streamed or not', async () => {
     const rows = `${row(1, ['Id'])}${row(2, ['001'])}${row(3, ['002', 'wide'])}${row(4, ['003', null, 'wider'])}`;
-    const result = await objects(rows);
-    expect(result.headers).toEqual(['Id', '__EMPTY', '__EMPTY_1']);
-    expect(result.rows).toEqual([
-      { Id: '001', __EMPTY: '', __EMPTY_1: '' },
-      { Id: '002', __EMPTY: 'wide', __EMPTY_1: '' },
-      { Id: '003', __EMPTY: '', __EMPTY_1: 'wider' },
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) });
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '001' }, { Id: '002' }, { Id: '003' }]);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        ref: 'B3',
+        detail: { columns: 'B:C', columnCount: 2, cellCount: 2, lastHeaderColumn: 'A' },
+      }),
     ]);
-    for (const record of result.rows) {
-      expect(Object.keys(record)).toEqual(result.headers);
+    expect(await streamedObjects(rows)).toEqual([{ Id: '001' }, { Id: '002' }, { Id: '003' }]);
+  });
+});
+
+describe('object mode: explicit headers and the toObjects cell budget', () => {
+  it('EC-DATA-BEYOND-HEADER: explicit headers are exactly the keys, from column A, with no header row read', async () => {
+    const warnings: ReadWarning[] = [];
+    const rows = `${row(1, ['001', 'Zoë', 'extra'])}${row(2, ['002'])}`;
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) }, { headers: ['Id', 'Name'] }, 'B1:C2');
+    expect(result.headers).toEqual(['Id', 'Name']);
+    expect(result.rows).toEqual([
+      { Id: '001', Name: 'Zoë' },
+      { Id: '002', Name: '' },
+    ]);
+    expect(warnings).toEqual([
+      expect.objectContaining({ code: 'DATA_BEYOND_HEADER', ref: 'C1', detail: expect.objectContaining({ columns: 'C' }) }),
+    ]);
+    // With headerRow as well, that row and the ones above it are skipped; a repeated name keeps the later column.
+    const skipped = await objects(`${row(1, ['Title'])}${row(2, ['a', 'b'])}${row(3, ['c', 'd'])}`, {
+      headers: ['x', 'x', '__proto__'],
+      headerRow: 2,
+    });
+    expect(skipped.headers).toEqual(['x', 'x', '__proto__']);
+    expect(skipped.rows).toEqual([JSON.parse('{"x":"d","__proto__":""}')]);
+    expect(Object.getPrototypeOf(skipped.rows[0])).toBe(Object.prototype);
+    expect(await streamedObjects(rows, { headers: ['Id'], startRow: 2 })).toEqual([{ Id: '002' }]);
+  });
+
+  it('maxObjectCells: toObjects holds at most that many record keys and points at streaming past it', async () => {
+    const rows = `${row(1, ['A', 'B', 'C'])}${row(2, [1, 2, 3])}${row(3, [4, 5, 6])}${row(4, [7, 8, 9])}`;
+    const bytes = await sheetOnlyBytes(rows);
+    const workbook = await openWorkbook(bytes, { limits: { maxObjectCells: 9 } });
+    try {
+      expect((await workbook.sheet(0).toObjects()).rows).toHaveLength(3);
+    } finally {
+      await workbook.close();
     }
-    expect((await objects(rows, { defval: null })).rows[0]).toEqual({ Id: '001', __EMPTY: null, __EMPTY_1: null });
-    // The stream yields each record as it was when built.
-    expect(await streamedObjects(rows)).toEqual([
-      { Id: '001' },
-      { Id: '002', __EMPTY: 'wide' },
-      { Id: '003', __EMPTY: '', __EMPTY_1: 'wider' },
+    const tight = await openWorkbook(bytes, { limits: { maxObjectCells: 8 } });
+    try {
+      const error = await caught(() => tight.sheet(0).toObjects());
+      expect(error).toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { maxObjectCells: 8, rows: 3, columns: 3 } });
+      expect(error.message).toContain("rows({ mode: 'object' })");
+      // The stream holds one record at a time, so the budget does not apply to it.
+      expect(await collect(tight.sheet(0).rows({ mode: 'object' }))).toHaveLength(3);
+    } finally {
+      await tight.close();
+    }
+  });
+
+  it('maxObjectCells: counts the columns a late row adds to every earlier record', async () => {
+    // Row 4's value left of the dimension names column A late; toObjects would give all three records two keys.
+    const rows = `${row(1, [null, 'Id'])}${row(2, [null, '1'])}${row(3, [null, '2'])}${row(4, ['x', '3'])}`;
+    const bytes = await sheetOnlyBytes(rows, 'B1:B4');
+    const workbook = await openWorkbook(bytes, { limits: { maxObjectCells: 5 } });
+    try {
+      await expect(workbook.sheet(0).toObjects()).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED', detail: { rows: 3, columns: 2 } });
+    } finally {
+      await workbook.close();
+    }
+  });
+});
+
+describe('object mode: DATA_BEYOND_HEADER counts only the records the caller got', () => {
+  it('EC-DATA-BEYOND-HEADER: the row read past maxRows to prove truncation is not reported', async () => {
+    const rows = `${row(1, ['a', 'b'])}${row(2, [1, 2])}${row(3, [3, 4, null, 'stray'])}`;
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) }, { maxRows: 1 });
+    expect(result.rows).toEqual([{ a: 1, b: 2 }]);
+    expect(result.truncated).toBe(true);
+    expect(warnings).toEqual([]);
+
+    const workbook = await openWorkbook(await sheetOnlyBytes(rows), { onWarning: warning => warnings.push(warning) });
+    try {
+      expect(await collect(workbook.sheet(0).rows({ mode: 'object', maxRows: 1 }))).toEqual([{ a: 1, b: 2 }]);
+    } finally {
+      await workbook.close();
+    }
+    expect(warnings).toEqual([]);
+  });
+
+  it('EC-DATA-BEYOND-HEADER: a value in a returned row is reported, and the truncation probe adds nothing to it', async () => {
+    const rows = `${row(1, ['a', 'b'])}${row(2, [1, 2, null, 'stray'])}${row(3, [3, 4, 'more', 'again'])}`;
+    const warnings: ReadWarning[] = [];
+    const result = await objectsWith(rows, { onWarning: warning => warnings.push(warning) }, { maxRows: 1 });
+    expect(result.rows).toEqual([{ a: 1, b: 2 }]);
+    expect(result.truncated).toBe(true);
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        ref: 'D2',
+        detail: { columns: 'D', columnCount: 1, cellCount: 1, lastHeaderColumn: 'B' },
+      }),
+    ]);
+  });
+
+  it('EC-DATA-BEYOND-HEADER: the truncation probe names no column left of the header', async () => {
+    // Row 3 would name column A `__EMPTY`, but it is only read to prove there is more.
+    const rows = `${row(1, [null, 'Id'])}${row(2, [null, '1'])}${row(3, ['x', '2'])}`;
+    const result = await objects(rows, { maxRows: 1 }, 'B1:B3');
+    expect(result.headers).toEqual(['Id']);
+    expect(result.rows).toEqual([{ Id: '1' }]);
+    expect(result.truncated).toBe(true);
+  });
+
+  it('EC-DATA-BEYOND-HEADER: a toObjects() that fails its maxObjectCells budget reports nothing', async () => {
+    // Fails while streaming: the second record takes the count to 4 of 3.
+    const midStream = `${row(1, ['a', 'b'])}${row(2, [1, 2, null, 'stray'])}${row(3, [3, 4])}`;
+    // Fails after the stream ended: row 4 names column A late, so three records need two keys each, 6 of 5.
+    const afterStream = `${row(1, [null, 'Id', null])}${row(2, [null, '1', 'stray'])}${row(3, [null, '2'])}${row(4, ['x', '3'])}`;
+    for (const [rows, dimension] of [
+      [midStream, ''],
+      [afterStream, 'B1:B4'],
+    ] as const) {
+      const warnings: ReadWarning[] = [];
+      const workbook = await openWorkbook(await sheetOnlyBytes(rows, dimension), {
+        onWarning: warning => warnings.push(warning),
+        limits: { maxObjectCells: dimension === '' ? 3 : 5 },
+      });
+      try {
+        await expect(workbook.sheet(0).toObjects()).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED' });
+        expect(warnings, dimension).toEqual([]);
+        // The same sheet streamed does warn: the budget is toObjects' alone.
+        await collect(workbook.sheet(0).rows({ mode: 'object' }));
+        expect(warnings, dimension).toEqual([
+          expect.objectContaining({ code: 'DATA_BEYOND_HEADER', detail: expect.objectContaining({ cellCount: 1 }) }),
+        ]);
+      } finally {
+        await workbook.close();
+      }
+    }
+  });
+
+  it('EC-DATA-BEYOND-HEADER: a caller that stops early is told about the records it got', async () => {
+    const rows = `${row(1, ['a'])}${row(2, [1, 'x'])}${row(3, [2, null, 'y'])}${row(4, [3, 'z'])}`;
+    const warnings: ReadWarning[] = [];
+    const workbook = await openWorkbook(await sheetOnlyBytes(rows), { onWarning: warning => warnings.push(warning) });
+    try {
+      const received: Record<string, ReadValue>[] = [];
+      for await (const record of workbook.sheet(0).rows({ mode: 'object' })) {
+        received.push(record);
+        if (received.length === 2) {
+          break;
+        }
+      }
+      expect(received).toEqual([{ a: 1 }, { a: 2 }]);
+    } finally {
+      await workbook.close();
+    }
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        code: 'DATA_BEYOND_HEADER',
+        ref: 'B2',
+        detail: { columns: 'B:C', columnCount: 2, cellCount: 2, lastHeaderColumn: 'A' },
+      }),
     ]);
   });
 });
@@ -994,13 +1233,25 @@ describe('object mode: header text', () => {
   });
 
   it('EC-HEADER-PROTO-KEY: a __proto__ column filled with defval stays an own property', async () => {
-    const result = await objects(`${row(1, ['__proto__'])}${row(2, ['001'])}${row(3, ['002', 'x'])}`, { defval: null });
-    expect(result.headers).toEqual(['__proto__', '__EMPTY']);
+    // Row 3's value left of the dimension names column A late, so toObjects rebuilds record 0 with every column.
+    const rows = `${row(1, [null, '__proto__'])}${row(2, [null, '001'])}${row(3, ['x', '002'])}`;
+    const result = await objects(rows, { defval: null }, 'B1:B3');
+    expect(result.headers).toEqual(['__EMPTY', '__proto__']);
     expect(Object.getOwnPropertyDescriptor(result.rows[0], '__proto__')?.value).toBe('001');
+    expect(Object.getOwnPropertyDescriptor(result.rows[0], '__EMPTY')?.value).toBeNull();
     expect(Object.getPrototypeOf(result.rows[0])).toBe(Object.prototype);
     const blankProto = await objects(`${row(1, [null, '__proto__'])}${row(2, [null, null])}${row(3, ['v', null])}`);
     expect(blankProto.headers).toEqual(['__EMPTY', '__proto__']);
     expect(Object.getOwnPropertyDescriptor(blankProto.rows[0], '__proto__')?.value).toBe('');
+  });
+
+  it('EC-HEADER-NUMBER-GENERAL: a numeric header is named as General shows it, without float noise', async () => {
+    const rows =
+      '<row r="1"><c r="A1"><v>4.2728917499999985</v></c><c r="B1"><v>2024</v></c><c r="C1"><v>0.000012345</v></c>' +
+      '<c r="D1"><v>-123456789012.5</v></c></row><row r="2"><c r="A2"><v>1</v></c><c r="B2"><v>2</v></c><c r="C2"><v>3</v></c><c r="D2"><v>4</v></c></row>';
+    const result = await objects(rows);
+    expect(result.headers).toEqual(['4.27289175', '2024', '0.000012345', '-1.23457E+11']);
+    expect(result.rows).toEqual([{ '4.27289175': 1, '2024': 2, '0.000012345': 3, '-1.23457E+11': 4 }]);
   });
 
   it('EC-HEADER-ERROR-CELL: an error header names its column with the error text, whatever errors says', async () => {
@@ -1017,12 +1268,45 @@ describe('object mode: header text', () => {
     expect(asObject.headers).toEqual(['#N/A', 'Name']);
     expect(asObject.rows).toEqual([{ '#N/A': { error: '#DIV/0!' }, Name: 'Zoë' }]);
     // An explicit headerRow gets the same treatment, and a row of nothing but errors can be the header row.
-    expect((await objectsWith(`<row r="1"/>${rows.replaceAll('1"', '5"')}`, { errors: 'null' }, { headerRow: 2 })).headers).toEqual([
-      '__EMPTY',
-      '__EMPTY_1',
-    ]);
+    const shifted = rows.replaceAll('2"', '3"').replaceAll('1"', '2"');
+    expect((await objectsWith(`<row r="1"/>${shifted}`, { errors: 'null' }, { headerRow: 2 })).headers).toEqual(['#N/A', 'Name']);
     const errorsOnly = `<row r="2"><c r="A2" t="e"><v>#REF!</v></c></row><row r="3"><c r="A3"><v>1</v></c></row>`;
     expect(await objectsWith(errorsOnly, { errors: 'null' })).toEqual({ rows: [{ '#REF!': 1 }], headers: ['#REF!'], truncated: false });
+  });
+});
+
+describe('object mode: date headers and the time zone', () => {
+  /** A1 2025-01-01 12:00, B1 2025-03-15 00:00, C1 2025-06-30 23:30 (date cells via s="1"), then one data row. */
+  const DATE_HEADERS =
+    '<row r="1"><c r="A1" s="1"><v>45658.5</v></c><c r="B1" s="1"><v>45731</v></c><c r="C1" s="1"><v>45838.979166666664</v></c></row>' +
+    `${row(2, [1, 2, 3])}`;
+
+  async function headersIn(timeZone: string, dates: 'utc' | 'local'): Promise<string[]> {
+    const previous = process.env.TZ;
+    process.env.TZ = timeZone;
+    try {
+      return (await objectsWith(DATE_HEADERS, { dates })).headers;
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = previous;
+      }
+    }
+  }
+
+  it("names date headers from the cell's wall clock under dates: 'utc', whatever the server's time zone", async () => {
+    const expected = ['2025-01-01T12:00:00', '2025-03-15T00:00:00', '2025-06-30T23:30:00'];
+    for (const timeZone of ['UTC', 'America/New_York', 'Asia/Tokyo']) {
+      expect(await headersIn(timeZone, 'utc'), timeZone).toEqual(expected);
+    }
+  });
+
+  it("names date headers from the local wall clock under dates: 'local'", async () => {
+    const expected = ['2025-01-01T12:00:00', '2025-03-15T00:00:00', '2025-06-30T23:30:00'];
+    for (const timeZone of ['UTC', 'America/New_York', 'Asia/Tokyo']) {
+      expect(await headersIn(timeZone, 'local'), timeZone).toEqual(expected);
+    }
   });
 });
 
@@ -1123,6 +1407,20 @@ describe('openWorkbook: warnings', () => {
   it('reads the same with no callback', async () => {
     expect(await readRows(await twoSheets())).toEqual([['Name', ''], ['']]);
   });
+
+  it('stops the read with IO_ERROR when the onWarning callback throws, with its error as the cause', async () => {
+    const callbackFailure = new Error('the logger is down');
+    const workbook = await openWorkbook(await twoSheets(), {
+      onWarning: () => {
+        throw callbackFailure;
+      },
+    });
+    try {
+      expect(await caught(() => collect(workbook.sheet(0).rows()))).toMatchObject({ code: 'IO_ERROR', cause: callbackFailure });
+    } finally {
+      await workbook.close();
+    }
+  });
 });
 
 describe('openWorkbook: what it accepts as input', () => {
@@ -1172,6 +1470,94 @@ describe('openWorkbook: what it accepts as input', () => {
       ['Zoë', 12.5],
     ]);
     expect(await readRows(foreignView)).toHaveLength(2);
+  });
+});
+
+/** A source over `bytes` that counts its `close()` calls. */
+function closeCountingSource(bytes: Uint8Array): RandomAccessSource & { readonly closes: number } {
+  const inner = sourceFrom(bytes);
+  let closes = 0;
+  return {
+    size: inner.size,
+    read: (offset: number, length: number) => inner.read(offset, length),
+    close: (): Promise<void> => {
+      closes++;
+      return Promise.resolve();
+    },
+    get closes(): number {
+      return closes;
+    },
+  };
+}
+
+describe('openWorkbook: owns the source it is given', () => {
+  it('closes the source whenever opening fails, whatever the reason', async () => {
+    const cases: Record<string, Uint8Array> = {
+      encrypted: readFixture(fixtureById('hostile-encrypted-password-test')),
+      xls: readFixture(fixtureById('hostile-biff8-xls-renamed')),
+      csv: encoder.encode('a,b,c\n1,2,3\n'),
+      empty: new Uint8Array(0),
+      truncated: readFixture(fixtureById('hostile-truncated-central-directory')),
+      'zip without a workbook': await zip({ 'readme.txt': 'not a spreadsheet' }),
+    };
+    for (const [label, bytes] of Object.entries(cases)) {
+      const source = closeCountingSource(bytes);
+      const error = await caught(() => openWorkbook(source));
+      expect(error.code, label).not.toBe('IO_ERROR');
+      expect(source.closes, `${label} (${error.code})`).toBe(1);
+    }
+  });
+
+  it('closes the source when the signal has already fired', async () => {
+    const source = closeCountingSource(await workbookBytes());
+    const controller = new AbortController();
+    controller.abort();
+    expect((await caught(() => openWorkbook(source, { signal: controller.signal }))).code).toBe('ABORTED');
+    expect(source.closes).toBe(1);
+  });
+
+  it('keeps the original failure when closing the source fails too', async () => {
+    const inner = sourceFrom(encoder.encode('a,b,c\n'));
+    const source: RandomAccessSource = {
+      size: inner.size,
+      read: (offset: number, length: number) => inner.read(offset, length),
+      close: () => Promise.reject(new Error('EBADF')),
+    };
+    expect((await caught(() => openWorkbook(source))).code).toBe('NOT_XLSX');
+  });
+
+  it('leaves the source open on success until workbook.close()', async () => {
+    const source = closeCountingSource(await workbookBytes());
+    const workbook = await openWorkbook(source);
+    expect(source.closes).toBe(0);
+    await workbook.close();
+    expect(source.closes).toBe(1);
+  });
+
+  it('reports a source whose read fails as IO_ERROR with the original as the cause, and closes it', async () => {
+    const bytes = await workbookBytes();
+    const failure = new Error('ECONNRESET: the range request failed');
+    let closes = 0;
+    const source: RandomAccessSource = {
+      size: bytes.byteLength,
+      read: (offset: number, length: number) =>
+        offset === 0 ? Promise.resolve(bytes.subarray(offset, offset + length)) : Promise.reject(failure),
+      close: () => {
+        closes++;
+        return Promise.resolve();
+      },
+    };
+    const error = await caught(() => openWorkbook(source));
+    expect(error).toMatchObject({ code: 'IO_ERROR', cause: failure });
+    expect(closes).toBe(1);
+
+    const throwing: RandomAccessSource = {
+      size: bytes.byteLength,
+      read: () => {
+        throw failure;
+      },
+    };
+    expect(await caught(() => openWorkbook(throwing))).toMatchObject({ code: 'IO_ERROR', cause: failure });
   });
 });
 

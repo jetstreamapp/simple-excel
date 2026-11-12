@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { allFixtures, readFixture, readExpected, type Fixture } from '../../../test/helpers/fixtures';
 import { sourceFrom } from '../../zip/source';
 import { ZipReader } from '../../zip/zip-reader';
-import { parseContentTypes, parseRels, parseWorkbook, relTypeIs, type Relationship } from '../package-parts';
+import { DEFAULT_MAX_PACKAGE_ENTRIES, parseContentTypes, parseRels, parseWorkbook, relTypeIs, type Relationship } from '../package-parts';
 
 const RELS_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const STRICT_RELS_NS = 'http://purl.oclc.org/ooxml/officeDocument/relationships';
@@ -231,6 +231,41 @@ describe('parseWorkbook', () => {
         '<x:sheets><x:sheet name="Data" sheetId="1" r:id="rId1"/></x:sheets></x:workbook>',
     );
     expect(parsed.sheets).toEqual([{ name: 'Data', sheetId: 1, relId: 'rId1', state: 'visible' }]);
+  });
+});
+
+describe('EC-PACKAGE-ELEMENT-FLOOD: element counts are capped at maxEntries', () => {
+  const limitExceeded = { name: 'XlsxError', code: 'LIMIT_EXCEEDED' };
+  const workbookWith = (sheets: string): string =>
+    `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheets>${sheets}</sheets></workbook>`;
+  const typesWith = (body: string): string => `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">${body}</Types>`;
+
+  it('EC-PACKAGE-ELEMENT-FLOOD: parseWorkbook accepts maxEntries sheets and refuses one more', () => {
+    expect(parseWorkbook(workbookWith('<sheet/>'.repeat(3)), 3).sheets).toHaveLength(3);
+    expect(() => parseWorkbook(workbookWith('<sheet/>'.repeat(4)), 3)).toThrow(expect.objectContaining(limitExceeded));
+  });
+
+  it('EC-PACKAGE-ELEMENT-FLOOD: parseWorkbook defaults to the reader default and ignores sheets outside the list', () => {
+    expect(() => parseWorkbook(workbookWith('<sheet/>'.repeat(DEFAULT_MAX_PACKAGE_ENTRIES + 1)))).toThrow(
+      expect.objectContaining(limitExceeded),
+    );
+    const outside = '<customWorkbookViews>' + '<sheet/>'.repeat(10) + '</customWorkbookViews>';
+    expect(parseWorkbook(workbookWith('<sheet name="A"/>') + outside, 1).sheets).toHaveLength(1);
+  });
+
+  it('EC-PACKAGE-ELEMENT-FLOOD: parseRels refuses more relationships than maxEntries', () => {
+    expect(parseRels(relsXml('<Relationship/>'.repeat(3)), 'xl/', 3)).toHaveLength(3);
+    expect(() => parseRels(relsXml('<Relationship/>'.repeat(4)), 'xl/', 3)).toThrow(expect.objectContaining(limitExceeded));
+  });
+
+  it('EC-PACKAGE-ELEMENT-FLOOD: parseContentTypes counts Override and Default elements, repeated names included', () => {
+    expect(parseContentTypes(typesWith('<Override PartName="/a" ContentType="x"/>'.repeat(3)), 3).overrides.size).toBe(1);
+    expect(() => parseContentTypes(typesWith('<Override PartName="/a" ContentType="x"/>'.repeat(4)), 3)).toThrow(
+      expect.objectContaining(limitExceeded),
+    );
+    expect(() => parseContentTypes(typesWith('<Default Extension="xml" ContentType="x"/>'.repeat(4)), 3)).toThrow(
+      expect.objectContaining(limitExceeded),
+    );
   });
 });
 

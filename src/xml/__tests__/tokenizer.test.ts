@@ -407,6 +407,98 @@ describe('XmlTokenizer limits and hostile input', () => {
   it('rejects a tag longer than a mebicharacter', () => {
     expect(thrownCode(() => tokenize(`<c ${'a'.repeat(1024 * 1024 + 8)}="1"/>`))).toBe('XML_MALFORMED');
   });
+
+  it('EC-XML-LONG-TAG-RESCAN: rejects a tag longer than a mebicharacter that arrives over many chunks, before it ends', () => {
+    const tokenizer = new XmlTokenizer({ start(): void {}, text(): void {}, end(): void {} });
+    tokenizer.push('<sheetData><c a="');
+    const chunk = 'a'.repeat(64 * 1024);
+    let pushed = 0;
+    const code = thrownCode(() => {
+      for (; pushed < 32; pushed++) {
+        tokenizer.push(chunk);
+      }
+    });
+    expect(code).toBe('XML_MALFORMED');
+    // The 16th chunk takes the tag past 1 Mi characters; the scan never waits for a `>` that is not coming.
+    expect(pushed).toBe(15);
+  });
+
+  it('EC-XML-LONG-TAG-RESCAN: a tag still open at the end of the input is malformed', () => {
+    expect(thrownCode(() => collect(['<a><c x="', '1', '2']))).toBe('XML_MALFORMED');
+    expect(thrownCode(() => collect(['<a><c x="1"', ' y="2"']))).toBe('XML_MALFORMED');
+  });
+});
+
+describe('XmlTokenizer pause and resume', () => {
+  it('EC-WIDE-SPARSE-ROWS: stops after the token whose handler paused and resumes where it stopped', () => {
+    const xml = '<a><row r="1"/><row r="2">x</row><row r="3"/>tail</a>';
+    const expected = tokenize(xml);
+    const events: string[] = [];
+    let pauses = 0;
+    const tokenizer: XmlTokenizer = new XmlTokenizer({
+      start(name: string): void {
+        events.push(`start:${name}`);
+      },
+      text(text: string): void {
+        events.push(`text:${JSON.stringify(text)}`);
+      },
+      end(name: string): void {
+        events.push(`end:${name}`);
+        if (name === 'row') {
+          tokenizer.pause();
+        }
+      },
+    });
+    tokenizer.push(xml);
+    while (tokenizer.paused) {
+      pauses++;
+      expect(events.at(-1)).toBe('end:row');
+      tokenizer.resume();
+    }
+    tokenizer.end();
+    expect(pauses).toBe(3);
+    expect(events).toEqual(expected.map(event => event.replace(/ .*$/, '')));
+    expect(tokenizer.paused).toBe(false);
+  });
+
+  it('resume() without a pause does nothing', () => {
+    const tokenizer = new XmlTokenizer({ start(): void {}, text(): void {}, end(): void {} });
+    tokenizer.push('<a>');
+    tokenizer.resume();
+    tokenizer.push('</a>');
+    expect(() => tokenizer.end()).not.toThrow();
+  });
+});
+
+describe('EC-XML-LONG-TAG-RESCAN: a tag split over many chunks', () => {
+  function chunked(xml: string, size: number): string[] {
+    const chunks: string[] = [];
+    for (let offset = 0; offset < xml.length; offset += size) {
+      chunks.push(xml.slice(offset, offset + size));
+    }
+    return chunks;
+  }
+
+  it('EC-XML-LONG-TAG-RESCAN: keeps the quote state across chunks, so a quoted > never ends the tag', () => {
+    const doubleQuoted = `${'>'.repeat(50)}'${'>'.repeat(50)}`;
+    const singleQuoted = `"${'>'.repeat(100)}`;
+    const xml = `<a><c t="${doubleQuoted}" r='${singleQuoted}'/><v>1</v></a>`;
+    const expected = tokenize(xml, { probes: ['t', 'r'] });
+    expect(expected[1]).toBe(`start:c t=${JSON.stringify(doubleQuoted)} r=${JSON.stringify(singleQuoted)} depth=2`);
+    for (const size of [1, 2, 3, 7, 16]) {
+      expect(collect(chunked(xml, size), { probes: ['t', 'r'] }), `chunks of ${size}`).toEqual(expected);
+    }
+  });
+
+  it('EC-XML-LONG-TAG-RESCAN: costs the length of the tag, not its square', () => {
+    // 400,000 characters in 16-character chunks: rescanning and re-joining the partial tag on every chunk is
+    // 25,000 passes over an average of 200,000 characters, minutes of work; a resumed scan takes milliseconds.
+    const value = 'v'.repeat(400_000);
+    const started = performance.now();
+    const events = collect(chunked(`<a><c t="${value}"/>after</a>`, 16), { probes: ['t'] });
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(events).toEqual(['start:a depth=1', `start:c t=${JSON.stringify(value)} depth=2`, 'end:c', 'text:"after"', 'end:a']);
+  });
 });
 
 describe('XmlTokenizer throughput', () => {

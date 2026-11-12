@@ -74,6 +74,9 @@ function write(dir, name, entriesOrParts, zipOptions) {
 // ---- edge (valid-but-unusual) ----
 write(EDGE, 'baseline-minimal.xlsx', parts());
 write(EDGE, 'no-dimension.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ dimension: '' }) }));
+// A <dimension> smaller than the data (written from a low row-count hint, EC-DIMENSION-FROM-HINT): it claims one row,
+// the sheet has three. Every row must still be read.
+write(EDGE, 'dimension-smaller-than-data.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ dimension: '<dimension ref="A1:F1"/>' }) }));
 write(
   EDGE,
   'missing-r-attributes.xlsx',
@@ -201,6 +204,96 @@ for (let i = 1; i <= 6000; i++) {
   bombRows.push(bombRow(i));
 }
 write(HOSTILE, 'zip-bomb-30mb-sheet.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: bombRows.join(''), dimension: '' }) }));
+// ---- reader limits (EC-PACKAGE-ELEMENT-FLOOD and the reader DoS family): each one KB on disk ----
+// 20,000 <sheet/> entries: twice the default maxEntries, 160 KB of XML.
+write(
+  HOSTILE,
+  'workbook-sheet-flood.xlsx',
+  parts({
+    'xl/workbook.xml': workbook().replace('</sheets>', `${'<sheet/>'.repeat(20000)}</sheets>`),
+  }),
+);
+// 70,000 more cellXfs entries, all dates: past Excel's 65,490 unique cell formats (EC-STYLES-XF-OVERFLOW). The ones
+// past the ceiling are ignored, so C4, which uses xf 69,000, reads as the number 45351 rather than 2024-02-29.
+write(
+  HOSTILE,
+  'styles-xf-flood.xlsx',
+  parts({
+    'xl/styles.xml': styles.replace('</cellXfs>', `${'<xf numFmtId="14"/>'.repeat(70000)}</cellXfs>`),
+    'xl/worksheets/sheet1.xml': sheet({ dimension: '<dimension ref="A1:C4"/>' }).replace(
+      '</sheetData>',
+      '<row r="4"><c r="C4" s="69000"><v>45351</v></c></row></sheetData>',
+    ),
+  }),
+);
+// styles.xml padded with 33 MiB of whitespace: past the 32 MiB default maxPartBytes for a part read whole.
+write(
+  HOSTILE,
+  'styles-part-padding.xlsx',
+  parts({
+    'xl/styles.xml': styles.replace('</styleSheet>', `${' '.repeat(33 * 1024 * 1024)}</styleSheet>`),
+  }),
+);
+// 20M empty <si/> items (100 MB of XML, about 140 KB on disk): no text at all, but each item is a slot in the table.
+// Past the default maxSharedStringChars once every item counts 16 units on top of its text.
+write(
+  HOSTILE,
+  'sst-empty-item-flood.xlsx',
+  parts({ 'xl/sharedStrings.xml': sst().replace('</sst>', `${'<si/>'.repeat(20_000_000)}</sst>`) }),
+);
+// One cell whose value is two 600,000-character runs split by a stray element: each run is under the 1 Mi default
+// maxTextLength, the cell is not.
+write(
+  HOSTILE,
+  'cell-text-split-runs.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      rows: `<row r="1"><c r="A1" t="str"><v>${'A'.repeat(600000)}<b/>${'A'.repeat(600000)}</v></c></row>`,
+      dimension: '',
+    }),
+  }),
+);
+// Five tags just under the 1 MiB tag limit, then one that never closes: each spans dozens of inflate chunks, which
+// the tokenizer used to rescan from the start of the tag on every chunk.
+const longTag = `<x a="${'A'.repeat(1024 * 1024 - 64)}"/>`;
+write(
+  HOSTILE,
+  'long-tags-unclosed.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      rows: `<row r="1"><c r="A1"><v>1</v></c></row>${longTag.repeat(5)}<x a="${'A'.repeat(1024 * 1024 + 64)}`,
+      dimension: '',
+    }),
+  }),
+);
+// Legal but shaped to exhaust memory: these must read to the end, in bounded memory.
+// A 3-column sheet of 5,000 rows with one stray value at XFD2 (EC-DATA-BEYOND-HEADER). SheetJS-style object mode gave
+// every record 16,384 keys (82M cells); records now stop at the header and the stray value is reported.
+const strayRows = ['<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row>'];
+for (let index = 2; index <= 5001; index++) {
+  const stray = index === 2 ? '<c r="XFD2"><v>9</v></c>' : '';
+  strayRows.push(
+    `<row r="${index}"><c r="A${index}"><v>${index}</v></c><c r="B${index}"><v>1</v></c><c r="C${index}"><v>2</v></c>${stray}</row>`,
+  );
+}
+write(HOSTILE, 'stray-cell-beyond-header.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: strayRows.join(''), dimension: '' }) }));
+// 2,000 rows with one cell at XFD each: every row is a 16,384-slot array.
+const wideRows = [];
+for (let index = 1; index <= 2000; index++) {
+  wideRows.push(`<row r="${index}"><c r="XFD${index}"><v>${index}</v></c></row>`);
+}
+write(HOSTILE, 'wide-sparse-rows.xlsx', parts({ 'xl/worksheets/sheet1.xml': sheet({ rows: wideRows.join(''), dimension: '' }) }));
+// Row 1, then row 1,048,576: with blankRows every row between is yielded as [].
+write(
+  HOSTILE,
+  'blank-rows-gap.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      rows: '<row r="1"><c r="A1"><v>1</v></c></row><row r="1048576"><c r="A1048576"><v>2</v></c></row>',
+      dimension: '',
+    }),
+  }),
+);
 // renamed formats (bytes of another format under an .xlsx name)
 copyFileSync(join(FIXTURES, 'canonical/canonical.csv'), join(HOSTILE, 'csv-bytes-renamed.xlsx'));
 for (const [source, target] of [

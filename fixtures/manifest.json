@@ -243,6 +243,23 @@
       "generated": false
     },
     {
+      "id": "edge-dimension-smaller-than-data",
+      "path": "edge/dimension-smaller-than-data.xlsx",
+      "bytes": 2463,
+      "sha256": "4a33ecf5de8f7e3d237b2ae85e54af2588271cf93a6c0a07906886ff587e3989",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:edge", "EC-DIMENSION-FROM-HINT"],
+      "expected": "edge/expected-minimal.json",
+      "generated": false,
+      "notes": "The minimal 3-row workbook with <dimension ref=\"A1:F1\"/>: the dimension claims one row. Every row must be read, as Excel does; SheetJS reads only the declared row."
+    },
+    {
       "id": "edge-missing-r-attributes",
       "path": "edge/missing-r-attributes.xlsx",
       "bytes": 2437,
@@ -1075,6 +1092,164 @@
       "expected": null,
       "generated": false,
       "notes": "One sheet converted from a CSV whose first two lines are blank and whose first column is empty (dimension B3:E6)."
+    },
+    {
+      "id": "hostile-workbook-sheet-flood",
+      "path": "hostile/workbook-sheet-flood.xlsx",
+      "bytes": 2734,
+      "sha256": "b4054a4de60207a5c88eafbb92a94066df37d10e26b628a60c641d48b6e29a8a",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-PACKAGE-ELEMENT-FLOOD"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "workbook.xml lists 20,000 <sheet/> entries (160 KB of XML), twice the default maxEntries; each would become a sheet handle."
+    },
+    {
+      "id": "hostile-styles-xf-flood",
+      "path": "hostile/styles-xf-flood.xlsx",
+      "bytes": 5780,
+      "sha256": "5ef66fd6a312dbabaa78907c7df73f0939a0049f4faedc5252e726503748999a",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-STYLES-XF-OVERFLOW"],
+      "expected": null,
+      "generated": false,
+      "notes": "styles.xml lists 70,002 cellXfs entries, past Excel's 65,490 unique cell formats; all but the first two are dates. No expectedError: the formats past the ceiling are ignored, so C4 (xf 69,000) reads as the number 45351 and onWarning gets CELL_FORMATS_IGNORED once."
+    },
+    {
+      "id": "hostile-styles-part-padding",
+      "path": "hostile/styles-part-padding.xlsx",
+      "bytes": 36164,
+      "sha256": "807dfe2b4936345fd01348bb97f2f043f63e23f76d28c04542f85f4f1a20e88e",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-PART-SIZE-PADDING"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "styles.xml padded with 33 MiB of whitespace (33 KB on disk). styles.xml is streamed, so the padding is one text run that stops at the 1 Mi default maxTextLength (it used to be refused by maxPartBytes when the part was read whole)."
+    },
+    {
+      "id": "hostile-cell-text-split-runs",
+      "path": "hostile/cell-text-split-runs.xlsx",
+      "bytes": 3587,
+      "sha256": "d6b71ffcdbfe7676e0d737d854e9f0c4a58f161d8714d242e55a851aad93bf56",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-CELL-TEXT-RUN-SPLIT"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "One t=\"str\" cell whose value is two 600,000-character runs split by <b/>: each run passes the 1 Mi default maxTextLength, the cell does not."
+    },
+    {
+      "id": "hostile-long-tags-unclosed",
+      "path": "hostile/long-tags-unclosed.xlsx",
+      "bytes": 8588,
+      "sha256": "ba5cbff411d52eddbdfec1d2795cbfb80aec7e671be420cd7cd80e3f6dfd7f78",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-XML-LONG-TAG-RESCAN"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "XML_MALFORMED",
+      "notes": "Five 1 MiB tags inside sheetData, then one that never closes and runs past the 1 MiB tag limit (6 MiB of XML). Each tag spans dozens of 16 KiB inflate chunks."
+    },
+    {
+      "id": "hostile-wide-sparse-rows",
+      "path": "hostile/wide-sparse-rows.xlsx",
+      "bytes": 17780,
+      "sha256": "26706d2d826103a482985e2fd561012a5ac73fb0e7ef5327e65ffab035005cb8",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-WIDE-SPARSE-ROWS"],
+      "expected": null,
+      "generated": false,
+      "notes": "A legal sheet of 2,000 rows with one cell at column XFD each, so every row is a 16,384-slot array. No expectedError: it must read to the end in bounded memory."
+    },
+    {
+      "id": "hostile-blank-rows-gap",
+      "path": "hostile/blank-rows-gap.xlsx",
+      "bytes": 2389,
+      "sha256": "ebc8f08abfe9ffca5d1205039b12a32b2ee2fe9b53904d3c68b2205e9414c845",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-BLANK-ROWS-GAP-FILL"],
+      "expected": null,
+      "generated": false,
+      "notes": "Row 1, then row 1,048,576. Read with blankRows: true every row between is yielded as []. No expectedError: it must read to the end in bounded memory."
+    },
+    {
+      "id": "hostile-sst-empty-item-flood",
+      "path": "hostile/sst-empty-item-flood.xlsx",
+      "bytes": 148156,
+      "sha256": "40e8c9b4f7d99cf6bfdb66863533f6c76413fbff765a6e21469b140f30fc933e",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-SST-EMPTY-ITEM-FLOOD"],
+      "expected": null,
+      "generated": false,
+      "expectedError": "LIMIT_EXCEEDED",
+      "notes": "sharedStrings.xml holds 20M empty <si/> items (100 MB of XML, 145 KB on disk): no text, but each item is a table slot, and 16 units each puts the table past the default 256 Mi maxSharedStringChars."
+    },
+    {
+      "id": "hostile-stray-cell-beyond-header",
+      "path": "hostile/stray-cell-beyond-header.xlsx",
+      "bytes": 70986,
+      "sha256": "c4e178d5fcb7be12b76d5733be416a6dd357ee87020b460d4c80b8c64b63dc7d",
+      "generator": {
+        "name": "hand-built",
+        "version": "(generators/edge/build-edge-fixtures.mjs)",
+        "os": "macOS"
+      },
+      "provenance": "script:generators/edge/build-edge-fixtures.mjs",
+      "license": "Jetstream research",
+      "tags": ["kind:hostile", "EC-DATA-BEYOND-HEADER"],
+      "expected": null,
+      "generated": false,
+      "notes": "Headers Name, Amount, When over 5,000 rows, plus one stray value at XFD2. No expectedError: object mode must read it with 3 keys per record and one DATA_BEYOND_HEADER warning (SheetJS semantics gave every record 16,384 keys, 82M cells)."
     }
   ]
 }

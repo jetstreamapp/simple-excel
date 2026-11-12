@@ -1,8 +1,8 @@
 /**
  * Jetstream reads spreadsheets with SheetJS `sheet_to_json` (dateNF, defval '', blankrows false, rawNumbers). Our
  * object mode must produce the same rows for every golden, except cells listed as `parityExemptions` in
- * `test/corpus-policies.json` (documented SheetJS defects such as serial 60 or undecoded escapes) and the two
- * whole-corpus date conventions in `sameValue` below.
+ * `test/corpus-policies.json` (documented SheetJS defects such as serial 60 or undecoded escapes), the two
+ * whole-corpus date conventions in `sameValue` below, and the columns past the header (`withinHeader`).
  */
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
@@ -74,6 +74,24 @@ function sameValue(ours: TypedValue, theirs: TypedValue): boolean {
   return apart !== null && apart <= MILLISECOND_TOLERANCE;
 }
 
+/** A key SheetJS gives a column whose header cell is blank: `__EMPTY`, `__EMPTY_1`, ... */
+const BLANK_HEADER_KEY = /^__EMPTY(?:_\d+)?$/;
+
+/**
+ * The intentional divergence from SheetJS (EC-DATA-BEYOND-HEADER): our records stop at the last header cell that
+ * holds a value, while SheetJS names every column out to the edge of the sheet's range, so the trailing blank-header
+ * keys it adds past the header (the Features sheet's merged A1:C1 header, a dimension wider than the data) are
+ * columns we leave out and report as DATA_BEYOND_HEADER. Only that trailing run is dropped from SheetJS's keys;
+ * every other key, and every value under our keys, must still match.
+ */
+function withinHeader(keys: readonly string[]): string[] {
+  let end = keys.length;
+  while (end > 0 && BLANK_HEADER_KEY.test(keys[end - 1] ?? '')) {
+    end--;
+  }
+  return keys.slice(0, end);
+}
+
 describe.skipIf(!READER_READY)('parity: object mode equals SheetJS sheet_to_json with Jetstream options', () => {
   for (const fixture of fixturesWithTag('kind:golden')) {
     const policy = policies[fixture.id];
@@ -101,7 +119,7 @@ describe.skipIf(!READER_READY)('parity: object mode equals SheetJS sheet_to_json
             rawNumbers: true,
           });
           const { rows, headers } = await workbook.sheet(info.index).toObjects();
-          const expectedHeaders = expectedRows.length > 0 ? Object.keys(expectedRows[0] ?? {}) : [];
+          const expectedHeaders = expectedRows.length > 0 ? withinHeader(Object.keys(expectedRows[0] ?? {})) : [];
           expect(headers, `${info.name} headers`).toEqual(expectedHeaders);
           expect(rows.length, `${info.name} row count`).toBe(expectedRows.length);
           rows.forEach((row: Record<string, CellValue>, rowIndex: number) => {

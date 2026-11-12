@@ -905,7 +905,7 @@ describe('workbook-level rules', () => {
         await sheet.close();
         await workbook.close();
       });
-      expect(failure).toMatchObject({ code: 'ABORTED', detail: { cause: new Error('disk full') } });
+      expect(failure).toMatchObject({ code: 'IO_ERROR', cause: new Error('disk full') });
       expect(await rejection(() => workbook.close())).toBe(failure);
     });
     expect(spy.closes).toBe(0);
@@ -1160,7 +1160,7 @@ describe('failure propagation (EC-WRITER-FAILURE-STICKY)', () => {
         failedAt = index;
       }
       expect(failedAt, 'the failure surfaced from a flush well into the sheet').toBeGreaterThan(100);
-      expect(failure).toMatchObject({ code: 'ABORTED', detail: { cause: new Error('disk full') } });
+      expect(failure).toMatchObject({ code: 'IO_ERROR', cause: new Error('disk full') });
       expect(await rejection(() => sheet.writeRow(['late']))).toBe(failure);
       expect(await rejection(() => sheet.close())).toBe(failure);
       expect(await rejection(() => workbook.close())).toBe(failure);
@@ -1228,6 +1228,158 @@ describe('failure propagation (EC-WRITER-FAILURE-STICKY)', () => {
     });
     expect(spy.aborts).toHaveLength(1);
     expect(unhandled).toEqual([]);
+  });
+
+  it('a deflater that fails with a plain Error is reported as IO_ERROR with it as the cause', async () => {
+    const platformFailure = new TypeError('allocation failed');
+    const brokenDeflater: DeflaterFactory = (): Deflater => ({
+      push: async (): Promise<void> => {
+        throw platformFailure;
+      },
+      finish: async (): Promise<void> => undefined,
+      abort: async (): Promise<void> => undefined,
+      bytesIn: 0,
+      bytesOut: 0,
+    });
+    const spy = createSpySink();
+    const unhandled = await collectUnhandledRejections(async () => {
+      const workbook = createWorkbookWriter(spy, { deterministic: true, deflater: brokenDeflater });
+      const sheet = workbook.addSheet('Data');
+      const failure = await rejection(() => sheet.close());
+      expect(isXlsxError(failure)).toBe(true);
+      expect(failure).toMatchObject({ code: 'IO_ERROR', cause: platformFailure });
+      expect(await rejection(() => workbook.close())).toBe(failure);
+    });
+    expect(spy.aborts).toHaveLength(1);
+    expect(unhandled).toEqual([]);
+  });
+
+  it('a CompressionStream that fails mid-sheet surfaces as IO_ERROR, never a bare platform error', async () => {
+    const platformFailure = new TypeError('simulated platform failure');
+    const RealCompressionStream = globalThis.CompressionStream;
+    class FailingCompressionStream {
+      readonly writable: WritableStream<Uint8Array>;
+      readonly readable: ReadableStream<Uint8Array>;
+      constructor() {
+        const transform = new TransformStream<Uint8Array, Uint8Array>({
+          transform(): void {
+            throw platformFailure;
+          },
+        });
+        this.writable = transform.writable;
+        this.readable = transform.readable;
+      }
+    }
+    globalThis.CompressionStream = FailingCompressionStream as unknown as typeof CompressionStream;
+    try {
+      const sink = collectToBytes();
+      const workbook = createWorkbookWriter(sink, { deterministic: true });
+      const sheet = workbook.addSheet('Data');
+      const failure = await rejection(async () => {
+        for (let index = 0; index < 5000; index++) {
+          await sheet.writeRow(longRow(index));
+        }
+        await sheet.close();
+      });
+      expect(failure).toMatchObject({ name: 'XlsxError', code: 'IO_ERROR', cause: platformFailure });
+      expect(await rejection(() => workbook.close())).toBe(failure);
+      expect(() => sink.result()).toThrow(failure as Error);
+    } finally {
+      globalThis.CompressionStream = RealCompressionStream;
+    }
+  });
+
+  it('an onProgress callback that throws stops the write with IO_ERROR carrying its error', async () => {
+    const callbackFailure = new Error('progress bar went away');
+    const spy = createSpySink();
+    const unhandled = await collectUnhandledRejections(async () => {
+      const workbook = createWorkbookWriter(spy, {
+        deterministic: true,
+        onProgress: () => {
+          throw callbackFailure;
+        },
+      });
+      const sheet = workbook.addSheet('Data');
+      const failure = await rejection(async () => {
+        for (let index = 0; index < 6000; index++) {
+          await sheet.writeRow([index]);
+        }
+      });
+      expect(failure).toMatchObject({ code: 'IO_ERROR', cause: callbackFailure, message: expect.stringContaining('onProgress') });
+      expect(await rejection(() => workbook.close())).toBe(failure);
+    });
+    expect(spy.aborts).toHaveLength(1);
+    expect(unhandled).toEqual([]);
+  });
+
+  it('abort() resolves and rejects the pending row while the sink is stalled on back-pressure', async () => {
+    let stalled = false;
+    const aborts: unknown[] = [];
+    const sink: ByteSink = {
+      write: () => (stalled ? new Promise<void>(() => {}) : Promise.resolve()),
+      close: () => Promise.resolve(),
+      abort: async (reason): Promise<void> => {
+        aborts.push(reason);
+      },
+    };
+    const workbook = createWorkbookWriter(sink, { deterministic: true, compression: 'store' });
+    const sheet = workbook.addSheet('Data');
+    await sheet.writeRow(longRow(0));
+    stalled = true;
+    let pendingRow: Promise<void> | undefined;
+    for (let index = 1; index < 5000 && pendingRow === undefined; index++) {
+      const write = sheet.writeRow(longRow(index));
+      const outcome = await Promise.race([write.then(() => 'settled'), delay(50).then(() => 'pending')]);
+      if (outcome === 'pending') {
+        pendingRow = write;
+      }
+    }
+    expect(pendingRow, 'a flush should be waiting on the stalled sink').toBeDefined();
+
+    const cancelled = new Error('the user navigated away');
+    await workbook.abort(cancelled);
+    const failure = await rejection(() => pendingRow);
+    expect(failure).toMatchObject({ code: 'ABORTED', cause: cancelled });
+    expect(await rejection(() => workbook.close())).toBe(failure);
+    expect(aborts).toHaveLength(1);
+  });
+
+  it('abort() resolves while a WritableStream never settles its write', async () => {
+    const stream = new WritableStream<Uint8Array>({
+      write: (): Promise<void> => new Promise<void>(() => {}),
+    });
+    const workbook = createWorkbookWriter(stream, { deterministic: true, compression: 'store' });
+    const sheet = workbook.addSheet('Data');
+    const rows: Promise<void>[] = [];
+    for (let index = 0; index < 3000; index++) {
+      const write = sheet.writeRow(longRow(index));
+      void write.catch(() => undefined);
+      rows.push(write);
+    }
+    await delay(20);
+    await workbook.abort();
+    const outcomes = await Promise.all(rows.map(row => rejection(() => row)));
+    expect(outcomes.some(outcome => isXlsxError(outcome) && outcome.code === 'ABORTED')).toBe(true);
+    expect(stream.locked).toBe(false);
+  });
+
+  it('abort() resolves, and the pending close() rejects, while a WritableStream never settles its close', async () => {
+    const stream = new WritableStream<Uint8Array>({
+      close: (): Promise<void> => new Promise<void>(() => {}),
+    });
+    const workbook = createWorkbookWriter(stream, { deterministic: true });
+    const sheet = workbook.addSheet('Data');
+    await sheet.writeRow([1]);
+    await sheet.close();
+    const closing = workbook.close();
+    void closing.catch(() => undefined);
+    expect(await Promise.race([closing.then(() => 'settled'), delay(50).then(() => 'pending')])).toBe('pending');
+
+    const aborting = workbook.abort();
+    expect(await Promise.race([aborting.then(() => 'settled'), delay(1000).then(() => 'pending')])).toBe('settled');
+    const failure = await rejection(() => closing);
+    expect(failure).toMatchObject({ code: 'ABORTED' });
+    expect(stream.locked).toBe(false);
   });
 
   it('an abort after a failure keeps the original error and does not abort the sink twice', async () => {

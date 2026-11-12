@@ -1,8 +1,10 @@
 import { XlsxError } from '../errors';
+import { isStringLengthError } from '../internal/string-length';
 import { decodeCellText } from '../xml/escape';
 import { XmlTokenizer } from '../xml/tokenizer';
 
 export interface ParseSharedStringsOptions {
+  /** The table's budget: every item's text plus `SHARED_STRING_ITEM_CHARS` for each item (EC-SST-EMPTY-ITEM-FLOOD). */
   readonly maxChars: number;
   readonly maxDepth: number;
   readonly maxTextLength: number;
@@ -15,13 +17,22 @@ export interface ParseSharedStringsOptions {
 const MAX_PREALLOCATED_STRINGS = 4_000_000;
 
 /**
+ * What one `<si>` costs on top of its text, in UTF-16 units counted toward `maxChars`. Measured in Node 24: an empty
+ * item holds about 12 bytes (an 8-byte array slot plus growth slack) and a short one about 28 bytes beyond its
+ * characters (the slot plus a string header). 16 units is 16 to 32 bytes, so the budget stays a bound on memory
+ * however the table splits its text, and 100M empty `<si/>` (a 713 KB upload that reached 2 to 3.6 GB) stop after
+ * about 16.7M items under the default 256 Mi (EC-SST-EMPTY-ITEM-FLOOD).
+ */
+export const SHARED_STRING_ITEM_CHARS: number = 16;
+
+/**
  * Read `xl/sharedStrings.xml` into an array: `<r>` runs concatenated, `<rPh>` phonetic runs skipped, `_xHHHH_`
  * decoded. Whitespace-only `<t>` without `xml:space` is kept verbatim (Excel preserves it; calamine trims - catalog).
  *
  * The part is streamed: each chunk is decoded and pushed straight into the tokenizer, so nothing beyond the finished
  * table is held (EC-RICH-TEXT-RUNS). Hostile parts surface as classified errors: `XML_DOCTYPE` for a DTD
- * (EC-XXE-DOCTYPE), `LIMIT_EXCEEDED` for nesting past `maxDepth` (EC-XML-DEEP-NESTING) or more than `maxChars`
- * characters of text.
+ * (EC-XXE-DOCTYPE), `LIMIT_EXCEEDED` for nesting past `maxDepth` (EC-XML-DEEP-NESTING) or a table past `maxChars`,
+ * where every item counts its text plus `SHARED_STRING_ITEM_CHARS` (EC-SST-EMPTY-ITEM-FLOOD).
  */
 export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, options: ParseSharedStringsOptions): Promise<string[]> {
   let strings: string[] = [];
@@ -31,6 +42,18 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
   let insideText = false;
   let current = '';
   let totalChars = 0;
+
+  /** Count `units` toward the table's budget, failing once it is spent. */
+  function charge(units: number): void {
+    totalChars += units;
+    if (totalChars > options.maxChars) {
+      throw new XlsxError(
+        'LIMIT_EXCEEDED',
+        `This workbook's shared-string table is larger than the ${options.maxChars} character limit (each item counts ${SHARED_STRING_ITEM_CHARS} on top of its text), so it was not read further.`,
+        { maxChars: options.maxChars, items: stringCount },
+      );
+    }
+  }
 
   const tokenizer = new XmlTokenizer(
     {
@@ -44,6 +67,8 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
             break;
           }
           case 'si':
+            // Charged on the way in, so a flood of empty items is held to the budget as well as long text is.
+            charge(SHARED_STRING_ITEM_CHARS);
             insideString = true;
             current = '';
             break;
@@ -62,12 +87,13 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
         if (!insideText) {
           return;
         }
-        totalChars += text.length;
-        if (totalChars > options.maxChars) {
+        charge(text.length);
+        // The tokenizer caps each run; an item built from many runs is held to the same cap (EC-CELL-TEXT-RUN-SPLIT).
+        if (current.length + text.length > options.maxTextLength) {
           throw new XlsxError(
             'LIMIT_EXCEEDED',
-            `This workbook's shared text is longer than the ${options.maxChars} character limit, so it was not read further.`,
-            { maxChars: options.maxChars },
+            `Shared string ${stringCount} of this workbook is longer than the ${options.maxTextLength} character limit, so it was not read further.`,
+            { index: stringCount, maxTextLength: options.maxTextLength },
           );
         }
         current = current.length === 0 ? text : current + text;
@@ -96,12 +122,25 @@ export async function parseSharedStrings(chunks: AsyncIterable<Uint8Array>, opti
   );
 
   const decoder = new TextDecoder('utf-8');
-  for await (const chunk of chunks) {
-    tokenizer.push(decoder.decode(chunk, { stream: true }));
+  try {
+    for await (const chunk of chunks) {
+      tokenizer.push(decoder.decode(chunk, { stream: true }));
+    }
+    // Flush whatever the decoder held back from a multi-byte character split across the last chunk boundary.
+    tokenizer.push(decoder.decode());
+    tokenizer.end();
+  } catch (error) {
+    // Only reachable with limits raised past what one string can hold; still a limit, not a crash.
+    if (isStringLengthError(error)) {
+      throw new XlsxError(
+        'LIMIT_EXCEEDED',
+        "This workbook's shared text holds more than a string can, so it was not read further.",
+        undefined,
+        { cause: error },
+      );
+    }
+    throw error;
   }
-  // Flush whatever the decoder held back from a multi-byte character split across the last chunk boundary.
-  tokenizer.push(decoder.decode());
-  tokenizer.end();
 
   strings.length = stringCount;
   return strings;

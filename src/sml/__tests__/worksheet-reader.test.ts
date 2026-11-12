@@ -28,11 +28,13 @@ function context(overrides: Partial<WorksheetReadContext> = {}): WorksheetReadCo
     sharedStrings: () => Promise.resolve([]),
     hasSharedStrings: true,
     isDateByXf: new Uint8Array(0),
+    cellFormatsIgnored: false,
     date1904: false,
     dates: 'utc',
     errors: 'string',
     maxXmlDepth: 256,
-    maxTextLength: 64 * 1024 * 1024,
+    maxTextLength: 1024 * 1024,
+    maxRowChars: 64 * 1024 * 1024,
     ...overrides,
   };
 }
@@ -551,6 +553,38 @@ describe('dates', () => {
     expect(utcText(cells[0]?.[0] ?? null)).toBe('2024-02-29T00:00:00.000Z');
   });
 
+  it('EC-STYLES-XF-OVERFLOW: a number whose format was ignored reads as a number and warns once', async () => {
+    const warnings: ReadWarning[] = [];
+    // xf 0 a number, xf 1 a date, xf 2 a dropped custom format; xf 3 lies past the end of the stored table.
+    const cells = await readCells(
+      sheet(
+        '<row r="1"><c r="A1" s="1"><v>45351</v></c><c r="B1"><v>7</v></c><c r="C1" s="3"><v>45351</v></c>' +
+          '<c r="D1" s="2"><v>45351</v></c><c r="E1" s="3" t="s"><v>0</v></c></row>',
+      ),
+      {},
+      {
+        isDateByXf: Uint8Array.from([0, 1, 2]),
+        cellFormatsIgnored: true,
+        sharedStrings: () => Promise.resolve(['text']),
+        onWarning: warning => warnings.push(warning),
+      },
+    );
+    expect(cells[0]?.[0]).toBeInstanceOf(Date);
+    expect(cells[0]?.slice(1)).toEqual([7, 45351, 45351, 'text']);
+    expect(warnings).toEqual([expect.objectContaining({ code: 'CELL_FORMATS_IGNORED', ref: 'C1', detail: { maxCellFormats: 65_490 } })]);
+  });
+
+  it('EC-STYLES-XF-OVERFLOW: an xf index past the table warns only when the styles part was cut short', async () => {
+    const warnings: ReadWarning[] = [];
+    const cells = await readCells(
+      sheet('<row r="1"><c r="A1" s="9"><v>45351</v></c></row>'),
+      {},
+      { isDateByXf: dateStyles, onWarning: warning => warnings.push(warning) },
+    );
+    expect(cells[0]?.[0]).toBe(45351);
+    expect(warnings).toEqual([]);
+  });
+
   it('dates: "serial" never builds a Date', async () => {
     const cells = await readCells(
       sheet('<row r="1"><c r="A1" s="1"><v>45351.5</v></c></row>'),
@@ -708,6 +742,62 @@ describe('row windows and limits', () => {
   });
 });
 
+describe('EC-CELL-TEXT-RUN-SPLIT: text limits hold for a cell and a row, however many runs build them', () => {
+  const limitExceeded = { name: 'XlsxError', code: 'LIMIT_EXCEEDED' };
+  const tight = { maxTextLength: 10, maxRowChars: 25 };
+  const run = (length: number): string => 'a'.repeat(length);
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps a value built from runs split by stray elements', async () => {
+    const atLimit = sheet(`<row r="1"><c r="A1" t="str"><v>${run(5)}<b/>${run(5)}</v></c></row>`);
+    expect(await readCells(atLimit, {}, tight)).toEqual([[run(10)]]);
+    const pastLimit = sheet(`<row r="1"><c r="B1" t="str"><v>${run(6)}<b/>${run(5)}</v></c></row>`);
+    await expect(readCells(pastLimit, {}, tight)).rejects.toMatchObject({ ...limitExceeded, detail: { ref: 'B1', maxTextLength: 10 } });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps an inline string built from rich-text runs', async () => {
+    const runs = `<is><r><t>${run(6)}</t></r><r><t>${run(5)}</t></r></is>`;
+    await expect(readCells(sheet(`<row r="1"><c r="A1" t="inlineStr">${runs}</c></row>`), {}, tight)).rejects.toMatchObject(limitExceeded);
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps captured formula text, and only captured formula text', async () => {
+    const xml = sheet(`<row r="1"><c r="A1"><f>${run(6)}<x/>${run(5)}</f><v>1</v></c></row>`);
+    expect(await readCells(xml, {}, tight)).toEqual([[1]]);
+    await expect(readCells(xml, { formulas: 'text' }, tight)).rejects.toMatchObject(limitExceeded);
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: one run past the limit is refused by the tokenizer as before', async () => {
+    await expect(readCells(sheet(`<row r="1"><c r="A1" t="str"><v>${run(11)}</v></c></row>`), {}, tight)).rejects.toMatchObject(
+      limitExceeded,
+    );
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: caps the text of one row across its cells and starts afresh on the next row', async () => {
+    const cells = (rowNumber: number, count: number): string =>
+      Array.from({ length: count }, () => `<c t="str"><v>${run(10)}</v></c>`).join('');
+    const rows = `<row r="1">${cells(1, 2)}</row><row r="2">${cells(2, 2)}</row>`;
+    expect(await readCells(sheet(rows), {}, tight)).toEqual([
+      [run(10), run(10)],
+      [run(10), run(10)],
+    ]);
+    await expect(readCells(sheet(`<row r="1">${cells(1, 3)}</row>`), {}, tight)).rejects.toMatchObject({
+      ...limitExceeded,
+      detail: { row: 1, maxRowChars: 25 },
+    });
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: head() holds the same limits', async () => {
+    const xml = sheet(`<row r="1"><c r="A1" t="str"><v>${run(6)}<b/>${run(5)}</v></c></row>`);
+    await expect(readWorksheetHead(bytesOf(xml), context(tight), 1)).rejects.toMatchObject(limitExceeded);
+  });
+
+  it('EC-CELL-TEXT-RUN-SPLIT: a string past the engine maximum surfaces as LIMIT_EXCEEDED, not a RangeError', async () => {
+    const tooLong = (): Promise<readonly string[]> => Promise.reject(new RangeError('Invalid string length'));
+    const xml = sheet('<row r="1"><c r="A1" t="s"><v>0</v></c></row>');
+    await expect(readCells(xml, {}, { sharedStrings: tooLong })).rejects.toMatchObject(limitExceeded);
+    await expect(readWorksheetHead(bytesOf(xml), context({ sharedStrings: tooLong }), 1)).rejects.toMatchObject(limitExceeded);
+  });
+});
+
 // ---------------------------------------------------------------------------------------------------------------
 // Streaming
 // ---------------------------------------------------------------------------------------------------------------
@@ -767,6 +857,99 @@ describe('streaming', () => {
       }
     }
     expect(seen).toBe(200);
+  });
+});
+
+describe('EC-WIDE-SPARSE-ROWS / EC-BLANK-ROWS-GAP-FILL: batches are bounded by the slots they hold', () => {
+  /** The rows yielded before the read failed, and how it failed. The malformed tail sits in the same chunk. */
+  async function rowsBeforeError(
+    xml: string,
+    options: WorksheetRowsOptions = {},
+    overrides: Partial<WorksheetReadContext> = {},
+  ): Promise<{ rows: number; error: unknown }> {
+    let rows = 0;
+    try {
+      for await (const _row of readWorksheetRows(bytesOf(xml), context(overrides), options)) {
+        rows++;
+      }
+    } catch (error) {
+      return { rows, error };
+    }
+    return { rows, error: undefined };
+  }
+
+  const wideRow = (rowNumber: number): string => `<row r="${rowNumber}"><c r="XFD${rowNumber}"><v>${rowNumber}</v></c></row>`;
+  const wideRows = (count: number): string => Array.from({ length: count }, (_unused, index) => wideRow(index + 1)).join('');
+
+  it('EC-WIDE-SPARSE-ROWS: yields 16,384-slot rows in batches of 64 within one chunk', async () => {
+    // One chunk of 200 rows and then broken markup: the rows of every full batch reach the caller before the error.
+    const { rows, error } = await rowsBeforeError(`<worksheet><sheetData>${wideRows(200)}</sheetData></bogus>`);
+    expect(rows).toBe(192);
+    expect(error).toMatchObject({ code: 'XML_MALFORMED' });
+  });
+
+  it('EC-WIDE-SPARSE-ROWS: reads every row of a wide sheet, in order, holes filled with null', async () => {
+    const rows = await readRows(sheet(wideRows(200)));
+    expect(rows.map(row => row.index)).toEqual(Array.from({ length: 200 }, (_unused, index) => index + 1));
+    const last = rows.at(-1)?.cells ?? [];
+    expect(last).toHaveLength(16_384);
+    expect(last[16_383]).toBe(200);
+    expect(last.slice(0, 16_383).every(value => value === null)).toBe(true);
+  });
+
+  it('places cells written out of order and across gaps', async () => {
+    const xml = sheet('<row r="1"><c r="E1"><v>5</v></c><c r="B1"><v>2</v></c><c r="H1"><v>8</v></c><c r="A1"><v>1</v></c></row>');
+    expect(await readCells(xml)).toEqual([[1, 2, null, null, 5, null, null, 8]]);
+  });
+
+  it('EC-WIDE-SPARSE-ROWS: resolves deferred shared strings in every batch', async () => {
+    // The spaced attribute hides t="s" from the pre-scan, so each cell is resolved after its batch is parsed.
+    const rowsXml = Array.from(
+      { length: 150 },
+      (_unused, index) =>
+        `<row r="${index + 1}"><c r="A${index + 1}" t = "s"><v>${index % 2}</v></c><c r="XFD${index + 1}"><v>1</v></c></row>`,
+    ).join('');
+    const rows = await readRows(sheet(rowsXml), {}, { sharedStrings: () => Promise.resolve(['even', 'odd']) });
+    expect(rows).toHaveLength(150);
+    expect(rows.map(row => row.cells[0])).toEqual(Array.from({ length: 150 }, (_unused, index) => (index % 2 === 0 ? 'even' : 'odd')));
+  });
+
+  it('EC-WIDE-SPARSE-ROWS: maxRows and an early break still stop mid-chunk', async () => {
+    expect(await readRows(sheet(wideRows(200)), { maxRows: 70 })).toHaveLength(70);
+    let seen = 0;
+    for await (const _row of readWorksheetRows(bytesOf(sheet(wideRows(200))), context(), {})) {
+      if (++seen === 65) {
+        break;
+      }
+    }
+    expect(seen).toBe(65);
+  });
+
+  it('EC-BLANK-ROWS-GAP-FILL: fills a gap across batches rather than in one', async () => {
+    const gap = '<row r="1"><c r="A1"><v>1</v></c></row><row r="1048576"><c r="A1048576"><v>2</v></c></row>';
+    const { rows, error } = await rowsBeforeError(`<worksheet><sheetData>${gap}</sheetData></bogus>`, { blankRows: true });
+    // Every full batch of 131,072 blank rows reaches the caller before the error: the gap no longer has to fit in one.
+    expect(rows).toBe(7 * 131_072);
+    expect(error).toMatchObject({ code: 'XML_MALFORMED' });
+  });
+
+  it('EC-BLANK-ROWS-GAP-FILL: keeps every index aligned through a gap that spans batches', async () => {
+    const gap =
+      '<row r="1"><c r="A1"><v>1</v></c></row><row r="400000"><c r="A400000"><v>2</v></c></row><row r="400002"><c r="A400002"><v>3</v></c></row>';
+    let expected = 1;
+    let aligned = true;
+    const values: CellValue[] = [];
+    for await (const row of readWorksheetRows(bytesOf(sheet(gap)), context(), { blankRows: true })) {
+      aligned &&= row.index === expected;
+      expected++;
+      if (row.cells.length > 0) {
+        values.push(row.cells[0] ?? null);
+      }
+    }
+    expect(aligned).toBe(true);
+    expect(expected - 1).toBe(400_002);
+    expect(values).toEqual([1, 2, 3]);
+    expect(await readRows(sheet(gap), { blankRows: true, maxRows: 300_000 })).toHaveLength(300_000);
   });
 });
 

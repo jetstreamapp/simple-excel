@@ -35,16 +35,27 @@ why it is off by default and budgeted when turned on.
 ## How the reader stays flat
 
 A sheet is a zip entry; the reader opens it as a stream, inflates a chunk, pushes the decoded text through a
-tokenizer and yields the rows that completed. The parser keeps one row at a time. Breaking out of the loop
-cancels the inflate stream, so `head()` and an early `break` cost only what was already read.
+tokenizer and yields the rows that completed. The parser keeps one row at a time, and the rows waiting to be yielded
+are capped at about a million cell slots (8 MB): a chunk whose rows would hold more — every row a 16,384-slot array
+because of one cell at column XFD, or a `blankRows` gap of a million empty rows — pauses the tokenizer mid-chunk
+until the batch is in your hands. Breaking out of the loop cancels the inflate stream, so `head()` and an early
+`break` cost only what was already read.
+
+The package parts the reader holds whole (`[Content_Types].xml`, the relationships, `workbook.xml`) are capped by
+`limits.maxPartBytes` (32 MiB). `styles.xml` is streamed like a sheet, since a heavily styled workbook's can be tens
+of MB, and only its first 65,490 cell and number formats are kept. The text of one cell by `limits.maxTextLength` (1 Mi characters) and
+of one row by `limits.maxRowChars` (64 Mi), so a hostile upload fails with `LIMIT_EXCEEDED` instead of building
+strings the size of the heap.
 
 The one structure proportional to the file is the **shared-string table**, which cells index into by number; it
 has to be resident while a sheet is being read. It is parsed lazily — only when a sheet actually contains a
-`t="s"` cell — and capped by `limits.maxSharedStringChars` (256 Mi UTF-16 units by default). A file written with
+`t="s"` cell — and capped by `limits.maxSharedStringChars` (256 Mi UTF-16 units by default, where every item counts
+16 units on top of its text for the slot it takes). A file written with
 inline strings has no table at all and reads with a genuinely constant footprint.
 
 What you do with the rows is your own memory budget. `for await (const row of sheet.rows())` is flat;
-`await sheet.toObjects()` is not, because it returns an array of every record.
+`await sheet.toObjects()` is not, because it returns an array of every record; it stops at `limits.maxObjectCells`
+(100M record cells, records × keys).
 
 ## Back-pressure
 
@@ -161,6 +172,10 @@ on the way out.
 - Use `head(n)` to inspect headers or template metadata before committing to a full read.
 - `break` out of the loop as soon as you know enough — the rest of the sheet is never inflated.
 - Lower `limits` for untrusted uploads; raise `maxInflatedBytes` deliberately for a large file you trust.
+- Object mode gives every record every column up to the last header, so a stray value far right of the header
+  costs nothing (it is left out and reported as `DATA_BEYOND_HEADER`). A header row that itself reaches column XFD
+  still builds 16,384-key records: its cost is rows times header columns however few cells the rows hold. Stream
+  such a sheet in array mode, or pass `maxColumns` to refuse it.
 - Prefer a `Blob`/`File` or a `RandomAccessSource` over materializing an `ArrayBuffer`: the reader only pulls the
   ranges it needs.
 

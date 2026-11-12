@@ -41,23 +41,74 @@ export type XlsxErrorCode =
   | 'ENTRY_TOO_LARGE'
   /** Writer used out of order (two open sheets, write after close, ...). */
   | 'WRITER_STATE'
-  /** The caller's AbortSignal fired or `abort()` was called. */
+  /**
+   * The caller cancelled: their AbortSignal fired or they called `abort()`. Reading from a workbook or source the
+   * caller already closed reports it too. Never used for a failure the caller did not ask for.
+   */
   | 'ABORTED'
+  /**
+   * Something underneath the library failed: a sink's write or close, a Node stream or file (including an HTTP
+   * response whose client disconnected), a `RandomAccessSource` read, a compressor, or a callback the caller passed
+   * in. The original error is the standard `cause`.
+   */
+  | 'IO_ERROR'
   /** A required platform feature (CompressionStream, Blob, ...) is missing. */
   | 'UNSUPPORTED_ENVIRONMENT';
+
+/**
+ * Marks every `XlsxError` from every copy of the library (the core and node entries, the ESM and CommonJS builds, two
+ * installed versions), so `instanceof XlsxError` and `isXlsxError` hold whichever copy threw it.
+ */
+const XLSX_ERROR_BRAND: unique symbol = Symbol.for('@jetstreamapp/simple-excel/XlsxError');
+
+function hasBrand(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && (value as { [XLSX_ERROR_BRAND]?: unknown })[XLSX_ERROR_BRAND] === true;
+}
 
 export class XlsxError extends Error {
   readonly code: XlsxErrorCode;
   readonly detail: Readonly<Record<string, unknown>> | undefined;
 
-  constructor(code: XlsxErrorCode, message: string, detail?: Readonly<Record<string, unknown>>) {
-    super(message);
+  /**
+   * `options.cause` becomes the standard `Error.cause`: the platform, stream or caller error this one classifies.
+   * `detail` carries structured facts about the failure (limits, part names), never the cause.
+   */
+  constructor(code: XlsxErrorCode, message: string, detail?: Readonly<Record<string, unknown>>, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'XlsxError';
     this.code = code;
     this.detail = detail;
   }
+
+  /**
+   * `instanceof XlsxError` holds for an error from any copy of the library, not only this one: the node entry is a
+   * separate bundle, and a dual package can load the ESM and CommonJS builds side by side. A subclass keeps the
+   * ordinary prototype check.
+   */
+  static override [Symbol.hasInstance](value: unknown): value is XlsxError {
+    if (this !== XlsxError) {
+      return Function.prototype[Symbol.hasInstance].call(this, value);
+    }
+    return hasBrand(value) || Function.prototype[Symbol.hasInstance].call(this, value);
+  }
+
+  static {
+    Object.defineProperty(this.prototype, XLSX_ERROR_BRAND, { value: true });
+  }
 }
 
+/** True for an `XlsxError` from any copy of the library (see `XlsxError[Symbol.hasInstance]`). */
 export function isXlsxError(value: unknown): value is XlsxError {
-  return value instanceof XlsxError || (typeof value === 'object' && value !== null && (value as { name?: unknown }).name === 'XlsxError');
+  return hasBrand(value);
+}
+
+/**
+ * Classify a failure the library did not raise itself: an `XlsxError` passes through unchanged, anything else
+ * becomes a new `XlsxError` with `code` and `message` and the original as its `cause`.
+ */
+export function classifyError(reason: unknown, code: XlsxErrorCode, message: string): XlsxError {
+  if (hasBrand(reason)) {
+    return reason as XlsxError;
+  }
+  return new XlsxError(code, message, undefined, { cause: reason });
 }

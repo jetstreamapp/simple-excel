@@ -284,16 +284,37 @@ export interface WorkbookWriter {
 export type SniffResult = 'xlsx' | 'xlsb' | 'ods' | 'zip' | 'cfb-encrypted' | 'cfb-legacy' | 'xml' | 'html' | 'empty' | 'text' | 'unknown';
 
 export interface ReadLimits {
-  /** Per part. Default 1 GiB. */
+  /** Per part, streamed or not. Default 1 GiB. */
   readonly maxInflatedBytes?: number;
-  /** Default 256 Mi UTF-16 units. */
+  /**
+   * Per part the reader holds whole: `[Content_Types].xml`, the relationship parts and the workbook part. Worksheets,
+   * the shared-string table and the styles part are streamed, and only `maxInflatedBytes` applies to them.
+   * Default 32 MiB.
+   */
+  readonly maxPartBytes?: number;
+  /**
+   * The shared-string table's size: every item's text in UTF-16 units plus 16 per item for the slot it takes, so a
+   * table of millions of empty items is held to it too. Default 256 Mi, about 16.7M items at most.
+   */
   readonly maxSharedStringChars?: number;
   /** Default 10,000. */
   readonly maxEntries?: number;
   /** Default 256. */
   readonly maxXmlDepth?: number;
-  /** Default 64 Mi UTF-16 units for one text node. */
+  /**
+   * UTF-16 units in one piece of text: one cell's value, inline string or formula text, one shared-string item, or
+   * any single text node, however many runs build it. Default 1,048,576 (Excel holds 32,767 characters in a cell).
+   */
   readonly maxTextLength?: number;
+  /** UTF-16 units of text in one row of a sheet, all its cells together. Default 64 Mi. */
+  readonly maxRowChars?: number;
+  /**
+   * Cells `toObjects()` may hold at once, counted as records x keys; past it `toObjects()` throws `LIMIT_EXCEEDED`
+   * and the streaming `rows({ mode: 'object' })`, which holds one record at a time, is the way to read the sheet.
+   * Default 100,000,000: a legitimate wide load (200k rows x 300 columns is 60M) fits, and a pathological one (a
+   * 16,384-column header over 65k rows) stops early. A cell costs about 40 to 60 bytes in Node, less in browsers.
+   */
+  readonly maxObjectCells?: number;
 }
 
 /**
@@ -302,8 +323,20 @@ export interface ReadLimits {
  *   which is what Excel shows (EC-SST-INDEX-OUT-OF-RANGE).
  * - `'SHARED_STRINGS_MISSING'`: a `t="s"` cell in a workbook that has no shared-string part at all. It reads as `''`
  *   (EC-SST-ABSENT-INLINE-ONLY).
+ * - `'DATA_BEYOND_HEADER'`: in object mode (`rows({ mode: 'object' })`, `toObjects()`), values to the right of the last
+ *   header: the last header cell that holds a value (an empty string counts), or the last of the caller's `headers`.
+ *   Records stop at the header, so these values are left out (SheetJS would give every record a key for every column
+ *   out to them; EC-DATA-BEYOND-HEADER). Reported once per sheet when the read ends, counting only the records the read
+ *   returned (a `toObjects()` that fails reports nothing), with `ref` the first such cell and
+ *   `detail.columns` (`'E:XFD'`, or one column's letters), `detail.columnCount` (columns with such a value),
+ *   `detail.cellCount` (values left out) and `detail.lastHeaderColumn` (`'D'`, or `''` when the header row names
+ *   nothing).
+ * - `'CELL_FORMATS_IGNORED'`: the styles part lists more than 65,490 cell formats (`cellXfs`) or number formats
+ *   (`numFmts`), Excel's ceiling, and a number cell uses one past it. The formats past it are ignored, so such a cell
+ *   reads as a plain number: a date there comes back as its serial (EC-STYLES-XF-OVERFLOW). `detail.maxCellFormats`
+ *   is the ceiling.
  */
-export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING';
+export type ReadWarningCode = 'SST_INDEX_OUT_OF_RANGE' | 'SHARED_STRINGS_MISSING' | 'DATA_BEYOND_HEADER' | 'CELL_FORMATS_IGNORED';
 
 /** Something a sheet says that Excel tolerates and the reader repaired, reported through `OpenOptions.onWarning`. */
 export interface ReadWarning {
@@ -313,6 +346,8 @@ export interface ReadWarning {
   readonly sheet?: string;
   /** A1 reference of the first cell that triggered the warning. */
   readonly ref?: string;
+  /** Structured facts about the warning, for a UI to show; which keys each code sets is listed on `ReadWarningCode`. */
+  readonly detail?: Readonly<Record<string, string | number>>;
 }
 
 export interface OpenOptions {
@@ -326,9 +361,9 @@ export interface OpenOptions {
   readonly limits?: ReadLimits;
   readonly signal?: AbortSignal;
   /**
-   * Called when a sheet holds something the reader repaired instead of rejecting (see `ReadWarningCode`). Each code
-   * is reported at most once per sheet, for the first cell that hit it, however many cells do; the read goes on
-   * either way. Without a callback nothing is collected.
+   * Called when a sheet holds something the reader repaired or left out instead of rejecting (see
+   * `ReadWarningCode`). Each code is reported at most once per sheet, for the first cell that hit it, however many
+   * cells do; the read goes on either way. Without a callback nothing is collected.
    */
   readonly onWarning?: (warning: ReadWarning) => void;
 }
@@ -355,12 +390,16 @@ export interface RowsOptions {
 }
 
 /**
- * Object mode, the `sheet_to_json` contract. Columns are named from the header row, starting at the first column of
- * the sheet's `<dimension>` when it declares one (column A otherwise) and running to the wider of the dimension and
- * the header row. A data row with a value outside those columns still keeps it, under a blank-header name
- * (`__EMPTY`, ...). `toObjects()` gives every record every column, filling the ones named after a record was built
- * with `defval`; streaming `rows({ mode: 'object' })` cannot revisit records it already yielded, so there a column
- * first named by a later row is missing from the records before it.
+ * Object mode, the `sheet_to_json` contract bound to the header. Columns are named from the header row, starting at
+ * the first column of the sheet's `<dimension>` when it declares one (column A otherwise) and ending at the last
+ * header cell that holds a value (an empty string counts); blank header cells in between are named `__EMPTY`,
+ * `__EMPTY_1`, ... as in SheetJS. A value to the right of the last header is left out of the records and reported
+ * once per sheet as `DATA_BEYOND_HEADER`:
+ * SheetJS instead names every column out to the widest row, so one stray value at XFD gives every record 16,384 keys
+ * (EC-DATA-BEYOND-HEADER). A value left of the first named column still gets a blank-header name. `toObjects()` gives
+ * every record every column, filling the ones named after a record was built with `defval`; streaming
+ * `rows({ mode: 'object' })` cannot revisit records it already yielded, so there a column first named by a later row
+ * is missing from the records before it.
  */
 export interface ObjectRowsOptions {
   /**
@@ -381,10 +420,19 @@ export interface ObjectRowsOptions {
   readonly headerNaming?: 'sheetjs' | 'index';
   /** Drop columns whose header is empty instead of naming them. Default false. */
   readonly dropEmptyHeaders?: boolean;
+  /**
+   * Name the columns yourself instead of reading a header row: `headers[i]` is the key for the i-th column from A,
+   * and every record has exactly these keys (a name given twice keeps the later column's value). Values right of
+   * the last one are left out with `DATA_BEYOND_HEADER`. No row is read as headers: data starts at `startRow`, or
+   * after `headerRow` when that is given too. `headerNaming` and `dropEmptyHeaders` do not apply.
+   */
+  readonly headers?: readonly string[];
 }
 
 export type ArrayRowsOptions = RowsOptions & { readonly mode?: 'array' };
 export type ObjectModeRowsOptions = RowsOptions & ObjectRowsOptions & { readonly mode: 'object' };
+/** Options whose `mode` is only known at run time (`'array' | 'object'`); the object-mode options apply to `'object'` only. */
+export type AnyModeRowsOptions = RowsOptions & ObjectRowsOptions & { readonly mode?: 'array' | 'object' };
 
 /** Element type of a row: `CellValue`, widened to include `CellError` when the workbook was opened with `errors: 'object'`. */
 export type ReadValue = CellValue | CellError;
@@ -400,6 +448,7 @@ export interface Sheet<V extends ReadValue = CellValue> {
   readonly info: SheetInfo;
   rows(options?: ArrayRowsOptions): AsyncIterable<V[]>;
   rows(options: ObjectModeRowsOptions): AsyncIterable<Record<string, V>>;
+  rows(options: AnyModeRowsOptions): AsyncIterable<V[] | Record<string, V>>;
   toObjects(options?: RowsOptions & ObjectRowsOptions): Promise<ObjectsResult<V>>;
   /** First `rowCount` rows as A1-keyed cells, then stops inflating. */
   head(rowCount: number): Promise<Map<string, RawCell>>;
