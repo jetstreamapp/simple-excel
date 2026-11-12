@@ -27,8 +27,9 @@ All notable changes to this project will be documented in this file.
 - `ObjectRowsOptions.headers`: name the columns yourself (`headers[i]` keys the i-th column from A) instead of
   reading a header row; every record has exactly those keys.
 - `DATA_BEYOND_HEADER`, a new `ReadWarningCode`: object mode left out values to the right of the last header.
-  Reported once per sheet when the read ends, with `detail.columns` (such as `'E:XFD'`), `columnCount`, `cellCount`
-  and `lastHeaderColumn`.
+  Reported once per sheet when the read ends, counting only the records the read returned (a `toObjects()` that
+  fails reports nothing), with `detail.columns` (such as `'E:XFD'`), `columnCount`, `cellCount` and
+  `lastHeaderColumn`.
 - `CELL_FORMATS_IGNORED`, a new `ReadWarningCode`: the styles part lists more than 65,490 `cellXfs` or `numFmts`
   and a number cell uses one past that ceiling, so it reads as a plain number (a date there comes back as its
   serial).

@@ -400,6 +400,11 @@ interface ObjectReadState {
   truncated: boolean;
   /** Set as soon as the read starts, so `toObjects` can count the keys it holds and backfill once the stream ends. */
   builder: ObjectRowBuilder | undefined;
+  /**
+   * `toObjects` reports `DATA_BEYOND_HEADER` itself, once it has every record: the read can still fail its cell
+   * budget after the stream ends, and a failed read reports nothing.
+   */
+  readonly deferWarning: boolean;
 }
 
 /** 1-based header row "the first row with a value", as opposed to a row the caller named. */
@@ -532,21 +537,27 @@ class ObjectRowBuilder {
     return this.columns.length;
   }
 
-  /** The record for one row, or null when the row is the header row or sits before the first data row. */
-  accept(rowIndex: number, cells: readonly ReadValue[]): Record<string, ReadValue> | null {
+  /**
+   * Names the columns when this row is (or has passed) the header row, then says whether the row is a data row. Only a
+   * data row the read hands over goes on to `build`: the one read past `maxRows` to prove truncation must neither
+   * name a column nor count toward `DATA_BEYOND_HEADER`.
+   */
+  admit(rowIndex: number, cells: readonly ReadValue[]): boolean {
     if (!this.headersReady) {
       if (this.headerRow === DETECT_HEADER_ROW) {
         this.firstDataRow = rowIndex + 1;
         this.nameHeaderRow(cells);
-        return null;
+        return false;
       }
       if (rowIndex >= this.headerRow) {
         this.nameHeaderRow(rowIndex === this.headerRow ? cells : NO_HEADER_CELLS);
       }
     }
-    if (rowIndex < this.firstDataRow) {
-      return null;
-    }
+    return rowIndex >= this.firstDataRow;
+  }
+
+  /** The record for a row `admit` accepted; values right of the header are noted for `DATA_BEYOND_HEADER`. */
+  build(rowIndex: number, cells: readonly ReadValue[]): Record<string, ReadValue> {
     if (this.leftmostNamed > 0) {
       this.nameColumnsBefore(firstValueIndex(cells, this.leftmostNamed));
     }
@@ -695,7 +706,7 @@ class SheetReader implements Sheet<ReadValue> {
   rows(options: AnyModeRowsOptions): AsyncIterable<ReadValue[] | Record<string, ReadValue>>;
   rows(options: AnyModeRowsOptions = {}): AsyncIterable<ReadValue[] | Record<string, ReadValue>> {
     if (options.mode === 'object') {
-      return this.objectRows(options, { headers: [], truncated: false, builder: undefined });
+      return this.objectRows(options, { headers: [], truncated: false, builder: undefined, deferWarning: false });
     }
     return this.arrayRows(options);
   }
@@ -706,7 +717,7 @@ class SheetReader implements Sheet<ReadValue> {
    */
   async toObjects(options: RowsOptions & ObjectRowsOptions = {}): Promise<ObjectsResult<ReadValue>> {
     const maxObjectCells = this.parts.maxObjectCells;
-    const state: ObjectReadState = { headers: [], truncated: false, builder: undefined };
+    const state: ObjectReadState = { headers: [], truncated: false, builder: undefined, deferWarning: true };
     const rows: Record<string, ReadValue>[] = [];
     let cells = 0;
     for await (const row of this.objectRows(options, state)) {
@@ -723,6 +734,7 @@ class SheetReader implements Sheet<ReadValue> {
       throw tooManyObjectCells(maxObjectCells, rows.length, columns);
     }
     state.builder?.backfill(rows);
+    this.reportDataBeyondHeader(state.builder);
     return { rows, headers: state.headers, truncated: state.truncated };
   }
 
@@ -752,17 +764,17 @@ class SheetReader implements Sheet<ReadValue> {
     let failed = false;
     try {
       for await (const row of readWorksheetRows(this.partStream(), this.parts.context, rowOptions)) {
-        const record = builder.accept(row.index, row.cells as ReadValue[]);
-        if (record === null) {
+        const cells = row.cells as ReadValue[];
+        if (!builder.admit(row.index, cells)) {
           continue;
         }
-        // One record past the limit is what proves the sheet had more to give.
+        // One data row past the limit is what proves the sheet had more to give; it is never built.
         if (emitted >= maxRows) {
           state.truncated = true;
           return;
         }
         emitted++;
-        yield record;
+        yield builder.build(row.index, cells);
       }
     } catch (error) {
       failed = true;
@@ -770,10 +782,17 @@ class SheetReader implements Sheet<ReadValue> {
     } finally {
       state.headers = builder.headers;
       // Once per read, when it ends (or the caller stops it): only then are the columns it left out all known.
-      const warning = failed ? undefined : builder.dataBeyondHeaderWarning();
-      if (warning !== undefined) {
-        this.parts.context.onWarning?.(warning);
+      if (!failed && !state.deferWarning) {
+        this.reportDataBeyondHeader(builder);
       }
+    }
+  }
+
+  /** The read's one `DATA_BEYOND_HEADER` warning, when it left anything out. */
+  private reportDataBeyondHeader(builder: ObjectRowBuilder | undefined): void {
+    const warning = builder?.dataBeyondHeaderWarning();
+    if (warning !== undefined) {
+      this.parts.context.onWarning?.(warning);
     }
   }
 
