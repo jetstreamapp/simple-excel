@@ -158,8 +158,11 @@ def main():
             if total % 250 == 0:
                 print(f"{total}/{len(todo)} {counts}", file=sys.stderr)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        list(pool.map(work, todo))
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+            list(pool.map(work, todo))
+    finally:
+        log.close()
     print(f"finished {counts}", file=sys.stderr)
 
 
