@@ -371,3 +371,5 @@ coverage/
 
 # Office owner lock files (they carry the author name)
 ~$*
+
+.deepsec/
