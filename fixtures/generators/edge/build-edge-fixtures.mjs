@@ -171,6 +171,89 @@ write(EDGE, 'hidden-and-veryhidden-sheets.xlsx', {
   'xl/worksheets/sheet2.xml': sheet({ rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>hidden</t></is></c></row>', dimension: '' }),
   'xl/worksheets/sheet3.xml': sheet({ rows: '<row r="1"><c r="A1" t="inlineStr"><is><t>veryHidden</t></is></c></row>', dimension: '' }),
 });
+// ---- corpus (reductions of real-world corpus-audit findings, tagged kind:corpus; scripts/corpus-audit/) ----
+// Text-typed cells with no value child (EC-TEXT-CELL-NO-TEXT), the shape openpyxl rewrites leave behind: B2 and C2
+// are blank like empty-v-element.xlsx's, and rows 4 and 5 hold nothing else, so they are blank rows. SheetJS reads each
+// such cell as '' and gives sheet_to_json a record of '' for rows 4 and 5.
+write(
+  EDGE,
+  'text-cell-no-text.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:C5"/>',
+      rows: '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row><row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" t="inlineStr"/><c r="C2" s="1" t="str"/></row><row r="3"><c r="A3" t="s"><v>4</v></c><c r="B3" t="b"><v>1</v></c><c r="C3"><f>B2*2</f><v>25</v></c></row><row r="4"><c r="A4" t="inlineStr"/><c r="B4" t="str"/><c r="C4" t="s"/></row><row r="5"><c r="A5" s="1" t="inlineStr"/><c r="B5" t="inlineStr"/></row>',
+    }),
+  }),
+);
+// The built-in accounting formats, numFmtId 41 to 44 (EC-NUMFMT-ACCOUNTING-BUILTIN): B2 uses 44, row 4 uses 41, 42
+// and 43. Plain numbers to us; SheetJS with Jetstream's options (cellDates without cellText) throws inside and drops
+// the sheet.
+write(
+  EDGE,
+  'accounting-numfmt.xlsx',
+  parts({
+    'xl/styles.xml': styles
+      .replace('<cellXfs count="2">', '<cellXfs count="6">')
+      .replace(
+        '</cellXfs>',
+        [41, 42, 43, 44].map(id => `<xf numFmtId="${id}" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`).join('') +
+          '</cellXfs>',
+      ),
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:C4"/>',
+      rows: '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row><row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" s="5"><v>12.5</v></c><c r="C2" s="1"><v>45351</v></c></row><row r="3"><c r="A3" t="s"><v>4</v></c><c r="B3" t="b"><v>1</v></c><c r="C3"><f>B2*2</f><v>25</v></c></row><row r="4"><c r="A4" s="2"><v>1234.5</v></c><c r="B4" s="3"><v>-1234.5</v></c><c r="C4" s="4"><v>0.25</v></c></row>',
+    }),
+  }),
+);
+// Numeric character references past U+FFFF (EC-XML-NCR-ABOVE-BMP): a decimal one in a shared string (A2), a hex one
+// in an inline string (A3) and in a t="str" value (A4). SheetJS keeps only the low 16 bits of the first two (U+F603,
+// U+F600) and reads the third as U+0000.
+write(
+  EDGE,
+  'ncr-above-bmp.xlsx',
+  parts({
+    'xl/sharedStrings.xml': sst(['Name', 'Amount', 'When', 'Zo&#235; &#128515;', 'x']),
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:C4"/>',
+      rows: '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row><row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2"><v>12.5</v></c><c r="C2" s="1"><v>45351</v></c></row><row r="3"><c r="A3" t="inlineStr"><is><t>&#x1F600;x</t></is></c><c r="B3" t="b"><v>1</v></c><c r="C3"><f>B2*2</f><v>25</v></c></row><row r="4"><c r="A4" t="str"><v>&#x1F600;</v></c></row>',
+    }),
+  }),
+);
+// A chartsheet next to the data (EC-CHARTSHEET-CACHED-SERIES): it has no cells, but its chart caches the plotted
+// values (5 and 7) in <c:numCache>, and SheetJS turns them into cells A1:A2 of the chartsheet.
+const NS_DRAWING = 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+const NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const NS_C = 'http://schemas.openxmlformats.org/drawingml/2006/chart';
+const relationships = (type, target) =>
+  `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${NS_R}/${type}" Target="${target}"/></Relationships>`;
+write(EDGE, 'chartsheet-cached-series.xlsx', {
+  ...parts(),
+  '[Content_Types].xml': contentTypes(
+    '<Override PartName="/xl/chartsheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>',
+  ),
+  'xl/workbook.xml': workbook().replace('</sheets>', '<sheet name="Chart1" sheetId="2" r:id="rId4"/></sheets>'),
+  'xl/_rels/workbook.xml.rels': workbookRels().replace(
+    '</Relationships>',
+    `<Relationship Id="rId4" Type="${NS_R}/chartsheet" Target="chartsheets/sheet1.xml"/></Relationships>`,
+  ),
+  'xl/chartsheets/sheet1.xml': `${XML}<chartsheet xmlns="${NS}" xmlns:r="${NS_R}"><sheetPr/><sheetViews><sheetView workbookViewId="0"/></sheetViews><drawing r:id="rId1"/></chartsheet>`,
+  'xl/chartsheets/_rels/sheet1.xml.rels': relationships('drawing', '../drawings/drawing1.xml'),
+  'xl/drawings/drawing1.xml': `${XML}<xdr:wsDr xmlns:xdr="${NS_DRAWING}" xmlns:a="${NS_A}"><xdr:absoluteAnchor><xdr:pos x="0" y="0"/><xdr:ext cx="8666600" cy="6300000"/><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="Chart 1"/><xdr:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></xdr:cNvGraphicFramePr></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="${NS_C}"><c:chart xmlns:c="${NS_C}" xmlns:r="${NS_R}" r:id="rId1"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:absoluteAnchor></xdr:wsDr>`,
+  'xl/drawings/_rels/drawing1.xml.rels': relationships('chart', '../charts/chart1.xml'),
+  'xl/charts/chart1.xml': `${XML}<c:chartSpace xmlns:c="${NS_C}" xmlns:a="${NS_A}" xmlns:r="${NS_R}"><c:chart><c:plotArea><c:layout/><c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:ser><c:idx val="0"/><c:order val="0"/><c:val><c:numRef><c:f>Data!$B$2:$B$3</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="2"/><c:pt idx="0"><c:v>5</c:v></c:pt><c:pt idx="1"><c:v>7</c:v></c:pt></c:numCache></c:numRef></c:val></c:ser><c:axId val="1"/><c:axId val="2"/></c:barChart><c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:axPos val="b"/><c:crossAx val="2"/></c:catAx><c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:axPos val="l"/><c:crossAx val="1"/></c:valAx></c:plotArea></c:chart></c:chartSpace>`,
+});
+// Rows whose only values are errors (EC-OBJECTS-ERROR-ONLY-ROW): row 4 holds #N/A and a formula's cached #DIV/0!,
+// row 5 only #NULL!. Records with errors: 'string'; no values, so no records, with errors: 'null' and in SheetJS.
+write(
+  EDGE,
+  'error-only-rows.xlsx',
+  parts({
+    'xl/worksheets/sheet1.xml': sheet({
+      dimension: '<dimension ref="A1:C5"/>',
+      rows: '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c></row><row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2"><v>12.5</v></c><c r="C2" s="1"><v>45351</v></c></row><row r="3"><c r="A3" t="s"><v>4</v></c><c r="B3" t="b"><v>1</v></c><c r="C3"><f>B2*2</f><v>25</v></c></row><row r="4"><c r="A4" t="e"><v>#N/A</v></c><c r="B4" t="e"><f>1/0</f><v>#DIV/0!</v></c></row><row r="5"><c r="A5" t="e"><v>#NULL!</v></c></row>',
+    }),
+  }),
+);
 
 // ---- hostile ----
 write(
