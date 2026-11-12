@@ -14,6 +14,7 @@ import { RESULT_MARKER } from './lib/child.mjs';
 import { OPS, listEngineNames, loadEngine } from './lib/engines.mjs';
 import { renderSummaryMarkdown } from './lib/metrics.mjs';
 import { createResultsDir, machineInfo } from './lib/results-dir.mjs';
+import { scrubLocalPaths, stringifyScrubbed } from '../scripts/lib/local-paths.mjs';
 
 const BENCH_DIR = fileURLToPath(new URL('.', import.meta.url));
 const GENERATED_DIR = resolve(BENCH_DIR, '../.generated/bench');
@@ -249,8 +250,8 @@ async function describeEngines(names) {
 }
 
 function writeOutputs(results, resultsDir) {
-  writeFileSync(join(resultsDir, 'results.json'), JSON.stringify(results, null, 2));
-  writeFileSync(join(resultsDir, 'summary.md'), renderSummaryMarkdown(results));
+  writeFileSync(join(resultsDir, 'results.json'), stringifyScrubbed(results));
+  writeFileSync(join(resultsDir, 'summary.md'), scrubLocalPaths(renderSummaryMarkdown(results)));
 }
 
 async function runBenchmarks(options) {

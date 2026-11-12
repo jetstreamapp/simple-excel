@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { DATASET_NAMES, DEFAULT_SEED, SIZE_NAMES, resolveShape } from './dataset.mjs';
 import { formatBytes, formatMs } from './metrics.mjs';
 import { createResultsDir, machineInfo } from './results-dir.mjs';
+import { scrubLocalPaths, stringifyScrubbed } from '../../scripts/lib/local-paths.mjs';
 
 const BENCH_DIR = fileURLToPath(new URL('..', import.meta.url));
 const WEB_DIR = join(BENCH_DIR, 'web');
@@ -341,8 +342,8 @@ async function main() {
             `[chrome]   -> ${cell.status === 'ok' ? `${formatMs(cell.ms)}, ${formatBytes(cell.bytes)}, agent-cluster peak ${formatBytes(cell.memory?.peakBytes)}, renderer RSS delta ${formatBytes(cell.process?.rendererRssDeltaBytes)}` : `${cell.status.toUpperCase()} ${cell.error?.name}: ${cell.error?.message}`}`,
           );
           results.loadAvgEnd = os.loadavg();
-          writeFileSync(join(resultsDir.absolute, 'chrome.json'), JSON.stringify(results, null, 2));
-          writeFileSync(join(resultsDir.absolute, 'chrome.md'), renderMarkdown(results));
+          writeFileSync(join(resultsDir.absolute, 'chrome.json'), stringifyScrubbed(results));
+          writeFileSync(join(resultsDir.absolute, 'chrome.md'), scrubLocalPaths(renderMarkdown(results)));
         }
       }
     }
