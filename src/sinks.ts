@@ -230,6 +230,8 @@ export function fromWritableStream(stream: WritableStream<Uint8Array>): ByteSink
   let released = false;
   /** Writes the stream has not settled yet; an abort does not wait behind them (see `abort`). */
   let pendingWrites = 0;
+  /** True while a `close()` is in flight; an abort does not wait behind it either. */
+  let closing = false;
   // A stream that errors rejects `closed` whether or not anyone looks at it, and `releaseLock()` rejects `ready`;
   // every failure the caller cares about is reported by write/close/abort instead.
   void writer.closed.catch(() => undefined);
@@ -257,19 +259,22 @@ export function fromWritableStream(stream: WritableStream<Uint8Array>): ByteSink
       }
     },
     async close(): Promise<void> {
+      closing = true;
       try {
         await writer.close();
       } catch (error) {
         throw toSinkError(error);
       } finally {
+        closing = false;
         releaseLock();
       }
     },
     async abort(reason?: unknown): Promise<void> {
       const aborting = writer.abort(reason);
-      if (pendingWrites > 0) {
-        // The stream only finishes aborting once the write it is running settles, and an underlying sink stalled on
-        // back-pressure may never settle it. The abort is under way either way; the caller must not hang on it.
+      if (pendingWrites > 0 || closing) {
+        // The stream only finishes aborting once the write or close it is running settles, and an underlying sink
+        // stalled on back-pressure or on a commit may never settle it. The abort is under way either way; the caller
+        // must not hang on it.
         void aborting.catch(() => undefined);
         releaseLock();
         return;

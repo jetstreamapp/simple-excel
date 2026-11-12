@@ -27,8 +27,9 @@ All notable changes to this project will be documented in this file.
 - `ObjectRowsOptions.headers`: name the columns yourself (`headers[i]` keys the i-th column from A) instead of
   reading a header row; every record has exactly those keys.
 - `DATA_BEYOND_HEADER`, a new `ReadWarningCode`: object mode left out values to the right of the last header.
-  Reported once per sheet when the read ends, with `detail.columns` (such as `'E:XFD'`), `columnCount`, `cellCount`
-  and `lastHeaderColumn`.
+  Reported once per sheet when the read ends, counting only the records the read returned (a `toObjects()` that
+  fails reports nothing), with `detail.columns` (such as `'E:XFD'`), `columnCount`, `cellCount` and
+  `lastHeaderColumn`.
 - `CELL_FORMATS_IGNORED`, a new `ReadWarningCode`: the styles part lists more than 65,490 `cellXfs` or `numFmts`
   and a number cell uses one past that ceiling, so it reads as a plain number (a date there comes back as its
   serial).
@@ -118,7 +119,8 @@ All notable changes to this project will be documented in this file.
   already finished.
 - `workbook.abort()` cancels a write stuck on back-pressure: the abort reaches the sink at once instead of queueing
   behind the pending write, so `abort()` resolves and the pending `writeRow` rejects with `ABORTED`, for a stalled
-  `WritableStream` and a paused Node stream alike.
+  `WritableStream` and a paused Node stream alike. The same holds for a `WritableStream` whose `close()` never
+  finishes: `abort()` resolves and the pending `workbook.close()` rejects with `ABORTED`.
 - `openWorkbook` closes a `RandomAccessSource` (such as `fromFile`) when the sniff step or the zip directory read
   rejects; an encrypted, `.xls`, CSV, empty or truncated upload used to leak the file handle.
 - `toFile` no longer leaves a partial file at the target after an abort or a failed write.

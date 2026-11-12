@@ -326,7 +326,8 @@ export interface ReadLimits {
  * - `'DATA_BEYOND_HEADER'`: in object mode (`rows({ mode: 'object' })`, `toObjects()`), values to the right of the last
  *   header: the last header cell that holds a value (an empty string counts), or the last of the caller's `headers`.
  *   Records stop at the header, so these values are left out (SheetJS would give every record a key for every column
- *   out to them; EC-DATA-BEYOND-HEADER). Reported once per sheet when the read ends, with `ref` the first such cell and
+ *   out to them; EC-DATA-BEYOND-HEADER). Reported once per sheet when the read ends, counting only the records the read
+ *   returned (a `toObjects()` that fails reports nothing), with `ref` the first such cell and
  *   `detail.columns` (`'E:XFD'`, or one column's letters), `detail.columnCount` (columns with such a value),
  *   `detail.cellCount` (values left out) and `detail.lastHeaderColumn` (`'D'`, or `''` when the header row names
  *   nothing).

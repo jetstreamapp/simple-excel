@@ -1363,6 +1363,25 @@ describe('failure propagation (EC-WRITER-FAILURE-STICKY)', () => {
     expect(stream.locked).toBe(false);
   });
 
+  it('abort() resolves, and the pending close() rejects, while a WritableStream never settles its close', async () => {
+    const stream = new WritableStream<Uint8Array>({
+      close: (): Promise<void> => new Promise<void>(() => {}),
+    });
+    const workbook = createWorkbookWriter(stream, { deterministic: true });
+    const sheet = workbook.addSheet('Data');
+    await sheet.writeRow([1]);
+    await sheet.close();
+    const closing = workbook.close();
+    void closing.catch(() => undefined);
+    expect(await Promise.race([closing.then(() => 'settled'), delay(50).then(() => 'pending')])).toBe('pending');
+
+    const aborting = workbook.abort();
+    expect(await Promise.race([aborting.then(() => 'settled'), delay(1000).then(() => 'pending')])).toBe('settled');
+    const failure = await rejection(() => closing);
+    expect(failure).toMatchObject({ code: 'ABORTED' });
+    expect(stream.locked).toBe(false);
+  });
+
   it('an abort after a failure keeps the original error and does not abort the sink twice', async () => {
     const spy = createSpySink();
     const workbook = createWorkbookWriter(spy, { deterministic: true });
