@@ -38,7 +38,9 @@ const parityCategories = new Map<string, { count: number; examples: string[] }>(
 const objectProblems = new Map<string, { count: number; examples: string[] }>();
 const roundtripCategories = new Map<string, { count: number; examples: string[] }>();
 const known = new Map<string, number>();
+const knownObjects = new Map<string, number>();
 const sheetjsFailures = new Map<string, { count: number; examples: string[] }>();
+const sheetjsDropped = new Map<string, { count: number; examples: string[] }>();
 let totalCells = 0;
 let totalMs = 0;
 
@@ -56,11 +58,21 @@ for (const entry of entries) {
   if (entry.sheetjs && !entry.sheetjs.ok) {
     bump(sheetjsFailures, `${entry.ours?.ok ? 'we read it' : 'we fail too'}: ${String(entry.sheetjs.error).slice(0, 60)}`, entry.file);
   }
+  if (entry.sheetjs?.dropped) {
+    bump(
+      sheetjsDropped,
+      `${entry.sheetjs.dropped.reason ?? 'unexplained'}: ${String(entry.sheetjs.dropped.error).slice(0, 90)}`,
+      entry.file,
+    );
+  }
   for (const category of Object.keys(entry.parity?.byCategory ?? {})) {
     bump(parityCategories, category, entry.file);
   }
   for (const [reason, count] of Object.entries(entry.parity?.known ?? {})) {
     known.set(reason, (known.get(reason) ?? 0) + (count as number));
+  }
+  for (const [reason, count] of Object.entries(entry.objects?.known ?? {})) {
+    knownObjects.set(reason, (knownObjects.get(reason) ?? 0) + (count as number));
   }
   if (entry.objects && !entry.objects.pass) {
     bump(
@@ -118,15 +130,21 @@ if (byFolder.size > 1) {
 table('Rejected (classified XlsxError)', rejections);
 table('Unclassified errors, timeouts, crashes', unclassified);
 table('SheetJS failures', sheetjsFailures);
+table('Sheets SheetJS dropped without an error (files; cause from a WTF re-read)', sheetjsDropped);
 table('Parity vs SheetJS: unexplained categories (files)', parityCategories);
 console.log(`\n## Known SheetJS divergences (cells)\n  ${JSON.stringify(Object.fromEntries(known))}`);
+console.log(`\n## Known SheetJS divergences (objects: cells, records or files)\n  ${JSON.stringify(Object.fromEntries(knownObjects))}`);
 table('Objects (toObjects vs sheet_to_json) failures (files)', objectProblems);
 table('Round trip categories (files)', roundtripCategories);
 
-console.log('\n## Slowest reads (stream pass)');
-for (const entry of [...read].sort((a, b) => b.ours.ms - a.ours.ms).slice(0, 10)) {
+// A stream pass over 5x SheetJS's read was timed twice more by the worker; the best of the three ranks it here, so one
+// noisy pass of a small file does not make the list. The first pass is shown alongside.
+const streamMs = (entry: Record<string, any>): number => entry.ours.bestMs ?? entry.ours.ms;
+console.log('\n## Slowest reads (stream pass; best of 3 where the first was over 5x SheetJS)');
+for (const entry of [...read].sort((a, b) => streamMs(b) - streamMs(a)).slice(0, 10)) {
+  const firstPass = entry.ours.bestMs === undefined ? '' : ` (first pass ${entry.ours.ms} ms)`;
   console.log(
-    `  ${String(entry.ours.ms).padStart(7)} ms  ${(entry.bytes / 1048576).toFixed(1)} MB  ${entry.ours.cells.toLocaleString()} cells  sheetjs ${entry.sheetjs?.ms ?? '-'} ms  ${basename(entry.file)}`,
+    `  ${String(streamMs(entry)).padStart(7)} ms${firstPass}  ${(entry.bytes / 1048576).toFixed(1)} MB  ${entry.ours.cells.toLocaleString()} cells  sheetjs ${entry.sheetjs?.ms ?? '-'} ms  ${basename(entry.file)}`,
   );
 }
 console.log('\n## Highest peak RSS growth during the stream pass');
@@ -140,20 +158,26 @@ for (const entry of [...read]
 
 /**
  * `--baseline earlier.jsonl`: what changed per file since that run - status (a new LIMIT_EXCEEDED on a file that read
- * before is a limit set too tight), cell count, and the reader's time and peak-RSS growth in aggregate.
+ * before is a limit set too tight), cell count, and the reader's time and peak-RSS growth in aggregate. Files are
+ * matched by name, which is the content's sha256 in both corpora, so a corpus copied or regrouped into other folders
+ * still lines up with its baseline.
  */
 if (options.baseline) {
-  const before = new Map(load(options.baseline).map(entry => [entry.file as string, entry]));
+  const before = new Map(load(options.baseline).map(entry => [basename(entry.file as string), entry]));
   const transitions = new Map<string, { count: number; examples: string[] }>();
   let cellsChanged = 0;
   let timeBefore = 0;
   let timeAfter = 0;
+  let sheetjsBefore = 0;
+  let sheetjsAfter = 0;
   const rssGrowth: { file: string; before: number; after: number }[] = [];
+  let matched = 0;
   for (const entry of entries) {
-    const old = before.get(entry.file);
+    const old = before.get(basename(entry.file));
     if (!old) {
       continue;
     }
+    matched++;
     const describe = (value: Record<string, any>): string =>
       value.status === 'rejected' || value.status === 'unclassified-error' ? `${value.status}:${value.ours?.error?.code}` : value.status;
     if (describe(old) !== describe(entry)) {
@@ -165,6 +189,9 @@ if (options.baseline) {
       }
       timeBefore += old.ours.ms;
       timeAfter += entry.ours.ms;
+      // SheetJS on the same files is the yardstick for how loaded the machine was in each run.
+      sheetjsBefore += old.sheetjs?.ms ?? 0;
+      sheetjsAfter += entry.sheetjs?.ms ?? 0;
       rssGrowth.push({
         file: entry.file,
         before: old.ours.peakRssMb - old.ours.baselineRssMb,
@@ -173,10 +200,14 @@ if (options.baseline) {
     }
   }
   console.log(`\n# Against baseline ${options.baseline}`);
+  console.log(`  ${matched} of ${entries.length} files are in the baseline's ${before.size}`);
   console.log(transitions.size === 0 ? '  no status changes' : '');
   table('Status changes', transitions);
   console.log(`  files whose cell count changed: ${cellsChanged}`);
   console.log(`  reader time on files read both times: ${(timeBefore / 1000).toFixed(1)}s -> ${(timeAfter / 1000).toFixed(1)}s`);
+  console.log(
+    `  SheetJS on the same files: ${(sheetjsBefore / 1000).toFixed(1)}s -> ${(sheetjsAfter / 1000).toFixed(1)}s; ours / SheetJS ${(timeBefore / sheetjsBefore).toFixed(2)} -> ${(timeAfter / sheetjsAfter).toFixed(2)}`,
+  );
   const worst = rssGrowth.sort((a, b) => b.after - b.before - (a.after - a.before)).slice(0, 5);
   console.log('  largest RSS-growth increases:');
   for (const item of worst) {
@@ -195,8 +226,10 @@ if (options.json) {
         rejections: plain(rejections),
         unclassified: plain(unclassified),
         sheetjsFailures: plain(sheetjsFailures),
+        sheetjsDropped: plain(sheetjsDropped),
         parityCategories: plain(parityCategories),
         known: plain(known),
+        knownObjects: plain(knownObjects),
         objectProblems: plain(objectProblems),
         roundtripCategories: plain(roundtripCategories),
         totalCells,
