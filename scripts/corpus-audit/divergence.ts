@@ -362,7 +362,7 @@ export function strCellTexts(xml: string): Map<string, string> {
     const body = end < 0 ? '' : xml.slice(start, end);
     let valuePattern = valuePatterns.get(prefix);
     if (valuePattern === undefined) {
-      const escaped = prefix.replace(/[.-]/g, '\\$&');
+      const escaped = prefix.replace(/[\\^$.*+?()[\]{}|-]/g, '\\$&');
       valuePattern = new RegExp(`<${escaped}v(?:\\s[^>]*)?>([^<]*)</${escaped}v>`);
       valuePatterns.set(prefix, valuePattern);
     }
