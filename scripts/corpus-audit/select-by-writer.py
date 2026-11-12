@@ -26,13 +26,32 @@ def read_part(archive, name):
         return ""
 
 
+def library_fingerprint(names, workbook):
+    """Writers that leave Application out or fake it, recognised by what they put in the package (seen in FUSE)."""
+    if any("\\" in name for name in names):
+        return "backslash-entry-names"
+    if re.search(r'r:id="R[0-9a-f]{16}"', workbook):
+        return "openxml-sdk-dotnet"
+    if "schemas.microsoft.com/office/mac/excel/2008/main" in workbook and "docProps/app.xml" not in names:
+        return "google-sheets-2014"
+    view = re.search(r"<(?:\w+:)?workbookView\s+(\w+)=", workbook)
+    if view and view.group(1) == "activeTab" and 'rupBuild="4505"' in workbook:
+        return "phpexcel"
+    return None
+
+
 def writer_key(path):
     try:
         with zipfile.ZipFile(path) as archive:
+            names = archive.namelist()
             app = read_part(archive, "docProps/app.xml")
-            workbook = read_part(archive, "xl/workbook.xml")
+            workbook_name = next((name for name in names if name.replace("\\", "/").lower() == "xl/workbook.xml"), "")
+            workbook = read_part(archive, workbook_name) if workbook_name else ""
     except Exception:
         return "unreadable-zip"
+    library = library_fingerprint(names, workbook)
+    if library:
+        return library
     application = re.search(r"<(?:\w+:)?Application>([^<]*)<", app)
     version = re.search(r"<(?:\w+:)?AppVersion>([^<]*)<", app)
     name = application.group(1).strip() if application else "no-application"
