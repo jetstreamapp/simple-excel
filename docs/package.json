@@ -37,7 +37,7 @@
     "js-yaml@^3": {
       "argparse": "^2.0.1"
     },
-    "minimatch@^9": "^9.0.9",
+    "minimatch@9": "^11.0.1",
     "postcss-selector-parser": "^7.1.6",
     "serialize-javascript": "^7.0.5",
     "tinypool": "^2.1.2",
