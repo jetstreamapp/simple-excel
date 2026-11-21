@@ -62,7 +62,7 @@
     "node": ">=20.12"
   },
   "devDependencies": {
-    "@office-kit/xlsx": "^0.24.1",
+    "@office-kit/xlsx": "^0.28.0",
     "@playwright/test": "^1.64.0",
     "@release-it/keep-a-changelog": "^8.0.1",
     "@types/node": "^26.6.4",
@@ -70,7 +70,7 @@
     "@xarsh/ooxml-validator": "^0.4.0",
     "esbuild": "^0.28.2",
     "exceljs": "^4.4.0",
-    "oxfmt": "^0.72.0",
+    "oxfmt": "^0.79.0",
     "oxlint": "^1.87.0",
     "read-excel-file": "^9.3.12",
     "release-it": "^21.1.0",
